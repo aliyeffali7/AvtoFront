@@ -5,7 +5,7 @@ export const getOrders = () => api.get<Order[]>('/api/orders')
 
 export const getOrder = (id: number) => api.get<Order>(`/api/orders/${id}`)
 
-export const createOrder = (data: Partial<Order> & { products?: { product: number; quantity: number }[] }) =>
+export const createOrder = (data: Omit<Partial<Order>, 'products'> & { products?: { product: number; quantity: number }[] }) =>
   api.post<Order>('/api/orders', data)
 
 export const updateOrder = (id: number, data: Partial<Order>) =>

@@ -45,7 +45,7 @@ function CreateOrderDrawer({
     setPlate(''); setBrand(''); setModel(''); setDescription(''); setDays(''); setMechanic('')
     setServices([{ name: '', price: '' }])
     setOrderProducts([])
-    setCustomerName(''); setCustomerSurname(''); setCustomerPhone(''); setNotes(''); setError('')
+    setCustomerName(''); setCustomerPhone(''); setNotes(''); setError('')
   }
 
   function addProduct() {
