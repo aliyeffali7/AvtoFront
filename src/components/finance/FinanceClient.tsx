@@ -304,7 +304,7 @@ export default function FinanceClient() {
 
         {/* Period tabs */}
         <div className="flex flex-wrap gap-2 mb-4">
-          <div className="flex gap-1 bg-gray-100 rounded-2xl p-1">
+          <div className="flex flex-wrap gap-1 bg-gray-100 rounded-2xl p-1">
             {PERIODS.map(p => (
               <button
                 key={p.key}
@@ -414,8 +414,8 @@ export default function FinanceClient() {
             <p className="text-gray-500 text-sm mt-1">Seçilmiş filtr üzrə heç bir əməliyyat yoxdur.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden overflow-x-auto">
+            <table className="w-full min-w-[560px]">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Tarix</th>

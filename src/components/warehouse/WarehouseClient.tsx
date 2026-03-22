@@ -201,48 +201,88 @@ export default function WarehouseClient() {
             <p className="text-gray-500 text-sm mt-1">Məhsul əlavə etmək üçün yuxarıdakı düyməni basın.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Məhsul</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Alış</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Satış</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Stok</th>
-                  <th className="px-5 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {products.map((p) => (
-                  <tr key={p.id} className={`hover:bg-gray-50 transition-colors ${p.stock_quantity < 3 ? 'bg-amber-50/60' : ''}`}>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <p className="font-medium text-gray-900 text-sm">{p.name}</p>
-                        {p.stock_quantity < 3 && (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Az qalıb</span>
-                        )}
+          <>
+            {/* Mobile cards */}
+            <div className="flex flex-col gap-3 sm:hidden">
+              {products.map((p) => (
+                <div key={p.id} className={`bg-white rounded-2xl border px-4 py-4 ${p.stock_quantity < 3 ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200'}`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
+                      {p.stock_quantity < 3 && (
+                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium mt-1 inline-block">Az qalıb</span>
+                      )}
+                    </div>
+                    <span className={`text-lg font-bold ${p.stock_quantity < 3 ? 'text-amber-600' : 'text-gray-900'}`}>
+                      {p.stock_quantity} <span className="text-xs font-normal text-gray-400">stok</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex gap-4">
+                      <div>
+                        <p className="text-xs text-gray-400">Alış</p>
+                        <p className="text-gray-600 font-medium">{formatCurrency(p.purchase_price)}</p>
                       </div>
-                    </td>
-                    <td className="px-5 py-4 text-right text-sm text-gray-600">{formatCurrency(p.purchase_price)}</td>
-                    <td className="px-5 py-4 text-right text-sm font-medium text-gray-900">{formatCurrency(p.sell_price)}</td>
-                    <td className="px-5 py-4 text-right">
-                      <span className={`text-sm font-semibold ${p.stock_quantity < 3 ? 'text-amber-600' : 'text-gray-900'}`}>
-                        {p.stock_quantity}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <button
-                        onClick={() => setAdjustProduct(p)}
-                        className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                      >
-                        Tənzimlə
-                      </button>
-                    </td>
+                      <div>
+                        <p className="text-xs text-gray-400">Satış</p>
+                        <p className="text-gray-900 font-semibold">{formatCurrency(p.sell_price)}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setAdjustProduct(p)}
+                      className="text-xs font-semibold text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50"
+                    >
+                      Tənzimlə
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Məhsul</th>
+                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Alış</th>
+                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Satış</th>
+                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Stok</th>
+                    <th className="px-5 py-3" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {products.map((p) => (
+                    <tr key={p.id} className={`hover:bg-gray-50 transition-colors ${p.stock_quantity < 3 ? 'bg-amber-50/60' : ''}`}>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <p className="font-medium text-gray-900 text-sm">{p.name}</p>
+                          {p.stock_quantity < 3 && (
+                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Az qalıb</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-right text-sm text-gray-600">{formatCurrency(p.purchase_price)}</td>
+                      <td className="px-5 py-4 text-right text-sm font-medium text-gray-900">{formatCurrency(p.sell_price)}</td>
+                      <td className="px-5 py-4 text-right">
+                        <span className={`text-sm font-semibold ${p.stock_quantity < 3 ? 'text-amber-600' : 'text-gray-900'}`}>
+                          {p.stock_quantity}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <button
+                          onClick={() => setAdjustProduct(p)}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          Tənzimlə
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

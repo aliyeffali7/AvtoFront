@@ -49,7 +49,7 @@ const navItems = [
   },
 ]
 
-export default function BusinessSidebar() {
+export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
 
@@ -61,7 +61,7 @@ export default function BusinessSidebar() {
   return (
     <aside className="w-60 bg-white border-r border-gray-200 min-h-screen flex flex-col shrink-0">
       {/* Brand */}
-      <div className="px-6 py-5 border-b border-gray-100">
+      <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -74,6 +74,14 @@ export default function BusinessSidebar() {
             <p className="text-xs text-gray-500">CRM Panel</p>
           </div>
         </div>
+        {/* Close button — mobile only */}
+        {onClose && (
+          <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -84,6 +92,7 @@ export default function BusinessSidebar() {
             <Link
               key={item.href}
               to={item.href}
+              onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px] ${
                 isActive
                   ? 'bg-blue-50 text-blue-700'
