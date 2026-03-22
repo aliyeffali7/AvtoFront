@@ -50,6 +50,23 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function HomeRedirect() {
+  const access = getAccessToken()
+  if (access && !isTokenExpired(access)) {
+    const role = getRoleFromToken(access)
+    if (role === 'BUSINESS_OWNER') return <Navigate to="/business/orders" replace />
+    if (role === 'MECHANIC') return <Navigate to="/mechanic/orders" replace />
+    if (role === 'SUPER_ADMIN') return <Navigate to="/admin" replace />
+  }
+  const refresh = getRefreshToken()
+  if (refresh) {
+    // Has refresh token but access expired — let AuthGate handle it via a dummy protected route
+    // Just try to go to business orders, AuthGate will refresh and redirect properly
+    return <Navigate to="/business/orders" replace />
+  }
+  return <LandingPage />
+}
+
 function RoleGuard({ role }: { role: string }) {
   const token = getAccessToken()
   const userRole = token ? getRoleFromToken(token) : null
@@ -66,7 +83,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<HomeRedirect />} />
         <Route element={<AuthGate><Outlet /></AuthGate>}>
           <Route element={<RoleGuard role="BUSINESS_OWNER" />}>
             <Route element={<BusinessLayout />}>
