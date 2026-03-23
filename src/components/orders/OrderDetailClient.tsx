@@ -1,11 +1,139 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Order, Mechanic, Product } from '@/types'
-import { getOrder, assignMechanic, changeOrderStatus, addProductToOrder, recordPayment } from '@/services/orders.service'
+import {
+  getOrder, assignMechanic, changeOrderStatus,
+  addProductToOrder, removeProductFromOrder,
+  addServiceToOrder, removeServiceFromOrder,
+  recordPayment, updateOrder, deleteOrder,
+  uploadOrderImage, deleteOrderImage,
+} from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts } from '@/services/warehouse.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import StatusBadge from './StatusBadge'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import PlateInput from '@/components/ui/PlateInput'
+
+function EditOrderDrawer({
+  order,
+  onClose,
+  onSaved,
+}: {
+  order: Order | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [plate, setPlate] = useState('')
+  const [brand, setBrand] = useState('')
+  const [model, setModel] = useState('')
+  const [description, setDescription] = useState('')
+  const [days, setDays] = useState('')
+  const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [notes, setNotes] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (order) {
+      setPlate(order.plate_number)
+      setBrand(order.car_brand)
+      setModel(order.car_model)
+      setDescription(order.description)
+      setDays(String(order.estimated_days))
+      setCustomerName(order.customer_name ?? '')
+      setCustomerPhone(order.customer_phone ?? '')
+      setNotes(order.notes ?? '')
+      setError('')
+    }
+  }, [order])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!order) return
+    setError('')
+    setLoading(true)
+    try {
+      await updateOrder(order.id, {
+        plate_number: plate,
+        car_brand: brand,
+        car_model: model,
+        description,
+        estimated_days: parseInt(days),
+        customer_name: customerName || undefined,
+        customer_phone: customerPhone || undefined,
+        notes: notes || undefined,
+      })
+      onSaved()
+      onClose()
+    } catch (err) {
+      setError(mapApiError(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!order) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <h2 className="text-base font-semibold text-gray-900">Sifarişi düzəlt</h2>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4 px-6 py-6 overflow-y-auto">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Dövlət nişanı</label>
+            <PlateInput value={plate} onChange={setPlate} required autoFocus className="input font-mono tracking-wider" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Marka</label>
+            <input value={brand} onChange={e => setBrand(e.target.value)} required className="input" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Model</label>
+            <input value={model} onChange={e => setModel(e.target.value)} required className="input" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Tapşırıq</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={3} className="input resize-none" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Müddət (gün)</label>
+            <input value={days} onChange={e => setDays(e.target.value)} required type="number" min="1" className="input" />
+          </div>
+          <div className="border-t border-gray-100" />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Müştəri adı</label>
+            <input value={customerName} onChange={e => setCustomerName(e.target.value)} className="input" placeholder="Məs. Hüseyn Məmmədov" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Müştəri nömrəsi</label>
+            <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" className="input" placeholder="+994 50 000 00 00" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Əlavə qeydlər</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="input resize-none" />
+          </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+          <div className="flex flex-col gap-3 pt-2">
+            <button type="submit" disabled={loading} className="btn-primary">
+              {loading ? 'Saxlanılır...' : 'Saxla'}
+            </button>
+            <button type="button" onClick={onClose} className="btn-ghost">Ləğv et</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
 
 export default function OrderDetailClient({ id }: { id: string }) {
   const navigate = useNavigate()
@@ -25,13 +153,50 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [recordingPayment, setRecordingPayment] = useState(false)
   const [paymentError, setPaymentError] = useState('')
 
-  const [addFormOpen, setAddFormOpen] = useState(false)
+  // Products
+  const [addProductOpen, setAddProductOpen] = useState(false)
   const [warehouseProducts, setWarehouseProducts] = useState<Product[]>([])
   const warehouseLoadedRef = useRef(false)
   const [selectedProduct, setSelectedProduct] = useState('')
   const [qty, setQty] = useState('1')
   const [addingProduct, setAddingProduct] = useState(false)
   const [productError, setProductError] = useState('')
+  const [removingProductId, setRemovingProductId] = useState<number | null>(null)
+
+  // Services
+  const [addServiceOpen, setAddServiceOpen] = useState(false)
+  const [newServiceName, setNewServiceName] = useState('')
+  const [newServicePrice, setNewServicePrice] = useState('')
+  const [addingService, setAddingService] = useState(false)
+  const [serviceError, setServiceError] = useState('')
+  const [removingServiceId, setRemovingServiceId] = useState<number | null>(null)
+
+  // Images
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [removingImageId, setRemovingImageId] = useState<number | null>(null)
+  const [imageError, setImageError] = useState('')
+
+  // Edit / delete order
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // Confirm dialogs
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    message: string
+    confirmLabel: string
+    danger: boolean
+    onConfirm: () => void
+  }>({ open: false, title: '', message: '', confirmLabel: 'Bəli', danger: false, onConfirm: () => {} })
+
+  function showConfirm(opts: { title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void }) {
+    setConfirmDialog({ open: true, confirmLabel: 'Bəli', danger: false, ...opts })
+  }
+  function closeConfirm() {
+    setConfirmDialog(prev => ({ ...prev, open: false }))
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -56,11 +221,11 @@ export default function OrderDetailClient({ id }: { id: string }) {
   }
 
   useEffect(() => {
-    if (addFormOpen && !warehouseLoadedRef.current) {
+    if (addProductOpen && !warehouseLoadedRef.current) {
       warehouseLoadedRef.current = true
       getProducts().then(r => setWarehouseProducts(r.data)).catch(() => {})
     }
-  }, [addFormOpen])
+  }, [addProductOpen])
 
   async function handleAssign() {
     if (!selectedMechanic) return
@@ -123,13 +288,126 @@ export default function OrderDetailClient({ id }: { id: string }) {
       await addProductToOrder(parseInt(id), parseInt(selectedProduct), parseInt(qty))
       setSelectedProduct('')
       setQty('1')
-      setAddFormOpen(false)
+      setAddProductOpen(false)
       load()
     } catch (err) {
       setProductError(mapApiError(err))
     } finally {
       setAddingProduct(false)
     }
+  }
+
+  function handleRemoveProduct(orderProductId: number) {
+    showConfirm({
+      title: 'Məhsulu sil',
+      message: 'Bu məhsulu sifarişdən çıxarmaq istəyirsiniz? Stoka qaytarılacaq.',
+      confirmLabel: 'Sil',
+      danger: true,
+      onConfirm: async () => {
+        closeConfirm()
+        setRemovingProductId(orderProductId)
+        try {
+          await removeProductFromOrder(parseInt(id), orderProductId)
+          load()
+        } finally {
+          setRemovingProductId(null)
+        }
+      },
+    })
+  }
+
+  async function handleAddService(e: React.FormEvent) {
+    e.preventDefault()
+    setServiceError('')
+    setAddingService(true)
+    try {
+      await addServiceToOrder(parseInt(id), newServiceName.trim(), parseFloat(newServicePrice) || 0)
+      setNewServiceName('')
+      setNewServicePrice('')
+      setAddServiceOpen(false)
+      load()
+    } catch (err) {
+      setServiceError(mapApiError(err))
+    } finally {
+      setAddingService(false)
+    }
+  }
+
+  function handleRemoveService(serviceId: number) {
+    showConfirm({
+      title: 'İşi sil',
+      message: 'Bu işi sifarişdən silmək istəyirsiniz?',
+      confirmLabel: 'Sil',
+      danger: true,
+      onConfirm: async () => {
+        closeConfirm()
+        setRemovingServiceId(serviceId)
+        try {
+          await removeServiceFromOrder(parseInt(id), serviceId)
+          load()
+        } finally {
+          setRemovingServiceId(null)
+        }
+      },
+    })
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (imageInputRef.current) imageInputRef.current.value = ''
+    setImageError('')
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError('Fayl ölçüsü 5 MB-dan çox ola bilməz.')
+      return
+    }
+    setUploadingImage(true)
+    try {
+      await uploadOrderImage(parseInt(id), file)
+      load()
+    } catch (err) {
+      setImageError(mapApiError(err))
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  function handleRemoveImage(imageId: number) {
+    showConfirm({
+      title: 'Şəkli sil',
+      message: 'Bu şəkli silmək istəyirsiniz?',
+      confirmLabel: 'Sil',
+      danger: true,
+      onConfirm: async () => {
+        closeConfirm()
+        setRemovingImageId(imageId)
+        try {
+          await deleteOrderImage(parseInt(id), imageId)
+          load()
+        } finally {
+          setRemovingImageId(null)
+        }
+      },
+    })
+  }
+
+  function handleDeleteOrder() {
+    showConfirm({
+      title: 'Sifarişi sil',
+      message: 'Bu sifarişi silmək istəyirsiniz? Bu əməliyyat geri alına bilməz.',
+      confirmLabel: 'Sil',
+      danger: true,
+      onConfirm: async () => {
+        closeConfirm()
+        setDeleting(true)
+        try {
+          await deleteOrder(parseInt(id))
+          navigate('/business/orders', { replace: true })
+        } finally {
+          setDeleting(false)
+        }
+      },
+    })
   }
 
   if (loading) {
@@ -195,6 +473,30 @@ export default function OrderDetailClient({ id }: { id: string }) {
                 <p className="text-gray-600">{order.car_brand} {order.car_model}</p>
                 <p className="text-xs text-gray-400 mt-1">{formatDate(order.created_at)} · {order.estimated_days} gün</p>
               </div>
+              {/* Edit + Delete buttons — hidden when paid/locked */}
+              <div className="flex items-center gap-2 shrink-0">
+                {order.payment_status !== 'paid' && (
+                  <button
+                    onClick={() => setEditOpen(true)}
+                    className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 px-3 py-2 rounded-xl transition-colors min-h-[40px]"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H7v-3a2 2 0 01.586-1.414z" />
+                    </svg>
+                    Düzəlt
+                  </button>
+                )}
+                <button
+                  onClick={handleDeleteOrder}
+                  disabled={deleting}
+                  className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-2 rounded-xl transition-colors min-h-[40px]"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  {deleting ? '...' : 'Sil'}
+                </button>
+              </div>
             </div>
             <div className="mt-4 pt-4 border-t border-gray-100">
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Tapşırıq</p>
@@ -204,16 +506,80 @@ export default function OrderDetailClient({ id }: { id: string }) {
 
           {/* Services & Customer */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Services card — with add/remove */}
             <div className="bg-white rounded-2xl border border-gray-200 px-5 py-5">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">İşlər və qiymətlər</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">İşlər və qiymətlər</p>
+                {order.payment_status !== 'paid' && (
+                  <button
+                    onClick={() => { setAddServiceOpen(v => !v); setServiceError('') }}
+                    className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Əlavə et
+                  </button>
+                )}
+              </div>
+
+              {/* Inline add service form */}
+              {addServiceOpen && order.payment_status !== 'paid' && (
+                <form onSubmit={handleAddService} className="mb-3 bg-gray-50 rounded-xl p-3 flex flex-col gap-2">
+                  <input
+                    value={newServiceName}
+                    onChange={e => setNewServiceName(e.target.value)}
+                    required
+                    placeholder="İş adı (məs. Yağ dəyişimi)"
+                    className="input text-sm"
+                    autoFocus
+                  />
+                  <div className="relative">
+                    <input
+                      value={newServicePrice}
+                      onChange={e => setNewServicePrice(e.target.value)}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="input text-sm pr-6"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₼</span>
+                  </div>
+                  {serviceError && <p className="text-xs text-red-600">{serviceError}</p>}
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={addingService} className="btn-primary flex-1 text-sm py-2">
+                      {addingService ? '...' : 'Əlavə et'}
+                    </button>
+                    <button type="button" onClick={() => setAddServiceOpen(false)} className="btn-ghost text-sm py-2 px-3">Ləğv</button>
+                  </div>
+                </form>
+              )}
+
               {!order.services || order.services.length === 0 ? (
                 <p className="text-sm text-gray-400 py-2">İş qeyd edilməyib.</p>
               ) : (
                 <div className="flex flex-col divide-y divide-gray-100">
-                  {order.services.map((svc, i) => (
-                    <div key={i} className="flex items-center justify-between py-2.5 gap-3">
-                      <span className="text-sm text-gray-700">{svc.name}</span>
+                  {order.services.map((svc) => (
+                    <div key={svc.id} className="flex items-center justify-between py-2.5 gap-3 group">
+                      <span className="text-sm text-gray-700 flex-1">{svc.name}</span>
                       <span className="text-sm font-semibold text-gray-900 shrink-0">{formatCurrency(parseFloat(String(svc.price)))}</span>
+                      {order.payment_status !== 'paid' && (
+                        <button
+                          onClick={() => svc.id && handleRemoveService(svc.id)}
+                          disabled={removingServiceId === svc.id}
+                          className="p-1 text-gray-300 hover:text-red-500 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                          title="Sil"
+                        >
+                          {removingServiceId === svc.id ? (
+                            <span className="text-xs">...</span>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
                     </div>
                   ))}
                   <div className="flex items-center justify-between pt-3 pb-1">
@@ -259,6 +625,78 @@ export default function OrderDetailClient({ id }: { id: string }) {
             </div>
           </div>
 
+          {/* Images */}
+          {((order.images && order.images.length > 0) || order.payment_status !== 'paid') && (
+            <div className="bg-white rounded-2xl border border-gray-200 px-5 py-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  Şəkillər {order.images && order.images.length > 0 ? `(${order.images.length}/3)` : ''}
+                </p>
+                {order.payment_status !== 'paid' && (order.images?.length ?? 0) < 3 && (
+                  <>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setImageError(''); imageInputRef.current?.click() }}
+                      disabled={uploadingImage}
+                      className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {uploadingImage ? (
+                        <span>Yüklənir...</span>
+                      ) : (
+                        <>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                          </svg>
+                          Şəkil əlavə et
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
+              {imageError && <p className="text-xs text-red-600 mb-2">{imageError}</p>}
+              {!order.images || order.images.length === 0 ? (
+                <p className="text-sm text-gray-400">Şəkil əlavə edilməyib.</p>
+              ) : (
+                <div className="flex flex-wrap gap-3">
+                  {order.images.map(img => (
+                    <div key={img.id} className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group shrink-0">
+                      <a href={`${import.meta.env.VITE_API_URL}${img.image}`} target="_blank" rel="noreferrer">
+                        <img
+                          src={`${import.meta.env.VITE_API_URL}${img.image}`}
+                          alt="Şəkil"
+                          className="w-full h-full object-cover"
+                        />
+                      </a>
+                      {order.payment_status !== 'paid' && (
+                        <button
+                          onClick={() => handleRemoveImage(img.id)}
+                          disabled={removingImageId === img.id}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        >
+                          {removingImageId === img.id ? (
+                            <span className="text-xs">...</span>
+                          ) : (
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Notes */}
           {order.notes && (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex gap-3">
@@ -272,7 +710,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
             </div>
           )}
 
-          {/* Payment action — shown when done but not fully paid */}
+          {/* Payment action */}
           {order.status === 'done' && order.payment_status !== 'paid' && (
             <div className={`rounded-2xl border px-5 py-5 flex items-center justify-between gap-4 ${
               order.payment_status === 'partial' ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'
@@ -314,7 +752,18 @@ export default function OrderDetailClient({ id }: { id: string }) {
             </div>
           )}
 
-          {/* Assign mechanic & Status */}
+          {/* Locked banner */}
+          {order.payment_status === 'paid' && (
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+              <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <p className="text-sm text-gray-500">Bu sifariş tam ödənilib və bağlanıb. Dəyişiklik etmək mümkün deyil.</p>
+            </div>
+          )}
+
+          {/* Assign mechanic & Status — hidden when paid */}
+          {order.payment_status !== 'paid' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl border border-gray-200 px-5 py-5">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Usta təyin et</p>
@@ -359,28 +808,30 @@ export default function OrderDetailClient({ id }: { id: string }) {
               </div>
             </div>
           </div>
+          )}
 
         </div>
 
         {/* RIGHT — products panel */}
         <div className="w-80 shrink-0 sticky top-6">
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            {/* Panel header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <p className="text-sm font-semibold text-gray-800">İstifadə edilən məhsullar</p>
-              <button
-                onClick={() => setAddFormOpen(v => !v)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                Əlavə et
-              </button>
+              {order.payment_status !== 'paid' && (
+                <button
+                  onClick={() => { setAddProductOpen(v => !v); setProductError('') }}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Əlavə et
+                </button>
+              )}
             </div>
 
-            {/* Inline add form */}
-            {addFormOpen && (
+            {/* Inline add product form */}
+            {addProductOpen && order.payment_status !== 'paid' && (
               <form onSubmit={handleAddProduct} className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex flex-col gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-600">Məhsul</label>
@@ -414,7 +865,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setAddFormOpen(false); setProductError('') }}
+                    onClick={() => { setAddProductOpen(false); setProductError('') }}
                     className="btn-ghost text-sm py-2 px-3"
                   >
                     Ləğv et
@@ -436,17 +887,32 @@ export default function OrderDetailClient({ id }: { id: string }) {
             ) : (
               <div className="divide-y divide-gray-100">
                 {orderProducts.map(p => (
-                  <div key={p.id} className="flex items-center justify-between px-5 py-3 gap-3">
-                    <div className="min-w-0">
+                  <div key={p.id} className="flex items-center justify-between px-5 py-3 gap-3 group">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-800 truncate">{p.product_name}</p>
                       <p className="text-xs text-gray-400">{p.quantity} ədəd</p>
                     </div>
                     <span className="text-sm font-semibold text-gray-900 shrink-0">
                       {formatCurrency(p.sell_price * p.quantity)}
                     </span>
+                    {order.payment_status !== 'paid' && (
+                      <button
+                        onClick={() => handleRemoveProduct(p.id)}
+                        disabled={removingProductId === p.id}
+                        className="p-1 text-gray-300 hover:text-red-500 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                        title="Sil"
+                      >
+                        {removingProductId === p.id ? (
+                          <span className="text-xs">...</span>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
                   </div>
                 ))}
-                {/* Total */}
                 <div className="flex items-center justify-between px-5 py-3 bg-gray-50">
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cəmi</span>
                   <span className="text-sm font-bold text-blue-600">
@@ -471,13 +937,11 @@ export default function OrderDetailClient({ id }: { id: string }) {
           </div>
 
           <form onSubmit={handleRecordPayment} className="px-6 py-5 flex flex-col gap-4">
-            {/* Total */}
             <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
               <span className="text-sm text-gray-500">Ümumi məbləğ</span>
               <span className="text-base font-bold text-gray-900">{formatCurrency(paymentTotal)}</span>
             </div>
 
-            {/* Paid input */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-700">Ödənilən məbləğ</label>
               <div className="relative">
@@ -500,7 +964,6 @@ export default function OrderDetailClient({ id }: { id: string }) {
               </div>
             </div>
 
-            {/* Debt preview */}
             {parseFloat(paidInput) < paymentTotal && parseFloat(paidInput) >= 0 && (
               <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                 <span className="text-sm text-amber-700 font-medium">Borc qalır</span>
@@ -533,6 +996,18 @@ export default function OrderDetailClient({ id }: { id: string }) {
         </div>
       </div>
     )}
+
+    <EditOrderDrawer order={editOpen ? order : null} onClose={() => setEditOpen(false)} onSaved={load} />
+
+    <ConfirmDialog
+      open={confirmDialog.open}
+      title={confirmDialog.title}
+      message={confirmDialog.message}
+      confirmLabel={confirmDialog.confirmLabel}
+      danger={confirmDialog.danger}
+      onConfirm={confirmDialog.onConfirm}
+      onCancel={closeConfirm}
+    />
     </>
   )
 }

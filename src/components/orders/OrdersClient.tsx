@@ -1,11 +1,39 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Order, Mechanic, OrderService, Product } from '@/types'
-import { getOrders, createOrder } from '@/services/orders.service'
+import { getOrders, createOrder, uploadOrderImage } from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts } from '@/services/warehouse.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import StatusBadge from './StatusBadge'
+import PlateInput from '@/components/ui/PlateInput'
+
+type Period = 'day' | 'week' | 'month' | 'all' | 'custom'
+
+const PERIODS: { key: Period; label: string }[] = [
+  { key: 'day',    label: 'Bugün' },
+  { key: 'week',   label: 'Bu həftə' },
+  { key: 'month',  label: 'Bu ay' },
+  { key: 'all',    label: 'Hamısı' },
+  { key: 'custom', label: 'Tarix seç' },
+]
+
+function getPeriodRange(period: Period): { start: string | null; end: string | null } {
+  const now = new Date()
+  const today = now.toISOString().slice(0, 10)
+  if (period === 'day') return { start: today, end: today }
+  if (period === 'week') {
+    const d = new Date(now)
+    const day = d.getDay()
+    d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
+    return { start: d.toISOString().slice(0, 10), end: today }
+  }
+  if (period === 'month') {
+    const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    return { start, end: today }
+  }
+  return { start: null, end: null }
+}
 
 function CreateOrderDrawer({
   open,
@@ -29,9 +57,12 @@ function CreateOrderDrawer({
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [notes, setNotes] = useState('')
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const loadedRef = useRef(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open && !loadedRef.current) {
@@ -45,7 +76,27 @@ function CreateOrderDrawer({
     setPlate(''); setBrand(''); setModel(''); setDescription(''); setDays(''); setMechanic('')
     setServices([{ name: '', price: '' }])
     setOrderProducts([])
-    setCustomerName(''); setCustomerPhone(''); setNotes(''); setError('')
+    setCustomerName(''); setCustomerPhone(''); setNotes('')
+    setImageFiles([]); setImagePreviews([]); setError('')
+  }
+
+  function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? [])
+    if (!picked.length) return
+    const MAX = 5 * 1024 * 1024
+    const combined = [...imageFiles, ...picked].slice(0, 3)
+    const valid = combined.filter(f => f.size <= MAX)
+    const tooLarge = combined.filter(f => f.size > MAX)
+    if (tooLarge.length) setError(`${tooLarge.length} fayl 5 MB limitini aşır və əlavə edilmədi.`)
+    else setError('')
+    setImageFiles(valid)
+    setImagePreviews(valid.map(f => URL.createObjectURL(f)))
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function removeImagePreview(i: number) {
+    setImageFiles(prev => prev.filter((_, idx) => idx !== i))
+    setImagePreviews(prev => prev.filter((_, idx) => idx !== i))
   }
 
   function addProduct() {
@@ -83,7 +134,7 @@ function CreateOrderDrawer({
       .filter(p => p.productId)
       .map(p => ({ product: parseInt(p.productId), quantity: parseInt(p.qty) || 1 }))
     try {
-      await createOrder({
+      const orderRes = await createOrder({
         plate_number: plate,
         car_brand: brand,
         car_model: model,
@@ -96,6 +147,10 @@ function CreateOrderDrawer({
         customer_phone: customerPhone || undefined,
         notes: notes || undefined,
       })
+      // Upload images sequentially
+      for (const file of imageFiles) {
+        try { await uploadOrderImage(orderRes.data.id, file) } catch { /* ignore per-image errors */ }
+      }
       reset()
       onCreated()
       onClose()
@@ -129,7 +184,7 @@ function CreateOrderDrawer({
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Dövlət nişanı</label>
-                <input value={plate} onChange={e => setPlate(e.target.value)} required autoFocus placeholder="10-AA-001" className="input font-mono tracking-wider" />
+                <PlateInput value={plate} onChange={setPlate} required autoFocus className="input font-mono tracking-wider" />
               </div>
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
@@ -277,6 +332,56 @@ function CreateOrderDrawer({
 
           <div className="border-t border-gray-100" />
 
+          {/* Images */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Şəkillər</p>
+              <span className="text-xs text-gray-400">{imageFiles.length}/3</span>
+            </div>
+            {imagePreviews.length > 0 && (
+              <div className="flex gap-2 mb-3 flex-wrap">
+                {imagePreviews.map((src, i) => (
+                  <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shrink-0">
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeImagePreview(i)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {imageFiles.length < 3 && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleImagePick}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-gray-200 rounded-xl py-3 text-sm text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Şəkil seç (maks. 3, hər biri 5 MB)
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="border-t border-gray-100" />
+
           {/* Notes */}
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Əlavə qeydlər</p>
@@ -307,27 +412,50 @@ export default function OrdersClient() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'done'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'done'>('all')
+  const [period, setPeriod] = useState<Period>('all')
+  const [customDate, setCustomDate] = useState(new Date().toISOString().slice(0, 10))
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (p = page) => {
     setLoading(true)
     try {
-      const res = await getOrders()
-      setOrders(res.data)
+      const { start, end } = period === 'custom'
+        ? { start: customDate, end: customDate }
+        : getPeriodRange(period)
+
+      const res = await getOrders({
+        page: p,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        date_from: start ?? undefined,
+        date_to: end ?? undefined,
+      })
+      setOrders(res.data.results)
+      setTotalPages(res.data.total_pages)
+      setTotalCount(res.data.count)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [page, statusFilter, period, customDate])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, period, customDate])
 
-  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
+  useEffect(() => {
+    load(page)
+  }, [page, statusFilter, period, customDate]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const counts = {
-    all: orders.length,
-    pending: orders.filter(o => o.status === 'pending').length,
-    in_progress: orders.filter(o => o.status === 'in_progress').length,
-    done: orders.filter(o => o.status === 'done').length,
+  function handlePeriodChange(p: Period) {
+    setPeriod(p)
+    setPage(1)
+  }
+
+  function handleStatusChange(s: typeof statusFilter) {
+    setStatusFilter(s)
+    setPage(1)
   }
 
   return (
@@ -336,7 +464,7 @@ export default function OrdersClient() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Sifarişlər</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{orders.length} sifariş</p>
+            <p className="text-sm text-gray-500 mt-0.5">{totalCount} sifariş</p>
           </div>
           <button onClick={() => setCreateOpen(true)} className="btn-primary flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -346,37 +474,75 @@ export default function OrdersClient() {
           </button>
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-2 mb-5 flex-wrap">
+        {/* Status filters */}
+        <div className="flex gap-2 mb-3 flex-wrap">
           {([
-            { key: 'all', label: 'Hamısı' },
-            { key: 'pending', label: 'Gözləyir' },
+            { key: 'all',         label: 'Hamısı' },
+            { key: 'pending',     label: 'Gözləyir' },
             { key: 'in_progress', label: 'İcrada' },
-            { key: 'done', label: 'Tamamlandı' },
+            { key: 'done',        label: 'Tamamlandı' },
           ] as const).map(f => (
             <button
               key={f.key}
-              onClick={() => setFilter(f.key)}
+              onClick={() => handleStatusChange(f.key)}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors border ${
-                filter === f.key
+                statusFilter === f.key
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
               }`}
             >
               {f.label}
-              <span className={`ml-1.5 text-xs ${filter === f.key ? 'text-blue-200' : 'text-gray-400'}`}>
-                {counts[f.key]}
-              </span>
             </button>
           ))}
         </div>
+
+        {/* Period tabs */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-1 bg-gray-100 rounded-2xl p-1">
+            {PERIODS.map(p => (
+              <button
+                key={p.key}
+                onClick={() => handlePeriodChange(p.key)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+                  period === p.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {p.key === 'custom' && (
+                  <svg className="w-4 h-4 inline mr-1.5 -mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                )}
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom single date */}
+        {period === 'custom' && (
+          <div className="flex items-center gap-3 mb-5 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 w-fit">
+            <svg className="w-5 h-5 text-blue-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-blue-600 font-medium">Tarix seçin</label>
+              <input
+                type="date"
+                value={customDate}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={e => setCustomDate(e.target.value)}
+                className="text-sm border border-blue-200 bg-white rounded-lg px-3 py-1.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
+          </div>
+        )}
 
         {/* List */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : orders.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
             <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -388,7 +554,7 @@ export default function OrdersClient() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {filtered.map(order => (
+            {orders.map(order => (
               <Link
                 key={order.id}
                 to={`/business/orders/${order.id}`}
@@ -409,9 +575,9 @@ export default function OrdersClient() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
-                  {order.services && order.services.length > 0 && (
+                  {order.total != null && order.total > 0 && (
                     <p className="text-sm font-semibold text-gray-900 mt-1">
-                      {formatCurrency(order.services.reduce((s, t) => s + parseFloat(String(t.price)), 0))}
+                      {formatCurrency(order.total)}
                     </p>
                   )}
                   {order.mechanic_name ? (
@@ -429,12 +595,49 @@ export default function OrdersClient() {
             ))}
           </div>
         )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+              <button
+                key={n}
+                onClick={() => setPage(n)}
+                className={`w-9 h-9 rounded-xl text-sm font-medium transition-colors ${
+                  n === page
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       <CreateOrderDrawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onCreated={load}
+        onCreated={() => { setPage(1); load(1) }}
       />
     </>
   )

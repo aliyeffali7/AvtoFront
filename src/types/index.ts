@@ -28,11 +28,20 @@ export interface Order {
   paid_amount: number
   products: OrderProduct[]
   services: OrderService[]
+  images?: OrderImage[]
+  customer?: number | null
   customer_name?: string
   customer_surname?: string
   customer_phone?: string
   notes?: string
+  total?: number
   created_at: string
+}
+
+export interface OrderImage {
+  id: number
+  image: string
+  uploaded_at: string
 }
 
 export interface OrderProduct {
@@ -64,6 +73,31 @@ export interface Mechanic {
   full_name?: string
   phone?: string
   is_active: boolean
+  work_percent: number
+  total_earnings: number
+}
+
+export interface PaginatedResponse<T> {
+  count: number
+  results: T[]
+  page: number
+  total_pages: number
+}
+
+export interface Customer {
+  id: number
+  full_name: string
+  phone: string
+  plates: string[]
+  order_count: number
+  total_paid: number
+  total_debt: number
+  last_visit: string | null
+  created_at: string
+}
+
+export interface CustomerDetail extends Customer {
+  orders: Order[]
 }
 
 export interface LoginCredentials {

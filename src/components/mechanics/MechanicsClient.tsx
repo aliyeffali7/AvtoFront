@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Mechanic } from '@/types'
-import { getMechanics, createMechanic, deactivateMechanic } from '@/services/mechanics.service'
+import { getMechanics, createMechanic, updateMechanic, deactivateMechanic } from '@/services/mechanics.service'
 import { mapApiError } from '@/lib/utils'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 function AddMechanicDrawer({
   open,
@@ -16,6 +17,7 @@ function AddMechanicDrawer({
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [workPercent, setWorkPercent] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -26,10 +28,15 @@ function AddMechanicDrawer({
       setError('Şifrələr uyğun gəlmir.')
       return
     }
+    const percent = Number(workPercent)
+    if (isNaN(percent) || percent < 0 || percent > 100) {
+      setError('İş faizi 0 ilə 100 arasında olmalıdır.')
+      return
+    }
     setLoading(true)
     try {
-      await createMechanic({ full_name: fullName, phone, password, password_confirm: confirmPassword })
-      setFullName(''); setPhone(''); setPassword(''); setConfirmPassword('')
+      await createMechanic({ full_name: fullName, phone, password, password_confirm: confirmPassword, work_percent: percent })
+      setFullName(''); setPhone(''); setPassword(''); setConfirmPassword(''); setWorkPercent('')
       onAdded()
       onClose()
     } catch (err) {
@@ -53,7 +60,7 @@ function AddMechanicDrawer({
             </svg>
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-6 overflow-y-auto">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
             <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder="Rauf Əliyev" className="input" />
@@ -61,6 +68,20 @@ function AddMechanicDrawer({
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
             <input value={phone} onChange={e => setPhone(e.target.value)} required type="tel" placeholder="+994 50 000 00 00" className="input" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">İş faizi (%)</label>
+            <input
+              value={workPercent}
+              onChange={e => setWorkPercent(e.target.value)}
+              required
+              type="number"
+              min={0}
+              max={100}
+              placeholder="Məs: 40"
+              className="input"
+            />
+            <p className="text-xs text-gray-400">Ödəniş qəbul ediləndə ustanın payı avtomatik xərc kimi qeyd ediləcək.</p>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Şifrə</label>
@@ -91,11 +112,104 @@ function AddMechanicDrawer({
   )
 }
 
+function EditMechanicDrawer({
+  mechanic,
+  onClose,
+  onSaved,
+}: {
+  mechanic: Mechanic | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [workPercent, setWorkPercent] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (mechanic) {
+      setFullName(mechanic.full_name ?? '')
+      setPhone(mechanic.phone ?? '')
+      setWorkPercent(String(mechanic.work_percent))
+      setError('')
+    }
+  }, [mechanic])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    const percent = Number(workPercent)
+    if (isNaN(percent) || percent < 0 || percent > 100) {
+      setError('İş faizi 0 ilə 100 arasında olmalıdır.')
+      return
+    }
+    setLoading(true)
+    try {
+      await updateMechanic(mechanic!.id, { full_name: fullName, phone, work_percent: percent })
+      onSaved()
+      onClose()
+    } catch (err) {
+      setError(mapApiError(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!mechanic) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">Ustanı düzəlt</h2>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-6 overflow-y-auto">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
+            <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder="Rauf Əliyev" className="input" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
+            <input value={phone} onChange={e => setPhone(e.target.value)} required type="tel" placeholder="+994 50 000 00 00" className="input" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">İş faizi (%)</label>
+            <input
+              value={workPercent}
+              onChange={e => setWorkPercent(e.target.value)}
+              required
+              type="number"
+              min={0}
+              max={100}
+              placeholder="Məs: 40"
+              className="input"
+            />
+          </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+          <button type="submit" disabled={loading} className="btn-primary mt-2">
+            {loading ? 'Saxlanılır...' : 'Saxla'}
+          </button>
+          <button type="button" onClick={onClose} className="btn-ghost">Ləğv et</button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function MechanicsClient() {
   const [mechanics, setMechanics] = useState<Mechanic[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
+  const [editMechanic, setEditMechanic] = useState<Mechanic | null>(null)
   const [deactivating, setDeactivating] = useState<number | null>(null)
+  const [deactivateTarget, setDeactivateTarget] = useState<Mechanic | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -109,8 +223,8 @@ export default function MechanicsClient() {
 
   useEffect(() => { load() }, [load])
 
-  async function handleDeactivate(id: number) {
-    if (!confirm('Bu ustanı deaktiv etmək istəyirsiniz?')) return
+  async function confirmDeactivate(id: number) {
+    setDeactivateTarget(null)
     setDeactivating(id)
     try {
       await deactivateMechanic(id)
@@ -173,14 +287,28 @@ export default function MechanicsClient() {
                         <div>
                           <p className="text-sm font-medium text-gray-900">{m.full_name ?? '—'}</p>
                           {m.phone && <p className="text-xs text-gray-400">{m.phone}</p>}
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-indigo-600 font-medium">{m.work_percent}% pay</span>
+                            <span className="text-xs text-gray-300">·</span>
+                            <span className="text-xs text-gray-500">Ümumi qazanc: <span className="font-semibold text-gray-700">{Number(m.total_earnings).toFixed(2)} ₼</span></span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <span className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">Aktiv</span>
                         <button
-                          onClick={() => handleDeactivate(m.id)}
+                          onClick={() => setEditMechanic(m)}
+                          className="p-2.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          title="Düzəlt"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H7v-3a2 2 0 01.586-1.414z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setDeactivateTarget(m)}
                           disabled={deactivating === m.id}
-                          className="text-xs text-gray-400 hover:text-red-500 font-medium transition-colors"
+                          className="text-xs text-gray-400 hover:text-red-500 font-medium transition-colors px-1"
                         >
                           {deactivating === m.id ? '...' : 'Deaktiv et'}
                         </button>
@@ -209,7 +337,18 @@ export default function MechanicsClient() {
                           {m.phone && <p className="text-xs text-gray-400">{m.phone}</p>}
                         </div>
                       </div>
-                      <span className="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full font-medium">Deaktiv</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full font-medium">Deaktiv</span>
+                        <button
+                          onClick={() => setEditMechanic(m)}
+                          className="p-2.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          title="Düzəlt"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H7v-3a2 2 0 01.586-1.414z" />
+                          </svg>
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -220,6 +359,17 @@ export default function MechanicsClient() {
       </div>
 
       <AddMechanicDrawer open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} />
+      <EditMechanicDrawer mechanic={editMechanic} onClose={() => setEditMechanic(null)} onSaved={load} />
+
+      <ConfirmDialog
+        open={!!deactivateTarget}
+        title="Ustanı deaktiv et"
+        message={`${deactivateTarget?.full_name ?? 'Bu usta'} deaktiv edilsin? Ona yeni sifariş təyin edilə bilməyəcək.`}
+        confirmLabel="Deaktiv et"
+        danger={false}
+        onConfirm={() => deactivateTarget && confirmDeactivate(deactivateTarget.id)}
+        onCancel={() => setDeactivateTarget(null)}
+      />
     </>
   )
 }
