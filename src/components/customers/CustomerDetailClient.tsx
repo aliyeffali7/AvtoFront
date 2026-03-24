@@ -6,6 +6,7 @@ import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
 import StatusBadge from '@/components/orders/StatusBadge'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import PlateInput from '@/components/ui/PlateInput'
+import { printOrderPDF } from '@/lib/printOrderPDF'
 
 function EditCustomerDrawer({
   open,
@@ -270,38 +271,50 @@ export default function CustomerDetailClient() {
         ) : (
           <div className="flex flex-col gap-3">
             {customer.orders.map(order => (
-              <Link
-                key={order.id}
-                to={`/business/orders/${order.id}`}
-                className="bg-white rounded-2xl border border-gray-200 px-5 py-4 hover:border-blue-300 hover:shadow-sm transition-all flex items-center justify-between gap-4"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="font-bold text-gray-900 font-mono tracking-wider">{order.plate_number}</span>
-                    <StatusBadge status={order.status} />
+              <div key={order.id} className="bg-white rounded-2xl border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all flex items-center gap-2 pr-3">
+                <Link
+                  to={`/business/orders/${order.id}`}
+                  className="flex-1 px-5 py-4 flex items-center justify-between gap-4 min-w-0"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="font-bold text-gray-900 font-mono tracking-wider">{order.plate_number}</span>
+                      <StatusBadge status={order.status} />
+                    </div>
+                    <p className="text-sm text-gray-600">{order.car_brand} {order.car_model}</p>
+                    {order.description && (
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{order.description}</p>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-600">{order.car_brand} {order.car_model}</p>
-                  {order.description && (
-                    <p className="text-xs text-gray-400 mt-0.5 truncate">{order.description}</p>
-                  )}
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
-                  {order.total != null && order.total > 0 && (
-                    <p className="text-sm font-semibold text-gray-900 mt-0.5">{formatCurrency(order.total)}</p>
-                  )}
-                  {order.payment_status === 'paid' ? (
-                    <p className="text-xs text-green-600 mt-0.5">Ödənildi</p>
-                  ) : order.payment_status === 'partial' ? (
-                    <p className="text-xs text-amber-600 mt-0.5">Qismən</p>
-                  ) : (
-                    <p className="text-xs text-red-500 mt-0.5">Ödənilməyib</p>
-                  )}
-                </div>
-                <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
+                    {order.total != null && order.total > 0 && (
+                      <p className="text-sm font-semibold text-gray-900 mt-0.5">{formatCurrency(order.total)}</p>
+                    )}
+                    {order.payment_status === 'paid' ? (
+                      <p className="text-xs text-green-600 mt-0.5">Ödənildi</p>
+                    ) : order.payment_status === 'partial' ? (
+                      <p className="text-xs text-amber-600 mt-0.5">Qismən</p>
+                    ) : (
+                      <p className="text-xs text-red-500 mt-0.5">Ödənilməyib</p>
+                    )}
+                  </div>
+                  <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+                {order.status === 'done' && (
+                  <button
+                    onClick={() => printOrderPDF(order)}
+                    title="PDF yüklə"
+                    className="p-2 rounded-xl text-green-600 hover:bg-green-50 border border-green-200 transition-colors shrink-0"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}

@@ -11,6 +11,7 @@ import {
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts } from '@/services/warehouse.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
+import { printOrderPDF } from '@/lib/printOrderPDF'
 import StatusBadge from './StatusBadge'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import PlateInput from '@/components/ui/PlateInput'
@@ -473,8 +474,19 @@ export default function OrderDetailClient({ id }: { id: string }) {
                 <p className="text-gray-600">{order.car_brand} {order.car_model}</p>
                 <p className="text-xs text-gray-400 mt-1">{formatDate(order.created_at)} · {order.estimated_days} gün</p>
               </div>
-              {/* Edit + Delete buttons — hidden when paid/locked */}
-              <div className="flex items-center gap-2 shrink-0">
+              {/* Edit + Delete + PDF buttons */}
+              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                {order.status === 'done' && (
+                  <button
+                    onClick={() => printOrderPDF(order)}
+                    className="flex items-center gap-1.5 text-sm font-medium text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-2 rounded-xl transition-colors min-h-[40px]"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    PDF
+                  </button>
+                )}
                 {order.payment_status !== 'paid' && (
                   <button
                     onClick={() => setEditOpen(true)}
