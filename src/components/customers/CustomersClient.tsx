@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Customer } from '@/types'
 import { getCustomers, createCustomer } from '@/services/customers.service'
 import { formatCurrency, mapApiError } from '@/lib/utils'
+import PlateInput from '@/components/ui/PlateInput'
 
 function formatLastVisit(iso: string | null): string {
   if (!iso) return 'Ziyarət yoxdur'
@@ -20,11 +21,15 @@ function AddCustomerDrawer({
 }) {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
+  const [carBrand, setCarBrand] = useState('')
+  const [carModel, setCarModel] = useState('')
+  const [carYear, setCarYear] = useState('')
+  const [carPlate, setCarPlate] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   function reset() {
-    setFullName(''); setPhone(''); setError('')
+    setFullName(''); setPhone(''); setCarBrand(''); setCarModel(''); setCarYear(''); setCarPlate(''); setError('')
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -32,7 +37,14 @@ function AddCustomerDrawer({
     setError('')
     setLoading(true)
     try {
-      await createCustomer({ full_name: fullName, phone: phone || undefined })
+      await createCustomer({
+        full_name: fullName,
+        phone: phone || undefined,
+        car_brand: carBrand || undefined,
+        car_model: carModel || undefined,
+        car_year: carYear || undefined,
+        car_plate: carPlate || undefined,
+      })
       reset()
       onCreated()
       onClose()
@@ -57,7 +69,7 @@ function AddCustomerDrawer({
             </svg>
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4 px-6 py-6">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4 px-6 py-6 overflow-y-auto">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
             <input
@@ -78,6 +90,32 @@ function AddCustomerDrawer({
               placeholder="+994 50 000 00 00"
               className="input"
             />
+          </div>
+
+          <div className="border-t border-gray-100 pt-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Avtomobil</p>
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <label className="text-sm font-medium text-gray-700">Marka</label>
+                  <input value={carBrand} onChange={e => setCarBrand(e.target.value)} placeholder="Toyota" className="input" />
+                </div>
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <label className="text-sm font-medium text-gray-700">Model</label>
+                  <input value={carModel} onChange={e => setCarModel(e.target.value)} placeholder="Camry" className="input" />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <label className="text-sm font-medium text-gray-700">İl</label>
+                  <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="2020" maxLength={4} className="input" />
+                </div>
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <label className="text-sm font-medium text-gray-700">Dövlət nişanı</label>
+                  <PlateInput value={carPlate} onChange={setCarPlate} className="input font-mono tracking-wider" />
+                </div>
+              </div>
+            </div>
           </div>
 
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
@@ -198,9 +236,18 @@ export default function CustomersClient() {
                   {customer.phone && (
                     <p className="text-sm text-gray-500">{customer.phone}</p>
                   )}
-                  {customer.plates.length > 0 && (
+                  {(customer.car_brand || customer.car_model) && (
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {[customer.car_brand, customer.car_model, customer.car_year].filter(Boolean).join(' ')}
+                    </p>
+                  )}
+                  {(customer.car_plate || customer.plates.length > 0) && (
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      {customer.plates.map(plate => (
+                      {customer.car_plate ? (
+                        <span className="px-2 py-0.5 rounded-lg bg-gray-100 text-xs font-mono text-gray-700 font-medium">
+                          {customer.car_plate}
+                        </span>
+                      ) : customer.plates.map(plate => (
                         <span key={plate} className="px-2 py-0.5 rounded-lg bg-gray-100 text-xs font-mono text-gray-700 font-medium">
                           {plate}
                         </span>

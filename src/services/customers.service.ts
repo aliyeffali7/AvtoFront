@@ -7,10 +7,19 @@ export const getCustomers = (params?: { page?: number; search?: string }) =>
 export const getCustomer = (id: number) =>
   api.get<CustomerDetail>(`/api/customers/${id}`)
 
-export const createCustomer = (data: { full_name: string; phone?: string }) =>
+interface CustomerWriteData {
+  full_name?: string
+  phone?: string
+  car_brand?: string
+  car_model?: string
+  car_year?: string
+  car_plate?: string
+}
+
+export const createCustomer = (data: CustomerWriteData & { full_name: string }) =>
   api.post<Customer>('/api/customers', data)
 
-export const updateCustomer = (id: number, data: { full_name?: string; phone?: string }) =>
+export const updateCustomer = (id: number, data: CustomerWriteData) =>
   api.patch<CustomerDetail>(`/api/customers/${id}`, data)
 
 export const deleteCustomer = (id: number) =>

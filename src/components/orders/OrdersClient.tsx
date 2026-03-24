@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Order, Mechanic, OrderService, Product } from '@/types'
+import { Order, Mechanic, OrderService, Product, Customer } from '@/types'
 import { getOrders, createOrder, uploadOrderImage } from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts } from '@/services/warehouse.service'
+import { getCustomers } from '@/services/customers.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import StatusBadge from './StatusBadge'
 import PlateInput from '@/components/ui/PlateInput'
@@ -56,6 +57,11 @@ function CreateOrderDrawer({
   const [orderProducts, setOrderProducts] = useState<{ productId: string; qty: string }[]>([])
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null)
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [customerResults, setCustomerResults] = useState<Customer[]>([])
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false)
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [notes, setNotes] = useState('')
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
@@ -63,6 +69,7 @@ function CreateOrderDrawer({
   const [error, setError] = useState('')
   const loadedRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const customerSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (open && !loadedRef.current) {
@@ -72,11 +79,51 @@ function CreateOrderDrawer({
     }
   }, [open])
 
+  useEffect(() => {
+    if (!customerSearch.trim()) {
+      setCustomerResults([])
+      setShowCustomerDropdown(false)
+      return
+    }
+    if (customerSearchRef.current) clearTimeout(customerSearchRef.current)
+    customerSearchRef.current = setTimeout(() => {
+      setCustomerSearchLoading(true)
+      getCustomers({ search: customerSearch, page: 1 })
+        .then(r => { setCustomerResults(r.data.results); setShowCustomerDropdown(true) })
+        .catch(() => {})
+        .finally(() => setCustomerSearchLoading(false))
+    }, 300)
+    return () => { if (customerSearchRef.current) clearTimeout(customerSearchRef.current) }
+  }, [customerSearch])
+
+  function selectCustomer(c: Customer) {
+    setSelectedCustomerId(c.id)
+    setCustomerName(c.full_name)
+    setCustomerPhone(c.phone ?? '')
+    if (c.car_plate) setPlate(c.car_plate)
+    if (c.car_brand) setBrand(c.car_brand)
+    if (c.car_model) setModel(c.car_model)
+    setCustomerSearch(c.full_name)
+    setShowCustomerDropdown(false)
+    setCustomerResults([])
+  }
+
+  function clearCustomer() {
+    setSelectedCustomerId(null)
+    setCustomerSearch('')
+    setCustomerName('')
+    setCustomerPhone('')
+    setCustomerResults([])
+    setShowCustomerDropdown(false)
+  }
+
   function reset() {
     setPlate(''); setBrand(''); setModel(''); setDescription(''); setDays(''); setMechanic('')
     setServices([{ name: '', price: '' }])
     setOrderProducts([])
-    setCustomerName(''); setCustomerPhone(''); setNotes('')
+    setCustomerName(''); setCustomerPhone(''); setSelectedCustomerId(null)
+    setCustomerSearch(''); setCustomerResults([]); setShowCustomerDropdown(false)
+    setNotes('')
     setImageFiles([]); setImagePreviews([]); setError('')
   }
 
@@ -143,6 +190,7 @@ function CreateOrderDrawer({
         mechanic: mechanic ? parseInt(mechanic) : null,
         services: filledServices,
         products: filledProducts,
+        customer: selectedCustomerId ?? undefined,
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
         notes: notes || undefined,
@@ -319,6 +367,70 @@ function CreateOrderDrawer({
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Müştəri məlumatları</p>
             <div className="flex flex-col gap-3">
+              {/* Customer search */}
+              <div className="flex flex-col gap-1.5 relative">
+                <label className="text-sm font-medium text-gray-700">Müştəri axtar</label>
+                <div className="relative">
+                  <input
+                    value={customerSearch}
+                    onChange={e => { setCustomerSearch(e.target.value); setSelectedCustomerId(null) }}
+                    placeholder="Ad, telefon və ya nişan..."
+                    className="input pr-8"
+                    autoComplete="off"
+                  />
+                  {customerSearchLoading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+                  )}
+                  {selectedCustomerId && !customerSearchLoading && (
+                    <button type="button" onClick={clearCustomer} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {showCustomerDropdown && customerResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                    {customerResults.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => selectCustomer(c)}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{c.full_name}</p>
+                            {c.phone && <p className="text-xs text-gray-500">{c.phone}</p>}
+                          </div>
+                          {(c.car_plate || c.plates[0]) && (
+                            <span className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg">
+                              {c.car_plate || c.plates[0]}
+                            </span>
+                          )}
+                        </div>
+                        {(c.car_brand || c.car_model) && (
+                          <p className="text-xs text-gray-400 mt-0.5">{[c.car_brand, c.car_model, c.car_year].filter(Boolean).join(' ')}</p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showCustomerDropdown && customerResults.length === 0 && !customerSearchLoading && (
+                  <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3">
+                    <p className="text-sm text-gray-400">Müştəri tapılmadı</p>
+                  </div>
+                )}
+                {selectedCustomerId && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Müştəri seçildi — məlumatlar avtomatik dolduruldu
+                  </p>
+                )}
+              </div>
+
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
                 <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Məs. Hüseyn Məmmədov" className="input" />

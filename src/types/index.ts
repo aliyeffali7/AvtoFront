@@ -88,6 +88,10 @@ export interface Customer {
   id: number
   full_name: string
   phone: string
+  car_brand: string
+  car_model: string
+  car_year: string
+  car_plate: string
   plates: string[]
   order_count: number
   total_paid: number
