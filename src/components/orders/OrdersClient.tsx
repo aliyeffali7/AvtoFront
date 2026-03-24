@@ -226,13 +226,95 @@ function CreateOrderDrawer({
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-5 px-6 py-6 overflow-y-auto">
 
+          {/* Customer info — first so search auto-fills car fields below */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Müştəri məlumatları</p>
+            <div className="flex flex-col gap-3">
+              {/* Customer search */}
+              <div className="flex flex-col gap-1.5 relative">
+                <label className="text-sm font-medium text-gray-700">Müştəri axtar</label>
+                <div className="relative">
+                  <input
+                    value={customerSearch}
+                    onChange={e => { setCustomerSearch(e.target.value); setSelectedCustomerId(null) }}
+                    placeholder="Ad, telefon və ya nişan..."
+                    className="input pr-8"
+                    autoComplete="off"
+                    autoFocus
+                  />
+                  {customerSearchLoading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+                  )}
+                  {selectedCustomerId && !customerSearchLoading && (
+                    <button type="button" onClick={clearCustomer} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {showCustomerDropdown && customerResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                    {customerResults.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => selectCustomer(c)}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{c.full_name}</p>
+                            {c.phone && <p className="text-xs text-gray-500">{c.phone}</p>}
+                          </div>
+                          {(c.car_plate || c.plates[0]) && (
+                            <span className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg">
+                              {c.car_plate || c.plates[0]}
+                            </span>
+                          )}
+                        </div>
+                        {(c.car_brand || c.car_model) && (
+                          <p className="text-xs text-gray-400 mt-0.5">{[c.car_brand, c.car_model, c.car_year].filter(Boolean).join(' ')}</p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showCustomerDropdown && customerResults.length === 0 && !customerSearchLoading && (
+                  <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3">
+                    <p className="text-sm text-gray-400">Müştəri tapılmadı</p>
+                  </div>
+                )}
+                {selectedCustomerId && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Müştəri seçildi — məlumatlar avtomatik dolduruldu
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
+                <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Məs. Hüseyn Məmmədov" className="input" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
+                <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100" />
+
           {/* Car info */}
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Avtomobil</p>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Dövlət nişanı</label>
-                <PlateInput value={plate} onChange={setPlate} required autoFocus className="input font-mono tracking-wider" />
+                <PlateInput value={plate} onChange={setPlate} required className="input font-mono tracking-wider" />
               </div>
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
@@ -359,87 +441,6 @@ function CreateOrderDrawer({
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Customer info */}
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Müştəri məlumatları</p>
-            <div className="flex flex-col gap-3">
-              {/* Customer search */}
-              <div className="flex flex-col gap-1.5 relative">
-                <label className="text-sm font-medium text-gray-700">Müştəri axtar</label>
-                <div className="relative">
-                  <input
-                    value={customerSearch}
-                    onChange={e => { setCustomerSearch(e.target.value); setSelectedCustomerId(null) }}
-                    placeholder="Ad, telefon və ya nişan..."
-                    className="input pr-8"
-                    autoComplete="off"
-                  />
-                  {customerSearchLoading && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
-                  )}
-                  {selectedCustomerId && !customerSearchLoading && (
-                    <button type="button" onClick={clearCustomer} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-                {showCustomerDropdown && customerResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                    {customerResults.map(c => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => selectCustomer(c)}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{c.full_name}</p>
-                            {c.phone && <p className="text-xs text-gray-500">{c.phone}</p>}
-                          </div>
-                          {(c.car_plate || c.plates[0]) && (
-                            <span className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg">
-                              {c.car_plate || c.plates[0]}
-                            </span>
-                          )}
-                        </div>
-                        {(c.car_brand || c.car_model) && (
-                          <p className="text-xs text-gray-400 mt-0.5">{[c.car_brand, c.car_model, c.car_year].filter(Boolean).join(' ')}</p>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {showCustomerDropdown && customerResults.length === 0 && !customerSearchLoading && (
-                  <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3">
-                    <p className="text-sm text-gray-400">Müştəri tapılmadı</p>
-                  </div>
-                )}
-                {selectedCustomerId && (
-                  <p className="text-xs text-green-600 flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Müştəri seçildi — məlumatlar avtomatik dolduruldu
-                  </p>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
-                <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Məs. Hüseyn Məmmədov" className="input" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
-                <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
-              </div>
-            </div>
           </div>
 
           <div className="border-t border-gray-100" />
