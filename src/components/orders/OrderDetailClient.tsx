@@ -202,13 +202,20 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await getOrder(parseInt(id))
-      setOrder(res.data)
-      setSelectedMechanic(String(res.data.mechanic ?? ''))
+      const [orderRes, mechanicsRes] = await Promise.all([
+        getOrder(parseInt(id)),
+        mechanicsLoaded ? Promise.resolve(null) : getMechanics().catch(() => null),
+      ])
+      setOrder(orderRes.data)
+      setSelectedMechanic(String(orderRes.data.mechanic ?? ''))
+      if (mechanicsRes) {
+        setMechanics(mechanicsRes.data)
+        setMechanicsLoaded(true)
+      }
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load() }, [load])
 
@@ -472,21 +479,27 @@ export default function OrderDetailClient({ id }: { id: string }) {
                   )}
                 </div>
                 <p className="text-gray-600">{order.car_brand} {order.car_model}</p>
-                <p className="text-xs text-gray-400 mt-1">{formatDate(order.created_at)} · {order.estimated_days} gün</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {formatDate(order.created_at)} · {order.estimated_days} gün
+                  {(order.mechanic_name || order.mechanic_email) && (
+                    <> · <span className="text-blue-500">{order.mechanic_name ?? order.mechanic_email}</span></>
+                  )}
+                  {!order.mechanic && (
+                    <> · <span className="text-amber-500">Usta təyin edilməyib</span></>
+                  )}
+                </p>
               </div>
               {/* Edit + Delete + PDF buttons */}
               <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                {order.status === 'done' && (
-                  <button
-                    onClick={() => printOrderPDF(order)}
-                    className="flex items-center gap-1.5 text-sm font-medium text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-2 rounded-xl transition-colors min-h-[40px]"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    PDF
-                  </button>
-                )}
+                <button
+                  onClick={() => printOrderPDF(order)}
+                  className="flex items-center gap-1.5 text-sm font-medium text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-2 rounded-xl transition-colors min-h-[40px]"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  PDF
+                </button>
                 {order.payment_status !== 'paid' && (
                   <button
                     onClick={() => setEditOpen(true)}
