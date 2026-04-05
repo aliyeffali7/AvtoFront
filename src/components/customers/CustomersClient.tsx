@@ -25,11 +25,12 @@ function AddCustomerDrawer({
   const [carModel, setCarModel] = useState('')
   const [carYear, setCarYear] = useState('')
   const [carPlate, setCarPlate] = useState('')
+  const [vinCode, setVinCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   function reset() {
-    setFullName(''); setPhone(''); setCarBrand(''); setCarModel(''); setCarYear(''); setCarPlate(''); setError('')
+    setFullName(''); setPhone(''); setCarBrand(''); setCarModel(''); setCarYear(''); setCarPlate(''); setVinCode(''); setError('')
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -44,6 +45,7 @@ function AddCustomerDrawer({
         car_model: carModel || undefined,
         car_year: carYear || undefined,
         car_plate: carPlate || undefined,
+        vin_code: vinCode || undefined,
       })
       reset()
       onCreated()
@@ -108,12 +110,16 @@ function AddCustomerDrawer({
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-sm font-medium text-gray-700">İl</label>
-                  <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="2020" maxLength={4} className="input" />
+                  <input value={carYear} onChange={e => setCarYear(e.target.value)} required placeholder="2020" maxLength={4} className="input" />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-sm font-medium text-gray-700">Dövlət nişanı</label>
                   <PlateInput value={carPlate} onChange={setCarPlate} className="input font-mono tracking-wider" />
                 </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">VIN kod</label>
+                <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="WBA3A5C50CF256985" maxLength={17} className="input font-mono text-sm" />
               </div>
             </div>
           </div>

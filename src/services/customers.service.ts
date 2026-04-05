@@ -14,6 +14,7 @@ interface CustomerWriteData {
   car_model?: string
   car_year?: string
   car_plate?: string
+  vin_code?: string
 }
 
 export const createCustomer = (data: CustomerWriteData & { full_name: string }) =>

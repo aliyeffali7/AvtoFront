@@ -12,6 +12,8 @@ import MechanicsPage from '@/pages/business/MechanicsPage'
 import WarehousePage from '@/pages/business/WarehousePage'
 import FinancePage from '@/pages/business/FinancePage'
 import DebtsPage from '@/pages/business/DebtsPage'
+import CreditorsPage from '@/pages/business/CreditorsPage'
+import ReservationsPage from '@/pages/business/ReservationsPage'
 import CustomersPage from '@/pages/business/CustomersPage'
 import CustomerDetailPage from '@/pages/business/CustomerDetailPage'
 import MechanicOrdersPage from '@/pages/mechanic/MechanicOrdersPage'
@@ -95,6 +97,8 @@ export default function App() {
               <Route path="/business/warehouse" element={<WarehousePage />} />
               <Route path="/business/finance" element={<FinancePage />} />
               <Route path="/business/debts" element={<DebtsPage />} />
+              <Route path="/business/creditors" element={<CreditorsPage />} />
+              <Route path="/business/reservations" element={<ReservationsPage />} />
               <Route path="/business/customers" element={<CustomersPage />} />
               <Route path="/business/customers/:id" element={<CustomerDetailPage />} />
             </Route>

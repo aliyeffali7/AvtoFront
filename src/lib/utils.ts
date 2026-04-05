@@ -43,20 +43,25 @@ export function mapApiError(error: unknown): string {
   if (!err.response?.data) return genericMessage
 
   const data = err.response.data
+  const status = err.response.status
 
-  if (err.response.status === 401) {
+  if (status === 401) {
     return 'Email və ya şifrə yanlışdır'
   }
 
   if (typeof data.detail === 'string') {
-    return 'Email və ya şifrə yanlışdır'
+    return data.detail
   }
 
   const firstKey = Object.keys(data)[0]
   if (firstKey) {
     const val = data[firstKey]
-    if (Array.isArray(val) && typeof val[0] === 'string') {
-      return val[0]
+    const msg = Array.isArray(val) ? val[0] : typeof val === 'string' ? val : null
+    if (typeof msg === 'string') {
+      if (msg.includes('stok') || msg.includes('kifayət')) {
+        return 'Kifayət qədər məhsul yoxdur'
+      }
+      return msg
     }
   }
 

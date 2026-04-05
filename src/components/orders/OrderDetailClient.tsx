@@ -9,7 +9,7 @@ import {
   uploadOrderImage, deleteOrderImage,
 } from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
-import { getProducts } from '@/services/warehouse.service'
+import { getProducts, createProduct, createSupplierDebt } from '@/services/warehouse.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import { printOrderPDF } from '@/lib/printOrderPDF'
 import StatusBadge from './StatusBadge'
@@ -54,6 +54,10 @@ function EditOrderDrawer({
     e.preventDefault()
     if (!order) return
     setError('')
+    if (!description.trim()) {
+      setError('Tapşırıq sahəsi boş ola bilməz.')
+      return
+    }
     setLoading(true)
     try {
       await updateOrder(order.id, {
@@ -168,9 +172,19 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [addServiceOpen, setAddServiceOpen] = useState(false)
   const [newServiceName, setNewServiceName] = useState('')
   const [newServicePrice, setNewServicePrice] = useState('')
+  const [newServiceMechanicAmount, setNewServiceMechanicAmount] = useState('')
+  const [newServiceHasMechanicAmount, setNewServiceHasMechanicAmount] = useState(false)
   const [addingService, setAddingService] = useState(false)
   const [serviceError, setServiceError] = useState('')
   const [removingServiceId, setRemovingServiceId] = useState<number | null>(null)
+
+  // New (non-warehouse) product
+  const [productTab, setProductTab] = useState<'warehouse' | 'new'>('warehouse')
+  const [newProdName, setNewProdName] = useState('')
+  const [newProdPurchase, setNewProdPurchase] = useState('')
+  const [newProdSell, setNewProdSell] = useState('')
+  const [newProdQty, setNewProdQty] = useState('1')
+  const [newProdSupplier, setNewProdSupplier] = useState('')
 
   // Images
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -281,8 +295,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
       await recordPayment(parseInt(id), parseFloat(paidInput) || 0)
       setPaymentDialogOpen(false)
       load()
-    } catch {
-      setPaymentError('Xəta baş verdi. Yenidən cəhd edin.')
+    } catch (err) {
+      setPaymentError(mapApiError(err))
     } finally {
       setRecordingPayment(false)
     }
@@ -327,11 +341,21 @@ export default function OrderDetailClient({ id }: { id: string }) {
   async function handleAddService(e: React.FormEvent) {
     e.preventDefault()
     setServiceError('')
+    const price = parseFloat(newServicePrice) || 0
+    const mechanicAmt = newServiceHasMechanicAmount && newServiceMechanicAmount !== ''
+      ? parseFloat(newServiceMechanicAmount) || 0
+      : null
+    if (mechanicAmt !== null && mechanicAmt > price) {
+      setServiceError('Usta payı işin qiymətindən çox ola bilməz.')
+      return
+    }
     setAddingService(true)
     try {
-      await addServiceToOrder(parseInt(id), newServiceName.trim(), parseFloat(newServicePrice) || 0)
+      await addServiceToOrder(parseInt(id), newServiceName.trim(), price, mechanicAmt)
       setNewServiceName('')
       setNewServicePrice('')
+      setNewServiceMechanicAmount('')
+      setNewServiceHasMechanicAmount(false)
       setAddServiceOpen(false)
       load()
     } catch (err) {
@@ -401,9 +425,9 @@ export default function OrderDetailClient({ id }: { id: string }) {
 
   function handleDeleteOrder() {
     showConfirm({
-      title: 'Sifarişi sil',
-      message: 'Bu sifarişi silmək istəyirsiniz? Bu əməliyyat geri alına bilməz.',
-      confirmLabel: 'Sil',
+      title: 'Sifarişi ləğv et',
+      message: 'Bu sifarişi ləğv etmək istəyirsiniz? Bütün ödəniş qeydləri maliyyədən silinəcək, anbar stoku bərpa ediləcək. Bu əməliyyat geri alına bilməz.',
+      confirmLabel: 'Ləğv et',
       danger: true,
       onConfirm: async () => {
         closeConfirm()
@@ -463,7 +487,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
       <div className="flex gap-6 items-start">
 
         {/* LEFT — main content */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4">
+        <div className="w-[65%] shrink-0 flex flex-col gap-4">
 
           {/* Header card */}
           <div className="bg-white rounded-2xl border border-gray-200 px-6 py-5">
@@ -519,7 +543,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  {deleting ? '...' : 'Sil'}
+                  {deleting ? '...' : 'Ləğv et'}
                 </button>
               </div>
             </div>
@@ -559,24 +583,47 @@ export default function OrderDetailClient({ id }: { id: string }) {
                     className="input text-sm"
                     autoFocus
                   />
-                  <div className="relative">
-                    <input
-                      value={newServicePrice}
-                      onChange={e => setNewServicePrice(e.target.value)}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      className="input text-sm pr-6"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₼</span>
+                  {/* Price + mechanic amount row */}
+                  <div className="grid grid-cols-[1fr_32px_1fr] gap-2 items-center">
+                    <div className="relative">
+                      <input
+                        value={newServicePrice}
+                        onChange={e => setNewServicePrice(e.target.value)}
+                        type="number" min="0" step="0.01" placeholder="Qiymət 0.00"
+                        className="input text-sm pr-6 w-full"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setNewServiceHasMechanicAmount(v => !v); setNewServiceMechanicAmount('') }}
+                      title={newServiceHasMechanicAmount ? 'Usta payını sil' : 'Usta payı əlavə et'}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors ${newServiceHasMechanicAmount ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-400 hover:bg-gray-300'}`}
+                    >
+                      U
+                    </button>
+                    <div className="relative">
+                      {newServiceHasMechanicAmount ? (
+                        <>
+                          <input
+                            value={newServiceMechanicAmount}
+                            onChange={e => setNewServiceMechanicAmount(e.target.value)}
+                            type="number" min="0" step="0.01" placeholder="Usta payı"
+                            className="input text-sm pr-6 w-full"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-400">% ilə hesablanır</span>
+                      )}
+                    </div>
                   </div>
                   {serviceError && <p className="text-xs text-red-600">{serviceError}</p>}
                   <div className="flex gap-2">
                     <button type="submit" disabled={addingService} className="btn-primary flex-1 text-sm py-2">
                       {addingService ? '...' : 'Əlavə et'}
                     </button>
-                    <button type="button" onClick={() => setAddServiceOpen(false)} className="btn-ghost text-sm py-2 px-3">Ləğv</button>
+                    <button type="button" onClick={() => { setAddServiceOpen(false); setNewServiceHasMechanicAmount(false); setNewServiceMechanicAmount('') }} className="btn-ghost text-sm py-2 px-3">Ləğv</button>
                   </div>
                 </form>
               )}
@@ -586,8 +633,15 @@ export default function OrderDetailClient({ id }: { id: string }) {
               ) : (
                 <div className="flex flex-col divide-y divide-gray-100">
                   {order.services.map((svc) => (
-                    <div key={svc.id} className="flex items-center justify-between py-2.5 gap-3 group">
-                      <span className="text-sm text-gray-700 flex-1">{svc.name}</span>
+                    <div key={svc.id} className="flex items-start justify-between py-2.5 gap-3 group">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-gray-700">{svc.name}</span>
+                        {svc.mechanic_amount != null ? (
+                          <p className="text-xs text-purple-600 mt-0.5">Usta payı: {formatCurrency(parseFloat(String(svc.mechanic_amount)))}</p>
+                        ) : order.mechanic ? (
+                          <p className="text-xs text-gray-400 mt-0.5">Usta payı: % ilə</p>
+                        ) : null}
+                      </div>
                       <span className="text-sm font-semibold text-gray-900 shrink-0">{formatCurrency(parseFloat(String(svc.price)))}</span>
                       {order.payment_status !== 'paid' && (
                         <button
@@ -838,65 +892,107 @@ export default function OrderDetailClient({ id }: { id: string }) {
         </div>
 
         {/* RIGHT — products panel */}
-        <div className="w-80 shrink-0 sticky top-6">
+        <div className="flex-1 min-w-0 sticky top-6">
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <p className="text-sm font-semibold text-gray-800">İstifadə edilən məhsullar</p>
               {order.payment_status !== 'paid' && (
-                <button
-                  onClick={() => { setAddProductOpen(v => !v); setProductError('') }}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  Əlavə et
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => { setAddProductOpen(v => !v); setProductTab('warehouse'); setProductError('') }}
+                    className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Anbarda var
+                  </button>
+                  <button
+                    onClick={() => { setAddProductOpen(true); setProductTab('new'); setProductError('') }}
+                    className="text-xs font-semibold text-orange-600 hover:text-orange-800 bg-orange-50 hover:bg-orange-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                  >
+                    Yoxdur
+                  </button>
+                </div>
               )}
             </div>
 
             {/* Inline add product form */}
             {addProductOpen && order.payment_status !== 'paid' && (
-              <form onSubmit={handleAddProduct} className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex flex-col gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-600">Məhsul</label>
-                  <select
-                    value={selectedProduct}
-                    onChange={e => setSelectedProduct(e.target.value)}
-                    required
-                    className="input text-sm"
-                  >
-                    <option value="">Seçin...</option>
-                    {warehouseProducts.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.stock_quantity} ədəd)</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-600">Miqdar</label>
-                  <input
-                    value={qty}
-                    onChange={e => setQty(e.target.value)}
-                    type="number"
-                    min="1"
-                    required
-                    className="input text-sm"
-                  />
-                </div>
-                {productError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{productError}</p>}
-                <div className="flex gap-2">
-                  <button type="submit" disabled={addingProduct} className="btn-primary flex-1 text-sm py-2">
-                    {addingProduct ? 'Əlavə edilir...' : 'Əlavə et'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setAddProductOpen(false); setProductError('') }}
-                    className="btn-ghost text-sm py-2 px-3"
-                  >
-                    Ləğv et
-                  </button>
-                </div>
-              </form>
+              <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex flex-col gap-3">
+                {productTab === 'warehouse' ? (
+                  <form onSubmit={handleAddProduct} className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-600">Məhsul</label>
+                      <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)} required className="input text-sm">
+                        <option value="">Seçin...</option>
+                        {warehouseProducts.map(p => (
+                          <option key={p.id} value={p.id} disabled={p.stock_quantity === 0}>{p.name} ({p.stock_quantity} ədəd){p.stock_quantity === 0 ? ' — stok yoxdur' : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-medium text-gray-600">Miqdar</label>
+                      <input value={qty} onChange={e => setQty(e.target.value)} type="number" min="1" required className="input text-sm" />
+                    </div>
+                    {productError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{productError}</p>}
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={addingProduct} className="btn-primary flex-1 text-sm py-2">
+                        {addingProduct ? 'Əlavə edilir...' : 'Əlavə et'}
+                      </button>
+                      <button type="button" onClick={() => { setAddProductOpen(false); setProductError('') }} className="btn-ghost text-sm py-2 px-3">Ləğv</button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={async e => {
+                    e.preventDefault()
+                    setProductError('')
+                    const qty2 = parseInt(newProdQty) || 1
+                    const purchase = parseFloat(newProdPurchase) || 0
+                    setAddingProduct(true)
+                    try {
+                      const res = await createProduct({
+                        name: newProdName.trim(),
+                        purchase_price: purchase,
+                        sell_price: parseFloat(newProdSell) || 0,
+                        stock_quantity: qty2,
+                      })
+                      await addProductToOrder(parseInt(id), res.data.id, qty2)
+                      if (newProdSupplier.trim() && purchase > 0) {
+                        await createSupplierDebt({ supplier_name: newProdSupplier.trim(), description: newProdName.trim(), total_amount: purchase * qty2 })
+                      }
+                      setNewProdName(''); setNewProdPurchase(''); setNewProdSell(''); setNewProdQty('1'); setNewProdSupplier('')
+                      setAddProductOpen(false)
+                      load()
+                    } catch (err) {
+                      setProductError(mapApiError(err))
+                    } finally {
+                      setAddingProduct(false)
+                    }
+                  }} className="flex flex-col gap-2">
+                    <input value={newProdName} onChange={e => setNewProdName(e.target.value)} required placeholder="Məhsul adı" className="input text-sm" autoFocus />
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="relative">
+                        <input value={newProdPurchase} onChange={e => setNewProdPurchase(e.target.value)} type="number" min="0" step="0.01" placeholder="Alış" className="input text-sm pr-5 w-full" />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
+                      </div>
+                      <div className="relative">
+                        <input value={newProdSell} onChange={e => setNewProdSell(e.target.value)} type="number" min="0" step="0.01" placeholder="Satış" className="input text-sm pr-5 w-full" />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
+                      </div>
+                      <input value={newProdQty} onChange={e => setNewProdQty(e.target.value)} type="number" min="1" placeholder="Ədəd" className="input text-sm" />
+                    </div>
+                    <input value={newProdSupplier} onChange={e => setNewProdSupplier(e.target.value)} placeholder="Kreditor adı (borc varsa)" className="input text-sm text-orange-800 placeholder-orange-300 border-orange-200" />
+                    {productError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{productError}</p>}
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={addingProduct} className="btn-primary flex-1 text-sm py-2">
+                        {addingProduct ? 'Əlavə edilir...' : 'Əlavə et'}
+                      </button>
+                      <button type="button" onClick={() => { setAddProductOpen(false); setProductError('') }} className="btn-ghost text-sm py-2 px-3">Ləğv</button>
+                    </div>
+                  </form>
+                )}
+              </div>
             )}
 
             {/* Products list */}
@@ -947,6 +1043,18 @@ export default function OrderDetailClient({ id }: { id: string }) {
               </div>
             )}
           </div>
+
+          {/* Grand total card */}
+          <div className="bg-blue-600 rounded-2xl px-5 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-blue-200 uppercase tracking-wide">Ümumi məbləğ</p>
+              {order.payment_status === 'partial' && (
+                <p className="text-xs text-blue-200 mt-0.5">Ödənilən: {formatCurrency(Number(order.paid_amount))} · Borc: {formatCurrency(debt)}</p>
+              )}
+            </div>
+            <span className="text-2xl font-bold text-white">{formatCurrency(grandTotal)}</span>
+          </div>
+
         </div>
 
       </div>

@@ -11,12 +11,15 @@ export interface OrderService {
   id?: number
   name: string
   price: string | number
+  mechanic_amount?: string | number | null
 }
 
 export interface Order {
   id: number
   car_brand: string
   car_model: string
+  car_year?: string
+  vin_code?: string
   plate_number: string
   description: string
   estimated_days: number
@@ -92,6 +95,7 @@ export interface Customer {
   car_model: string
   car_year: string
   car_plate: string
+  vin_code?: string
   plates: string[]
   order_count: number
   total_paid: number
@@ -102,6 +106,46 @@ export interface Customer {
 
 export interface CustomerDetail extends Customer {
   orders: Order[]
+}
+
+export interface SupplierDebt {
+  id: number
+  supplier_name: string
+  description: string
+  total_amount: number
+  paid_amount: number
+  remaining: number
+  is_paid: boolean
+  date: string
+  created_at: string
+}
+
+export type ReservationStatus = 'gozlenilir' | 'sifarise_cevrildi' | 'gelmedi' | 'legv_edildi'
+
+export interface Reservation {
+  id: number
+  customer_name: string
+  customer_phone: string
+  plate_number: string
+  car_brand: string
+  car_model: string
+  description: string
+  mechanic: number | null
+  mechanic_name: string | null
+  scheduled_at: string
+  status: ReservationStatus
+  order: number | null
+  created_at: string
+}
+
+export interface ReservationStats {
+  total: number
+  converted: number
+  no_show: number
+  cancelled: number
+  pending: number
+  overdue: number
+  conversion_rate: number | null
 }
 
 export interface LoginCredentials {

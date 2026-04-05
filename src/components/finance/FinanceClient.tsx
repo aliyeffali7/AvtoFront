@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { FinanceRecord } from '@/types'
-import { getFinanceRecords, createFinanceRecord } from '@/services/finance.service'
+import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
 import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
 
 type Period = 'day' | 'week' | 'month' | 'all' | 'custom'
@@ -123,7 +123,19 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
   const income = todayRecords.filter(r => r.type === 'income').reduce((s, r) => s + Number(r.amount), 0)
   const expense = todayRecords.filter(r => r.type === 'expense').reduce((s, r) => s + Number(r.amount), 0)
   const net = income - expense
+  const [comment, setComment] = useState('')
+  const [saving, setSaving] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    getDayNote(today).then(r => setComment(r.data.note)).catch(() => {})
+  }, [today])
+
+  async function handleClose() {
+    setSaving(true)
+    try { await saveDayNote(today, comment) } catch { /* ignore */ } finally { setSaving(false) }
+    onClose()
+  }
 
   function handlePrint() {
     const content = printRef.current?.innerHTML ?? ''
@@ -133,7 +145,10 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
       <style>body{font-family:sans-serif;padding:24px;color:#111}table{width:100%;border-collapse:collapse}
       td,th{padding:8px 12px;border-bottom:1px solid #eee;text-align:left}
       .right{text-align:right}.green{color:#16a34a}.red{color:#dc2626}
-      h2{margin-bottom:4px}p{color:#6b7280;margin:0 0 16px}</style>
+      h2{margin-bottom:4px}p{color:#6b7280;margin:0 0 16px}
+      .note-box{margin-top:24px;border-top:1px solid #e5e7eb;padding-top:14px}
+      .note-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:4px}
+      .note-text{font-size:13px;color:#111827;white-space:pre-wrap;margin:0}</style>
       </head><body>${content}</body></html>`)
     win.document.close()
     win.print()
@@ -148,7 +163,7 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
             <h2 className="text-base font-bold text-gray-900">Günün bağlanışı</h2>
             <p className="text-xs text-gray-400 mt-0.5">{new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -207,10 +222,30 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
               </tbody>
             </table>
           )}
+
+          {/* Comment — at the end, only rendered if filled, appears in print */}
+          {comment.trim() && (
+            <div className="note-box" style={{ marginTop: '24px', borderTop: '1px solid #e5e7eb', paddingTop: '14px' }}>
+              <p className="note-label" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280', marginBottom: '4px' }}>Qeyd</p>
+              <p className="note-text" style={{ fontSize: '13px', color: '#111827', whiteSpace: 'pre-wrap', margin: 0 }}>{comment}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Comment input */}
+        <div className="px-6 pt-3 pb-2 border-t border-gray-100">
+          <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Qeyd</label>
+          <textarea
+            value={comment}
+            onChange={e => setComment(e.target.value)}
+            rows={2}
+            placeholder="Bu gün üçün qeyd əlavə edin..."
+            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 text-gray-800 placeholder:text-gray-400"
+          />
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 px-6 py-4 border-t border-gray-100">
+        <div className="flex gap-2 px-6 py-4">
           <button
             onClick={handlePrint}
             className="flex-1 flex items-center justify-center gap-2 border border-gray-200 text-gray-700 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
@@ -221,10 +256,11 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
             Çap et
           </button>
           <button
-            onClick={onClose}
-            className="flex-1 bg-gray-900 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-gray-800 transition-colors"
+            onClick={handleClose}
+            disabled={saving}
+            className="flex-1 bg-gray-900 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-60"
           >
-            Günü bağla
+            {saving ? 'Saxlanılır...' : 'Günü bağla'}
           </button>
         </div>
       </div>
@@ -242,6 +278,9 @@ export default function FinanceClient() {
   const [period, setPeriod] = useState<Period>('day')
   const [customDate, setCustomDate] = useState(getToday())
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [pageNote, setPageNote] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -254,6 +293,24 @@ export default function FinanceClient() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  const singleDate = period === 'day' ? getToday() : period === 'custom' ? customDate : null
+
+  useEffect(() => {
+    if (!singleDate) { setPageNote(''); return }
+    getDayNote(singleDate).then(r => setPageNote(r.data.note)).catch(() => setPageNote(''))
+  }, [singleDate, endDayOpen]) // re-fetch after modal closes
+
+  async function handleDeleteRecord(id: number) {
+    setDeletingId(id)
+    try {
+      await deleteFinanceRecord(id)
+      setRecords(prev => prev.filter(r => r.id !== id))
+    } finally {
+      setDeletingId(null)
+      setConfirmDeleteId(null)
+    }
+  }
 
   const periodFiltered = useMemo(() => {
     if (period === 'custom') return filterByRange(records, customDate, customDate)
@@ -274,6 +331,60 @@ export default function FinanceClient() {
     ? customDate
     : PERIODS.find(p => p.key === period)?.label ?? ''
 
+  function exportPDF() {
+    const rows = periodFiltered.map(r => `
+      <tr>
+        <td>${r.date.slice(0, 10)}</td>
+        <td>${r.description || '—'}</td>
+        <td><span class="${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? 'Gəlir' : 'Xərc'}</span></td>
+        <td class="amount ${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? '+' : '-'}${Number(r.amount).toFixed(2)} ₼</td>
+      </tr>`).join('')
+
+    const noteHtml = singleDate && pageNote
+      ? `<div class="note-box"><p class="note-label">Gün qeydi</p><p class="note-text">${pageNote.replace(/\n/g, '<br>')}</p></div>`
+      : ''
+
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Maliyyə Hesabatı — ${periodLabel}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:sans-serif;padding:32px;color:#111;font-size:13px}
+      h1{font-size:18px;font-weight:700;margin-bottom:4px}
+      .sub{color:#6b7280;margin-bottom:24px;font-size:12px}
+      .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
+      .card{border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px}
+      .card-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+      .card-value{font-size:20px;font-weight:700}
+      .green{color:#16a34a}.red{color:#dc2626}.blue{color:#2563eb}
+      table{width:100%;border-collapse:collapse;font-size:12px}
+      th{text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;padding:8px 10px;border-bottom:2px solid #e5e7eb}
+      td{padding:9px 10px;border-bottom:1px solid #f3f4f6}
+      tr:last-child td{border-bottom:none}
+      .amount{text-align:right;font-weight:600}
+      .income{color:#16a34a}.expense{color:#dc2626}
+      .note-box{margin-top:28px;border-top:1px solid #e5e7eb;padding-top:16px}
+      .note-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:6px}
+      .note-text{font-size:13px;color:#111;line-height:1.6}
+    </style></head><body>
+    <h1>Maliyyə Hesabatı</h1>
+    <p class="sub">${periodLabel} · Gəlir: ${income.toFixed(2)} ₼ · Xərc: ${expense.toFixed(2)} ₼ · Xalis: ${net >= 0 ? '+' : ''}${net.toFixed(2)} ₼</p>
+    <div class="summary">
+      <div class="card"><p class="card-label green">Gəlir</p><p class="card-value green">${income.toFixed(2)} ₼</p></div>
+      <div class="card"><p class="card-label red">Xərc</p><p class="card-value red">${expense.toFixed(2)} ₼</p></div>
+      <div class="card"><p class="card-label ${net >= 0 ? 'blue' : 'red'}">Xalis</p><p class="card-value ${net >= 0 ? 'blue' : 'red'}">${net >= 0 ? '+' : ''}${net.toFixed(2)} ₼</p></div>
+    </div>
+    ${periodFiltered.length === 0 ? '<p style="color:#6b7280;text-align:center;padding:32px 0">Bu dövr üzrə əməliyyat yoxdur.</p>' : `
+    <table>
+      <thead><tr><th>Tarix</th><th>Açıqlama</th><th>Növ</th><th style="text-align:right">Məbləğ</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`}
+    ${noteHtml}
+    </body></html>`)
+    win.document.close()
+    win.print()
+  }
+
   return (
     <>
       <div className="p-6 lg:p-8">
@@ -284,6 +395,15 @@ export default function FinanceClient() {
             <p className="text-sm text-gray-500 mt-0.5">{periodLabel} üzrə hesabat</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={exportPDF}
+              className="flex items-center gap-2 border border-gray-200 text-gray-700 text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              PDF
+            </button>
             <button
               onClick={() => setEndDayOpen(true)}
               className="flex items-center gap-2 border border-gray-200 text-gray-700 text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
@@ -422,25 +542,65 @@ export default function FinanceClient() {
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Növ</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Açıqlama</th>
                   <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Məbləğ</th>
+                  <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map(r => (
                   <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-4 text-sm text-gray-500">{formatDate(r.date)}</td>
+                    <td className="px-5 py-4 text-sm text-gray-500 whitespace-nowrap">{formatDate(r.date)}</td>
                     <td className="px-5 py-4">
                       <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${r.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {r.type === 'income' ? 'Gəlir' : 'Xərc'}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-sm text-gray-700">{r.description}</td>
-                    <td className={`px-5 py-4 text-right text-sm font-semibold ${r.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className={`px-5 py-4 text-right text-sm font-semibold whitespace-nowrap ${r.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                       {r.type === 'income' ? '+' : '-'}{formatCurrency(Number(r.amount))}
+                    </td>
+                    <td className="px-3 py-4 text-right whitespace-nowrap">
+                      {confirmDeleteId === r.id ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-xs text-gray-500">Silinsin?</span>
+                          <button
+                            onClick={() => handleDeleteRecord(r.id)}
+                            disabled={deletingId === r.id}
+                            className="text-xs font-medium px-2.5 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                          >
+                            {deletingId === r.id ? '...' : 'Bəli'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="text-xs font-medium px-2.5 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors"
+                          >
+                            Xeyr
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(r.id)}
+                          className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-lg hover:bg-red-50"
+                          title="Ləğv et"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+
+        {/* Saved day note */}
+        {singleDate && pageNote && (
+          <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+            <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1">Gün qeydi</p>
+            <p className="text-sm text-gray-800 whitespace-pre-wrap">{pageNote}</p>
           </div>
         )}
       </div>

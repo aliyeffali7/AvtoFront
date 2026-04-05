@@ -37,8 +37,8 @@ export const addProductToOrder = (orderId: number, productId: number, quantity: 
 export const removeProductFromOrder = (orderId: number, orderProductId: number) =>
   api.delete<Order>(`/api/orders/${orderId}/products/${orderProductId}`)
 
-export const addServiceToOrder = (orderId: number, name: string, price: number) =>
-  api.post<Order>(`/api/orders/${orderId}/services`, { name, price })
+export const addServiceToOrder = (orderId: number, name: string, price: number, mechanic_amount?: number | null) =>
+  api.post<Order>(`/api/orders/${orderId}/services`, { name, price, mechanic_amount: mechanic_amount ?? null })
 
 export const removeServiceFromOrder = (orderId: number, serviceId: number) =>
   api.delete<Order>(`/api/orders/${orderId}/services/${serviceId}`)
