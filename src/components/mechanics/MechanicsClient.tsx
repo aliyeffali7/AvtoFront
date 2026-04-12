@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Mechanic } from '@/types'
-import { getMechanics, createMechanic, updateMechanic, deactivateMechanic } from '@/services/mechanics.service'
+import { getMechanics, createMechanic, updateMechanic, deactivateMechanic, activateMechanic } from '@/services/mechanics.service'
 import { mapApiError } from '@/lib/utils'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
@@ -210,6 +210,8 @@ export default function MechanicsClient() {
   const [editMechanic, setEditMechanic] = useState<Mechanic | null>(null)
   const [deactivating, setDeactivating] = useState<number | null>(null)
   const [deactivateTarget, setDeactivateTarget] = useState<Mechanic | null>(null)
+  const [activateTarget, setActivateTarget] = useState<Mechanic | null>(null)
+  const [activating, setActivating] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -231,6 +233,17 @@ export default function MechanicsClient() {
       load()
     } finally {
       setDeactivating(null)
+    }
+  }
+
+  async function confirmActivate(id: number) {
+    setActivateTarget(null)
+    setActivating(id)
+    try {
+      await activateMechanic(id)
+      load()
+    } finally {
+      setActivating(null)
     }
   }
 
@@ -327,7 +340,7 @@ export default function MechanicsClient() {
                 </div>
                 <ul className="divide-y divide-gray-100">
                   {inactive.map(m => (
-                    <li key={m.id} className="flex items-center justify-between px-5 py-4 opacity-60">
+                    <li key={m.id} className="flex items-center justify-between px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
                           <span className="text-gray-400 font-semibold text-sm">{(m.full_name ?? m.phone ?? '?')[0].toUpperCase()}</span>
@@ -347,6 +360,13 @@ export default function MechanicsClient() {
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H7v-3a2 2 0 01.586-1.414z" />
                           </svg>
+                        </button>
+                        <button
+                          onClick={() => setActivateTarget(m)}
+                          disabled={activating === m.id}
+                          className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors px-1"
+                        >
+                          {activating === m.id ? '...' : 'Aktiv et'}
                         </button>
                       </div>
                     </li>
@@ -369,6 +389,15 @@ export default function MechanicsClient() {
         danger={false}
         onConfirm={() => deactivateTarget && confirmDeactivate(deactivateTarget.id)}
         onCancel={() => setDeactivateTarget(null)}
+      />
+      <ConfirmDialog
+        open={!!activateTarget}
+        title="Ustanı aktiv et"
+        message={`${activateTarget?.full_name ?? 'Bu usta'} yenidən aktiv edilsin?`}
+        confirmLabel="Aktiv et"
+        danger={false}
+        onConfirm={() => activateTarget && confirmActivate(activateTarget.id)}
+        onCancel={() => setActivateTarget(null)}
       />
     </>
   )

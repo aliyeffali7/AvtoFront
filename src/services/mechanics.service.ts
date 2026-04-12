@@ -11,3 +11,6 @@ export const updateMechanic = (id: number, data: Partial<Pick<Mechanic, 'full_na
 
 export const deactivateMechanic = (id: number) =>
   api.patch<Mechanic>(`/api/mechanics/${id}`, { is_active: false })
+
+export const activateMechanic = (id: number) =>
+  api.patch<Mechanic>(`/api/mechanics/${id}`, { is_active: true })
