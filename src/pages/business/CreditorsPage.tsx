@@ -20,6 +20,7 @@ export default function CreditorsPage() {
   // Add manual debt drawer
   const [addOpen, setAddOpen] = useState(false)
   const [newSupplier, setNewSupplier] = useState('')
+  const [newPhone, setNewPhone] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [newAmount, setNewAmount] = useState('')
   const [adding, setAdding] = useState(false)
@@ -82,10 +83,11 @@ export default function CreditorsPage() {
     try {
       await createSupplierDebt({
         supplier_name: newSupplier.trim(),
+        phone: newPhone.trim(),
         description: newDesc.trim(),
         total_amount: amount,
       })
-      setNewSupplier(''); setNewDesc(''); setNewAmount('')
+      setNewSupplier(''); setNewPhone(''); setNewDesc(''); setNewAmount('')
       setAddOpen(false)
       load()
     } catch {
@@ -108,7 +110,7 @@ export default function CreditorsPage() {
           onClick={() => setAddOpen(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl min-h-[44px] transition-colors"
         >
-          + Borc əlavə et
+          + Borc yarat
         </button>
       </div>
 
@@ -169,8 +171,16 @@ export default function CreditorsPage() {
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Ödənilməyib</span>
                     )}
                   </div>
+                  {debt.phone && (
+                    <a href={`tel:${debt.phone}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1 mt-0.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      {debt.phone}
+                    </a>
+                  )}
                   {debt.description && (
-                    <p className="text-sm text-gray-500">{debt.description}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">{debt.description}</p>
                   )}
                   <p className="text-xs text-gray-400 mt-0.5">{debt.date}</p>
                 </div>
@@ -275,7 +285,7 @@ export default function CreditorsPage() {
           <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={() => setAddOpen(false)} />
           <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-              <h2 className="text-base font-semibold text-gray-900">Yeni borc əlavə et</h2>
+              <h2 className="text-base font-semibold text-gray-900">Borc yarat</h2>
               <button onClick={() => setAddOpen(false)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -284,22 +294,13 @@ export default function CreditorsPage() {
             </div>
             <form onSubmit={handleAdd} className="flex-1 flex flex-col gap-4 px-6 py-6 overflow-y-auto">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Kreditor adı <span className="text-red-500">*</span></label>
+                <label className="text-sm font-medium text-gray-700">Ad <span className="text-red-500">*</span></label>
                 <input
                   value={newSupplier}
                   onChange={e => setNewSupplier(e.target.value)}
                   placeholder="Məs. Avtoehtiyat MMC"
                   className="input"
                   autoFocus
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Məhsul / açıqlama</label>
-                <input
-                  value={newDesc}
-                  onChange={e => setNewDesc(e.target.value)}
-                  placeholder="Məs. Yağ filteri × 5"
-                  className="input"
                 />
               </div>
               <div className="flex flex-col gap-1.5">

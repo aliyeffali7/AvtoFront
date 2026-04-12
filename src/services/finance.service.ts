@@ -1,5 +1,5 @@
 import api from '@/lib/axios'
-import { FinanceRecord } from '@/types'
+import { FinanceRecord, ManualDebt } from '@/types'
 
 export const getFinanceRecords = () =>
   api.get<FinanceRecord[]>('/api/finance')
@@ -15,3 +15,15 @@ export const getDayNote = (date: string) =>
 
 export const saveDayNote = (date: string, note: string) =>
   api.put<{ date: string; note: string }>('/api/finance/note', { note }, { params: { date } })
+
+export const getManualDebts = () =>
+  api.get<ManualDebt[]>('/api/finance/manual-debts/')
+
+export const createManualDebt = (data: { name: string; amount: number }) =>
+  api.post<ManualDebt>('/api/finance/manual-debts/', data)
+
+export const payManualDebt = (id: number, amount: number) =>
+  api.post<ManualDebt>(`/api/finance/manual-debts/${id}/pay/`, { amount })
+
+export const deleteManualDebt = (id: number) =>
+  api.delete(`/api/finance/manual-debts/${id}/`)

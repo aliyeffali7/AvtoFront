@@ -28,6 +28,7 @@ export const getSupplierDebts = (showPaid = false) =>
 
 export const createSupplierDebt = (data: {
   supplier_name: string
+  phone?: string
   description?: string
   total_amount: number
   date?: string

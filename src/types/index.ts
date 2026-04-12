@@ -58,8 +58,11 @@ export interface OrderProduct {
 export interface Product {
   id: number
   name: string
+  code: string
+  unit: string
   purchase_price: number
   sell_price: number
+  discount_percent: number
   stock_quantity: number
 }
 
@@ -108,9 +111,20 @@ export interface CustomerDetail extends Customer {
   orders: Order[]
 }
 
+export interface ManualDebt {
+  id: number
+  name: string
+  amount: number
+  paid_amount: number
+  remaining: number
+  is_paid: boolean
+  created_at: string
+}
+
 export interface SupplierDebt {
   id: number
   supplier_name: string
+  phone: string
   description: string
   total_amount: number
   paid_amount: number
