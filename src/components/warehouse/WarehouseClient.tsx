@@ -249,7 +249,7 @@ export default function WarehouseClient() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Anbar</h1>
+            <h1 className="text-xl font-bold text-gray-900">Stok</h1>
             <p className="text-sm text-gray-500 mt-0.5">{products.length} məhsul</p>
           </div>
           <div className="flex items-center gap-2">
@@ -332,7 +332,7 @@ export default function WarehouseClient() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
               </svg>
             </div>
-            <p className="text-gray-900 font-medium">Anbar boşdur</p>
+            <p className="text-gray-900 font-medium">Stok boşdur</p>
             <p className="text-gray-500 text-sm mt-1">Məhsul əlavə etmək üçün yuxarıdakı düyməni basın.</p>
           </div>
         ) : (
