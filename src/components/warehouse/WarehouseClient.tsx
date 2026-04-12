@@ -196,6 +196,7 @@ export default function WarehouseClient() {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ detail: string; errors: string[] } | null>(null)
   const [importModalOpen, setImportModalOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleDelete(id: number) {
@@ -209,10 +210,10 @@ export default function WarehouseClient() {
     }
   }
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (q?: string) => {
     setLoading(true)
     try {
-      const res = await getProducts()
+      const res = await getProducts(q)
       setProducts(res.data)
     } finally {
       setLoading(false)
@@ -238,6 +239,11 @@ export default function WarehouseClient() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    const timer = setTimeout(() => { load(search || undefined) }, 300)
+    return () => clearTimeout(timer)
+  }, [search, load])
+
   const totalStockValue = products.reduce((s, p) => s + p.purchase_price * p.stock_quantity, 0)
   const totalSellValue = products.reduce((s, p) => s + p.sell_price * p.stock_quantity, 0)
   const lowStockCount = products.filter(p => p.stock_quantity > 0 && p.stock_quantity < 3).length
@@ -247,12 +253,32 @@ export default function WarehouseClient() {
     <>
       <div className="p-6 lg:p-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex items-center justify-between mb-6 gap-4">
+          <div className="shrink-0">
             <h1 className="text-xl font-bold text-gray-900">Stok</h1>
             <p className="text-sm text-gray-500 mt-0.5">{products.length} məhsul</p>
           </div>
-          <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1 max-w-sm">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Ad və ya kod ilə axtar..."
+              className="input pl-9 pr-8 text-sm"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleExcelImport} />
             <button
               onClick={() => setImportModalOpen(true)}

@@ -1,7 +1,8 @@
 import api from '@/lib/axios'
 import { Product, SupplierDebt } from '@/types'
 
-export const getProducts = () => api.get<Product[]>('/api/products')
+export const getProducts = (search?: string) =>
+  api.get<Product[]>('/api/products', { params: search ? { search } : undefined })
 
 export const createProduct = (data: Partial<Product>) =>
   api.post<Product>('/api/products', data)
