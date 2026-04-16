@@ -61,7 +61,7 @@ function AddRecordDrawer({ open, onClose, onAdded }: { open: boolean; onClose: (
     setError('')
     setLoading(true)
     try {
-      await createFinanceRecord({ type, amount: parseFloat(amount), description })
+      await createFinanceRecord({ type, amount: parseFloat(amount), description, date: new Date().toISOString().slice(0, 10) })
       reset(); onAdded(); onClose()
     } catch (err) {
       setError(mapApiError(err))
