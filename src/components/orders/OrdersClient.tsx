@@ -5,6 +5,7 @@ import { getOrders, createOrder, uploadOrderImage } from '@/services/orders.serv
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts, createProduct, createSupplierDebt } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
+import { createFinanceRecord } from '@/services/finance.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import StatusBadge from './StatusBadge'
 import PlateInput from '@/components/ui/PlateInput'
@@ -671,107 +672,25 @@ function CreateOrderDrawer({
 }
 
 function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
-  const [plate, setPlate] = useState('')
-  const [brand, setBrand] = useState('')
-  const [model, setModel] = useState('')
-  const [mechanic, setMechanic] = useState('')
-  const [mechanics, setMechanics] = useState<Mechanic[]>([])
-  const [services, setServices] = useState<{ name: string; price: string; hasMechanicAmount: boolean; mechanicAmount: string }[]>([
-    { name: '', price: '', hasMechanicAmount: false, mechanicAmount: '' }
-  ])
-  const [orderProducts, setOrderProducts] = useState<{ productId: string; qty: string }[]>([])
-  const [newProducts, setNewProducts] = useState<{ name: string; purchasePrice: string; sellPrice: string; qty: string; supplierName: string }[]>([])
-  const [warehouseItems, setWarehouseItems] = useState<Product[]>([])
+  const [name, setName] = useState('')
+  const [price, setPrice] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const loadedRef = useRef(false)
 
-  useEffect(() => {
-    if (open && !loadedRef.current) {
-      loadedRef.current = true
-      getMechanics().then(r => setMechanics(r.data)).catch(() => {})
-      getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
-    }
-  }, [open])
-
-  function reset() {
-    setPlate(''); setBrand(''); setModel(''); setMechanic('')
-    setServices([{ name: '', price: '', hasMechanicAmount: false, mechanicAmount: '' }])
-    setOrderProducts([]); setNewProducts([])
-    setError('')
-    loadedRef.current = false
-  }
-
+  function reset() { setName(''); setPrice(''); setError('') }
   function handleClose() { reset(); onClose() }
-
-  function toggleMechanicAmount(i: number) {
-    setServices(prev => prev.map((s, idx) => idx === i ? { ...s, hasMechanicAmount: !s.hasMechanicAmount, mechanicAmount: '' } : s))
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-
-    const filledServices = services.filter(s => s.name.trim())
-    if (filledServices.length === 0) {
-      setError('Ən azı bir iş əlavə edin.')
-      return
-    }
-
-    for (const s of filledServices) {
-      if (s.hasMechanicAmount && s.mechanicAmount !== '') {
-        const price = parseFloat(s.price) || 0
-        const ma = parseFloat(s.mechanicAmount) || 0
-        if (ma > price) {
-          setError(`"${s.name}" üçün usta payı işin qiymətindən çox ola bilməz.`)
-          return
-        }
-      }
-    }
-
-    const mappedServices: OrderService[] = filledServices.map(s => ({
-      name: s.name.trim(),
-      price: s.price || '0',
-      mechanic_amount: s.hasMechanicAmount && s.mechanicAmount !== '' ? s.mechanicAmount : null,
-    }))
-
-    const filledProducts = orderProducts
-      .filter(p => p.productId)
-      .map(p => ({ product: parseInt(p.productId), quantity: parseInt(p.qty) || 1 }))
-
     setLoading(true)
     try {
-      const supplierDebtsToCreate: { supplier_name: string; description: string; total_amount: number }[] = []
-      for (const np of newProducts.filter(p => p.name.trim())) {
-        const qty = parseInt(np.qty) || 1
-        const purchasePrice = parseFloat(np.purchasePrice) || 0
-        const res = await createProduct({
-          name: np.name.trim(),
-          purchase_price: purchasePrice,
-          sell_price: parseFloat(np.sellPrice) || 0,
-          stock_quantity: qty,
-        })
-        filledProducts.push({ product: res.data.id, quantity: qty })
-        if (np.supplierName.trim() && purchasePrice > 0) {
-          supplierDebtsToCreate.push({ supplier_name: np.supplierName.trim(), description: np.name.trim(), total_amount: purchasePrice * qty })
-        }
-      }
-
-      await createOrder({
-        plate_number: plate,
-        car_brand: brand,
-        car_model: model,
-        description: filledServices.map(s => s.name.trim()).join(', '),
-        estimated_days: 1,
-        mechanic: mechanic ? parseInt(mechanic) : null,
-        services: mappedServices,
-        products: filledProducts,
+      await createFinanceRecord({
+        type: 'income',
+        amount: parseFloat(price),
+        description: name.trim(),
+        date: new Date().toISOString().slice(0, 10),
       })
-
-      for (const debt of supplierDebtsToCreate) {
-        await createSupplierDebt(debt)
-      }
-
       reset()
       onCreated()
       onClose()
@@ -784,17 +703,11 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
 
   if (!open) return null
 
-  const servicesTotal = services.reduce((s, t) => s + (parseFloat(t.price) || 0), 0)
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">Sürətli Sifariş</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Müştəri məlumatı saxlanılmır</p>
-          </div>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">Sürətli ödəniş</h2>
           <button onClick={handleClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -802,190 +715,42 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
-          {/* Car info */}
+        <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
           <div className="flex gap-3">
-            <div className="flex flex-col gap-1.5 w-36 shrink-0">
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nişan</label>
-              <PlateInput value={plate} onChange={setPlate} required autoFocus className="input font-mono tracking-wider text-sm" />
-            </div>
             <div className="flex flex-col gap-1.5 flex-1">
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Marka</label>
-              <input value={brand} onChange={e => setBrand(e.target.value)} required placeholder="Toyota" className="input text-sm" />
+              <label className="text-sm font-medium text-gray-700">Məhsul / Xidmət</label>
+              <input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                required
+                autoFocus
+                placeholder="Məs. Yağ dəyişimi"
+                className="input"
+              />
             </div>
-            <div className="flex flex-col gap-1.5 flex-1">
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Model</label>
-              <input value={model} onChange={e => setModel(e.target.value)} required placeholder="Prado" className="input text-sm" />
-            </div>
-          </div>
-
-          {/* Mechanic */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Usta</label>
-            <select value={mechanic} onChange={e => setMechanic(e.target.value)} className="input text-sm">
-              <option value="">Seçilməyib</option>
-              {mechanics.filter(m => m.is_active).map(m => (
-                <option key={m.id} value={m.id}>{m.full_name ?? m.phone}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Services — full version with mechanic amount toggle */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">İşlər və qiymətlər</p>
-              <button type="button" onClick={() => setServices(prev => [...prev, { name: '', price: '', hasMechanicAmount: false, mechanicAmount: '' }])} className="text-xs text-blue-600 font-medium hover:text-blue-800">
-                + İş əlavə et
-              </button>
-            </div>
-            <div className="grid grid-cols-[1fr_120px_32px_120px_28px] gap-2 mb-1 px-0.5">
-              <p className="text-xs text-gray-400">İş adı</p>
-              <p className="text-xs text-gray-400">Qiymət</p>
-              <span />
-              <p className="text-xs text-gray-400">Usta payı</p>
-              <span />
-            </div>
-            <div className="flex flex-col gap-2">
-              {services.map((svc, i) => (
-                <div key={i} className="grid grid-cols-[1fr_120px_32px_120px_28px] gap-2 items-center">
-                  <input
-                    value={svc.name}
-                    onChange={e => setServices(prev => prev.map((s, idx) => idx === i ? { ...s, name: e.target.value } : s))}
-                    placeholder="Məs. Yağ dəyişimi"
-                    className="input text-sm"
-                  />
-                  <div className="relative">
-                    <input
-                      value={svc.price}
-                      onChange={e => setServices(prev => prev.map((s, idx) => idx === i ? { ...s, price: e.target.value } : s))}
-                      type="number" min="0" step="0.01" placeholder="0.00"
-                      className="input text-sm pr-6 w-full"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleMechanicAmount(i)}
-                    title={svc.hasMechanicAmount ? 'Usta payını sil' : 'Usta payı əlavə et'}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors shrink-0 ${svc.hasMechanicAmount ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                  >
-                    U
-                  </button>
-                  <div className="relative">
-                    {svc.hasMechanicAmount ? (
-                      <>
-                        <input
-                          value={svc.mechanicAmount}
-                          onChange={e => setServices(prev => prev.map((s, idx) => idx === i ? { ...s, mechanicAmount: e.target.value } : s))}
-                          type="number" min="0" step="0.01" placeholder="0.00"
-                          className="input text-sm pr-6 w-full"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
-                      </>
-                    ) : (
-                      <span className="text-xs text-gray-400 pl-1">% ilə hesablanır</span>
-                    )}
-                  </div>
-                  <button type="button" onClick={() => setServices(prev => prev.filter((_, idx) => idx !== i))} className="p-1 text-gray-300 hover:text-red-400 transition-colors shrink-0">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
-            {servicesTotal > 0 && (
-              <div className="mt-2 flex justify-end">
-                <span className="text-sm font-semibold text-gray-700">Cəmi: {formatCurrency(servicesTotal)}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Products — full version with anbarda var + anbarda yoxdur */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Məhsullar</p>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setOrderProducts(prev => [...prev, { productId: '', qty: '1' }])} className="text-xs text-blue-600 font-medium hover:text-blue-800">
-                  + Anbarda var
-                </button>
-                <span className="text-gray-300">|</span>
-                <button type="button" onClick={() => setNewProducts(prev => [...prev, { name: '', purchasePrice: '', sellPrice: '', qty: '1', supplierName: '' }])} className="text-xs text-orange-600 font-medium hover:text-orange-800">
-                  + Anbarda yoxdur
-                </button>
+            <div className="flex flex-col gap-1.5 w-28 shrink-0">
+              <label className="text-sm font-medium text-gray-700">Qiymət (₼)</label>
+              <div className="relative">
+                <input
+                  value={price}
+                  onChange={e => setPrice(e.target.value)}
+                  required
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  className="input pr-6 w-full"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
               </div>
             </div>
-
-            {/* New products */}
-            {newProducts.length > 0 && (
-              <div className="flex flex-col gap-3 mb-3">
-                <div className="grid grid-cols-[1fr_80px_80px_52px_28px] gap-2 px-0.5">
-                  <p className="text-xs text-gray-400">Ad</p>
-                  <p className="text-xs text-gray-400">Alış ₼</p>
-                  <p className="text-xs text-gray-400">Satış ₼</p>
-                  <p className="text-xs text-gray-400">Ədəd</p>
-                  <span />
-                </div>
-                {newProducts.map((p, i) => (
-                  <div key={i} className="flex flex-col gap-1.5 bg-orange-50 border border-orange-100 rounded-xl p-2">
-                    <div className="grid grid-cols-[1fr_80px_80px_52px_28px] gap-2 items-center">
-                      <input value={p.name} onChange={e => setNewProducts(prev => prev.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} placeholder="Məhsul adı" className="input text-sm" />
-                      <input value={p.purchasePrice} onChange={e => setNewProducts(prev => prev.map((x, idx) => idx === i ? { ...x, purchasePrice: e.target.value } : x))} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm" />
-                      <input value={p.sellPrice} onChange={e => setNewProducts(prev => prev.map((x, idx) => idx === i ? { ...x, sellPrice: e.target.value } : x))} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm" />
-                      <input value={p.qty} onChange={e => setNewProducts(prev => prev.map((x, idx) => idx === i ? { ...x, qty: e.target.value } : x))} type="number" min="1" placeholder="1" className="input text-sm" />
-                      <button type="button" onClick={() => setNewProducts(prev => prev.filter((_, idx) => idx !== i))} className="p-1 text-gray-300 hover:text-red-400 transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                    <input
-                      value={p.supplierName}
-                      onChange={e => setNewProducts(prev => prev.map((x, idx) => idx === i ? { ...x, supplierName: e.target.value } : x))}
-                      placeholder="Kreditor adı (borc varsa — məs. Avtoehtiyat)"
-                      className="input text-sm text-orange-800 placeholder-orange-300 bg-white border-orange-200 focus:ring-orange-300"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Warehouse products */}
-            {orderProducts.length > 0 && (
-              <div className="flex flex-col gap-2">
-                {orderProducts.map((p, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <select value={p.productId} onChange={e => setOrderProducts(prev => prev.map((x, idx) => idx === i ? { ...x, productId: e.target.value } : x))} className="input flex-1 text-sm">
-                      <option value="">Seçin...</option>
-                      {warehouseItems.map(w => (
-                        <option key={w.id} value={w.id} disabled={w.stock_quantity === 0}>{w.name} ({w.stock_quantity} ədəd){w.stock_quantity === 0 ? ' — stok yoxdur' : ''}</option>
-                      ))}
-                    </select>
-                    <input value={p.qty} onChange={e => setOrderProducts(prev => prev.map((x, idx) => idx === i ? { ...x, qty: e.target.value } : x))} type="number" min="1" placeholder="1" className="input text-sm w-16 shrink-0" />
-                    <button type="button" onClick={() => setOrderProducts(prev => prev.filter((_, idx) => idx !== i))} className="p-1.5 text-gray-300 hover:text-red-400 transition-colors shrink-0">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {orderProducts.length === 0 && newProducts.length === 0 && (
-              <p className="text-xs text-gray-400 italic">Məhsul seçilməyib</p>
-            )}
           </div>
 
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
-          <div className="flex gap-3 pt-1 pb-2">
+          <div className="flex gap-3 pt-1">
             <button type="submit" disabled={loading} className="btn-primary flex-1">
-              {loading ? 'Yaradılır...' : 'Sifariş yarat'}
+              {loading ? 'Saxlanılır...' : 'Gəlir kimi saxla'}
             </button>
             <button type="button" onClick={handleClose} className="btn-ghost px-4">Ləğv et</button>
           </div>
