@@ -484,10 +484,10 @@ export default function OrderDetailClient({ id }: { id: string }) {
       </button>
 
       {/* Two-column layout */}
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
 
         {/* LEFT — main content */}
-        <div className="w-[65%] shrink-0 flex flex-col gap-4">
+        <div className="w-full lg:w-[65%] lg:shrink-0 flex flex-col gap-4">
 
           {/* Header card */}
           <div className="bg-white rounded-2xl border border-gray-200 px-6 py-5">
@@ -892,7 +892,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
         </div>
 
         {/* RIGHT — products panel */}
-        <div className="flex-1 min-w-0 sticky top-6">
+        <div className="w-full lg:flex-1 lg:min-w-0 lg:sticky top-6">
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <p className="text-sm font-semibold text-gray-800">İstifadə edilən məhsullar</p>
@@ -971,7 +971,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                     }
                   }} className="flex flex-col gap-2">
                     <input value={newProdName} onChange={e => setNewProdName(e.target.value)} required placeholder="Məhsul adı" className="input text-sm" autoFocus />
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       <div className="relative">
                         <input value={newProdPurchase} onChange={e => setNewProdPurchase(e.target.value)} type="number" min="0" step="0.01" placeholder="Alış" className="input text-sm pr-5 w-full" />
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>

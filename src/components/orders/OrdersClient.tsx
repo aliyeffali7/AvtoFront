@@ -819,18 +819,18 @@ export default function OrdersClient() {
             <h1 className="text-xl font-bold text-gray-900">Sifarişlər</h1>
             <p className="text-sm text-gray-500 mt-0.5">{totalCount} sifariş</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setQuickOpen(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-blue-600 text-blue-600 text-sm font-semibold hover:bg-blue-50 transition-colors min-h-[44px]">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setQuickOpen(true)} className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl border-2 border-blue-600 text-blue-600 text-sm font-semibold hover:bg-blue-50 transition-colors min-h-[44px]">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Sürətli
+              <span className="hidden sm:inline">Sürətli</span>
             </button>
             <button onClick={() => setCreateOpen(true)} className="btn-primary flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Yeni Sifariş
+              <span className="hidden sm:inline">Yeni Sifariş</span>
             </button>
           </div>
         </div>

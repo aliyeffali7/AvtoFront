@@ -253,52 +253,52 @@ export default function WarehouseClient() {
     <>
       <div className="p-6 lg:p-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
           <div className="shrink-0">
             <h1 className="text-xl font-bold text-gray-900">Stok</h1>
             <p className="text-sm text-gray-500 mt-0.5">{products.length} məhsul</p>
           </div>
-          {/* Search */}
-          <div className="relative flex-1 max-w-sm">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
-            </svg>
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Ad və ya kod ilə axtar..."
-              className="input pl-9 pr-8 text-sm"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 flex-1 sm:justify-end">
+            {/* Search */}
+            <div className="relative flex-1 sm:max-w-sm">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
+              </svg>
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Axtar..."
+                className="input pl-9 pr-8 text-sm w-full"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleExcelImport} />
             <button
               onClick={() => setImportModalOpen(true)}
               disabled={importing}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-green-600 text-green-700 text-sm font-semibold hover:bg-green-50 disabled:opacity-60 transition-colors min-h-[44px]"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl border-2 border-green-600 text-green-700 text-sm font-semibold hover:bg-green-50 disabled:opacity-60 transition-colors min-h-[44px] shrink-0"
             >
               {importing ? (
                 <div className="w-4 h-4 border-2 border-green-400 border-t-green-700 rounded-full animate-spin" />
               ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
               )}
-              {importing ? 'Yüklənir...' : 'Excel ilə idxal et'}
+              <span className="hidden sm:inline">{importing ? 'Yüklənir...' : 'Excel idxal'}</span>
             </button>
-            <button onClick={() => setAddOpen(true)} className="btn-primary flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <button onClick={() => setAddOpen(true)} className="btn-primary flex items-center gap-2 shrink-0 min-h-[44px]">
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Məhsul əlavə et
+              <span className="hidden sm:inline">Məhsul əlavə et</span>
             </button>
           </div>
         </div>

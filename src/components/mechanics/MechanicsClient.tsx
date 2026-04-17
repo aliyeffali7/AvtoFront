@@ -292,18 +292,17 @@ export default function MechanicsClient() {
               ) : (
                 <ul className="divide-y divide-gray-100">
                   {active.map(m => (
-                    <li key={m.id} className="flex items-center justify-between px-5 py-4">
-                      <div className="flex items-center gap-3">
+                    <li key={m.id} className="flex items-center justify-between px-5 py-4 gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
                           <span className="text-blue-600 font-semibold text-sm">{(m.full_name ?? m.phone ?? '?')[0].toUpperCase()}</span>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{m.full_name ?? '—'}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{m.full_name ?? '—'}</p>
                           {m.phone && <p className="text-xs text-gray-400">{m.phone}</p>}
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                             <span className="text-xs text-indigo-600 font-medium">{m.work_percent}% pay</span>
-                            <span className="text-xs text-gray-300">·</span>
-                            <span className="text-xs text-gray-500">Ümumi qazanc: <span className="font-semibold text-gray-700">{Number(m.total_earnings).toFixed(2)} ₼</span></span>
+                            <span className="text-xs text-gray-500">Qazanc: <span className="font-semibold text-gray-700">{Number(m.total_earnings).toFixed(2)} ₼</span></span>
                           </div>
                         </div>
                       </div>

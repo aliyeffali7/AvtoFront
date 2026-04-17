@@ -178,7 +178,7 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
           </p>
 
           {/* Summary */}
-          <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="grid grid-cols-3 sm:grid-cols-3 gap-3 mb-5">
             <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
               <p className="text-xs text-green-600 font-medium mb-0.5">Gəlir</p>
               <p className="text-lg font-bold text-green-700">{formatCurrency(income)}</p>
@@ -394,30 +394,30 @@ export default function FinanceClient() {
             <h1 className="text-xl font-bold text-gray-900">Maliyyə</h1>
             <p className="text-sm text-gray-500 mt-0.5">{periodLabel} üzrə hesabat</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={exportPDF}
-              className="flex items-center gap-2 border border-gray-200 text-gray-700 text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 border border-gray-200 text-gray-700 text-sm font-medium px-3 sm:px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors min-h-[44px]"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              PDF
+              <span className="hidden sm:inline">PDF</span>
             </button>
             <button
               onClick={() => setEndDayOpen(true)}
-              className="flex items-center gap-2 border border-gray-200 text-gray-700 text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 border border-gray-200 text-gray-700 text-sm font-medium px-3 sm:px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors min-h-[44px]"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Günü bağla
+              <span className="hidden sm:inline">Günü bağla</span>
             </button>
-            <button onClick={() => setAddOpen(true)} className="btn-primary flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <button onClick={() => setAddOpen(true)} className="btn-primary flex items-center gap-2 min-h-[44px]">
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Qeyd əlavə et
+              <span className="hidden sm:inline">Qeyd əlavə et</span>
             </button>
           </div>
         </div>
