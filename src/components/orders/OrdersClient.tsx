@@ -676,8 +676,44 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
   const [price, setPrice] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [warehouseItems, setWarehouseItems] = useState<Product[]>([])
+  const [productSearch, setProductSearch] = useState('')
+  const [showProductDropdown, setShowProductDropdown] = useState(false)
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null)
+  const loadedRef = useRef(false)
 
-  function reset() { setName(''); setPrice(''); setError('') }
+  useEffect(() => {
+    if (open && !loadedRef.current) {
+      loadedRef.current = true
+      getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
+    }
+    if (!open) loadedRef.current = false
+  }, [open])
+
+  const filteredProducts = warehouseItems.filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
+  )
+
+  function selectProduct(p: Product) {
+    setSelectedProductId(p.id)
+    setName(p.name)
+    setPrice(String(p.sell_price))
+    setProductSearch(p.name)
+    setShowProductDropdown(false)
+  }
+
+  function clearProduct() {
+    setSelectedProductId(null)
+    setProductSearch('')
+    setName('')
+    setPrice('')
+    setShowProductDropdown(false)
+  }
+
+  function reset() {
+    setName(''); setPrice(''); setError('')
+    setProductSearch(''); setSelectedProductId(null); setShowProductDropdown(false)
+  }
   function handleClose() { reset(); onClose() }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -716,6 +752,62 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
+
+          {/* Warehouse product picker */}
+          <div className="flex flex-col gap-1.5 relative">
+            <label className="text-sm font-medium text-gray-700">Anbarda axtar</label>
+            <div className="relative">
+              <input
+                value={productSearch}
+                onChange={e => { setProductSearch(e.target.value); setShowProductDropdown(true); setSelectedProductId(null) }}
+                onFocus={() => setShowProductDropdown(true)}
+                placeholder="Məhsul adı ilə axtar..."
+                className="input pr-8"
+                autoComplete="off"
+                autoFocus
+              />
+              {selectedProductId ? (
+                <button type="button" onClick={clearProduct} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              ) : (
+                <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                </svg>
+              )}
+            </div>
+            {showProductDropdown && productSearch.trim() && (
+              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                {filteredProducts.length === 0 ? (
+                  <p className="px-4 py-3 text-sm text-gray-400">Məhsul tapılmadı</p>
+                ) : filteredProducts.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => selectProduct(p)}
+                    className="w-full px-4 py-2.5 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors flex items-center justify-between gap-2"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                      <p className="text-xs text-gray-400">Stok: {p.stock_quantity} ədəd</p>
+                    </div>
+                    <span className="text-sm font-semibold text-blue-600 shrink-0">{formatCurrency(p.sell_price)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {selectedProductId && (
+              <p className="text-xs text-green-600 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Məhsul seçildi — ad və qiymət avtomatik dolduruldu
+              </p>
+            )}
+          </div>
+
           <div className="flex gap-3">
             <div className="flex flex-col gap-1.5 flex-1">
               <label className="text-sm font-medium text-gray-700">Məhsul / Xidmət</label>
@@ -723,7 +815,6 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required
-                autoFocus
                 placeholder="Məs. Yağ dəyişimi"
                 className="input"
               />
