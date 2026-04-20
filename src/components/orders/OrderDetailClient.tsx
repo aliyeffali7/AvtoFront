@@ -956,6 +956,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                         purchase_price: purchase,
                         sell_price: parseFloat(newProdSell) || 0,
                         stock_quantity: qty2,
+                        order_id: parseInt(id),
                       })
                       await addProductToOrder(parseInt(id), res.data.id, qty2)
                       if (newProdSupplier.trim() && purchase > 0) {

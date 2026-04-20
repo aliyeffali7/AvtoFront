@@ -4,8 +4,8 @@ import { Product, SupplierDebt } from '@/types'
 export const getProducts = (search?: string) =>
   api.get<Product[]>('/api/products', { params: search ? { search } : undefined })
 
-export const createProduct = (data: Partial<Product>) =>
-  api.post<Product>('/api/products', data)
+export const createProduct = (data: Partial<Product> & { order_id?: number }) =>
+  api.post<Product & { finance_record_id?: number }>('/api/products', data)
 
 export const updateProduct = (id: number, data: Partial<Product>) =>
   api.patch<Product>(`/api/products/${id}`, data)

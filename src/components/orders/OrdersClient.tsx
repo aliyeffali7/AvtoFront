@@ -229,6 +229,7 @@ function CreateOrderDrawer({
       // Create any new (non-warehouse) products first, then include their IDs
       // Track which ones have a supplier so we can create debts after
       const supplierDebtsToCreate: { supplier_name: string; description: string; total_amount: number }[] = []
+      const expenseRecordIds: number[] = []
       for (const np of newProducts.filter(p => p.name.trim())) {
         const qty = parseInt(np.qty) || 1
         const purchasePrice = parseFloat(np.purchasePrice) || 0
@@ -239,6 +240,9 @@ function CreateOrderDrawer({
           stock_quantity: qty,
         })
         filledProducts.push({ product: res.data.id, quantity: qty })
+        if (res.data.finance_record_id) {
+          expenseRecordIds.push(res.data.finance_record_id)
+        }
         if (np.supplierName.trim() && purchasePrice > 0) {
           supplierDebtsToCreate.push({
             supplier_name: np.supplierName.trim(),
@@ -262,6 +266,7 @@ function CreateOrderDrawer({
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
         notes: notes || undefined,
+        expense_record_ids: expenseRecordIds.length > 0 ? expenseRecordIds : undefined,
       })
       // Upload images sequentially
       for (const file of imageFiles) {
