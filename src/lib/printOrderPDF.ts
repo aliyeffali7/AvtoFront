@@ -1,5 +1,9 @@
-import html2pdf from 'html2pdf.js'
+import pdfMake from 'pdfmake/build/pdfmake'
+import pdfFonts from 'pdfmake/build/vfs_fonts'
 import { Order, Business } from '@/types'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs ?? pdfFonts
 
 function fmt(n: number) {
   return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' ₼'
@@ -24,6 +28,11 @@ async function toDataUrl(url: string): Promise<string> {
   }
 }
 
+// pdfmake uses a grey line as separator
+function divider() {
+  return { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#e5e7eb' }], margin: [0, 8, 0, 12] }
+}
+
 export async function printOrderPDF(order: Order, business?: Business | null) {
   const services = order.services ?? []
   const products = order.products ?? []
@@ -32,10 +41,17 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   const grandTotal = servicesTotal + productsTotal
   const paidAmount = Number(order.paid_amount ?? 0)
   const debt = grandTotal - paidAmount
-
   const customerName = [order.customer_name, order.customer_surname].filter(Boolean).join(' ')
 
-  // Resolve logo to base64 so html2canvas can render it without CORS issues
+  const paymentLabel =
+    order.payment_status === 'paid' ? 'Tam ödənilib' :
+    order.payment_status === 'partial' ? `Qismən ödənilib (Borc: ${fmt(debt)})` :
+    'Ödənilməyib'
+  const paymentColor =
+    order.payment_status === 'paid' ? '#16a34a' :
+    order.payment_status === 'partial' ? '#d97706' : '#dc2626'
+
+  // Resolve logo to base64
   let logoDataUrl = ''
   if (business?.logo) {
     const fullUrl = business.logo.startsWith('http')
@@ -44,162 +60,177 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     logoDataUrl = await toDataUrl(fullUrl)
   }
 
-  const servicesRows = services.length
-    ? services.map(s => `
-        <tr>
-          <td>${s.name}</td>
-          <td style="text-align:right">${fmt(parseFloat(String(s.price)))}</td>
-        </tr>`).join('')
-    : '<tr><td colspan="2" style="color:#9ca3af">İş qeyd edilməyib</td></tr>'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const content: any[] = []
 
-  const productsRows = products.length
-    ? products.map(p => `
-        <tr>
-          <td>${p.product_name} <span style="color:#9ca3af;font-size:12px">× ${p.quantity}</span></td>
-          <td style="text-align:right">${fmt(p.sell_price * p.quantity)}</td>
-        </tr>`).join('')
-    : '<tr><td colspan="2" style="color:#9ca3af">Məhsul yoxdur</td></tr>'
+  // ── Business header ─────────────────────────────────────
+  if (business) {
+    const bizLeft = logoDataUrl
+      ? [{ image: logoDataUrl, width: 52, height: 52, margin: [0, 0, 12, 0] }]
+      : []
+    const bizInfo = [
+      { text: business.name, fontSize: 16, bold: true, color: '#111827' },
+      business.phone ? { text: business.phone, fontSize: 11, color: '#6b7280', margin: [0, 2, 0, 0] } : null,
+      business.address ? { text: business.address, fontSize: 11, color: '#6b7280' } : null,
+    ].filter(Boolean)
 
-  const paymentStatusLabel =
-    order.payment_status === 'paid' ? 'Tam ödənilib' :
-    order.payment_status === 'partial' ? `Qismən ödənilib (Borc: ${fmt(debt)})` :
-    'Ödənilməyib'
-
-  const paymentStatusColor =
-    order.payment_status === 'paid' ? '#16a34a' :
-    order.payment_status === 'partial' ? '#d97706' :
-    '#dc2626'
-
-  const content = `
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; font-size: 13px; color: #111827; background: #fff; }
-    .wrap { padding: 28px; }
-    .biz-header { display: flex; align-items: center; gap: 14px; padding-bottom: 18px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
-    .biz-logo { width: 60px; height: 60px; object-fit: contain; border-radius: 8px; }
-    .biz-name { font-size: 17px; font-weight: 800; color: #111827; }
-    .biz-meta { font-size: 12px; color: #6b7280; margin-top: 3px; line-height: 1.6; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; padding-bottom: 18px; border-bottom: 2px solid #e5e7eb; }
-    .plate { font-size: 26px; font-weight: 800; font-family: monospace; letter-spacing: 0.08em; color: #111827; }
-    .car-info { font-size: 14px; color: #374151; margin-top: 4px; }
-    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #dcfce7; color: #166534; margin-top: 8px; }
-    .meta { text-align: right; color: #6b7280; font-size: 12px; line-height: 1.6; }
-    .order-num { font-size: 20px; font-weight: 800; color: #2563eb; }
-    .section { margin-bottom: 18px; }
-    .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; margin-bottom: 8px; }
-    table { width: 100%; border-collapse: collapse; }
-    td { padding: 6px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
-    tr:last-child td { border-bottom: none; }
-    .total-row td { font-weight: 700; font-size: 15px; padding-top: 10px; border-top: 2px solid #e5e7eb; border-bottom: none; }
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px; }
-    .payment-row { margin-top: 12px; padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .customer-block { background: #f9fafb; border-radius: 8px; padding: 12px 14px; }
-    .customer-value { font-size: 13px; color: #111827; line-height: 1.8; }
-    .footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 11px; }
-  </style>
-
-  <div class="wrap">
-    ${business ? `
-    <div class="biz-header">
-      ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Logo" class="biz-logo" />` : ''}
-      <div>
-        <div class="biz-name">${business.name}</div>
-        <div class="biz-meta">
-          ${business.phone ? `<div>${business.phone}</div>` : ''}
-          ${business.address ? `<div>${business.address}</div>` : ''}
-        </div>
-      </div>
-    </div>` : ''}
-
-    <div class="header">
-      <div>
-        <div class="plate">${order.plate_number}</div>
-        <div class="car-info">${order.car_brand} ${order.car_model}</div>
-        <div><span class="badge">Tamamlandı</span></div>
-      </div>
-      <div class="meta">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#9ca3af;margin-bottom:3px">Sifariş</div>
-        <div class="order-num">#${order.id}</div>
-        <div style="margin-top:5px">${fmtDate(order.created_at)}</div>
-        <div>${order.estimated_days} gün</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Tapşırıq</div>
-      <p style="color:#374151;line-height:1.6;font-size:13px">${order.description}</p>
-    </div>
-
-    <div class="two-col">
-      <div>
-        <div class="section-title">İşlər və qiymətlər</div>
-        <table>${servicesRows}</table>
-      </div>
-      <div>
-        <div class="section-title">İstifadə edilən məhsullar</div>
-        <table>${productsRows}</table>
-      </div>
-    </div>
-
-    <div class="section">
-      <table>
-        <tr class="total-row">
-          <td>Ümumi məbləğ</td>
-          <td style="text-align:right">${fmt(grandTotal)}</td>
-        </tr>
-      </table>
-      <div class="payment-row" style="background:${order.payment_status === 'paid' ? '#f0fdf4' : order.payment_status === 'partial' ? '#fffbeb' : '#fef2f2'}">
-        <span style="font-size:13px;font-weight:600;color:${paymentStatusColor}">${paymentStatusLabel}</span>
-        ${order.payment_status !== 'unpaid' ? `<span style="font-size:15px;font-weight:800;color:${paymentStatusColor}">${fmt(paidAmount)}</span>` : ''}
-      </div>
-    </div>
-
-    ${(customerName || order.customer_phone) ? `
-    <div class="section">
-      <div class="section-title">Müştəri</div>
-      <div class="customer-block">
-        <div class="customer-value">
-          ${customerName ? `<div>${customerName}</div>` : ''}
-          ${order.customer_phone ? `<div>${order.customer_phone}</div>` : ''}
-        </div>
-      </div>
-    </div>` : ''}
-
-    ${order.notes ? `
-    <div class="section">
-      <div class="section-title">Əlavə qeydlər</div>
-      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;color:#92400e;font-size:13px;line-height:1.6">${order.notes}</div>
-    </div>` : ''}
-
-    ${order.mechanic_name || order.mechanic_email ? `
-    <div class="section">
-      <div class="section-title">Usta</div>
-      <div class="customer-block">
-        <div class="customer-value">${order.mechanic_name ?? order.mechanic_email}</div>
-      </div>
-    </div>` : ''}
-
-    <div class="footer">Bu sənəd avtomatik yaradılmışdır · ${new Date().toLocaleDateString('az-AZ')}</div>
-  </div>`
-
-  const el = document.createElement('div')
-  el.style.position = 'fixed'
-  el.style.left = '-9999px'
-  el.style.top = '0'
-  el.style.width = '794px'
-  el.innerHTML = content
-  document.body.appendChild(el)
-
-  await html2pdf()
-    .set({
-      margin: 0,
-      filename: `Sifaris_${order.id}_${order.plate_number}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    content.push({
+      columns: [
+        ...bizLeft,
+        { stack: bizInfo, margin: [0, 4, 0, 0] },
+      ],
+      margin: [0, 0, 0, 0],
     })
-    .from(el)
-    .save()
+    content.push(divider())
+  }
 
-  document.body.removeChild(el)
+  // ── Order header ─────────────────────────────────────────
+  content.push({
+    columns: [
+      {
+        stack: [
+          { text: order.plate_number, fontSize: 26, bold: true, font: 'Courier', color: '#111827' },
+          { text: `${order.car_brand} ${order.car_model}`, fontSize: 13, color: '#374151', margin: [0, 3, 0, 5] },
+          {
+            table: { body: [[{ text: 'Tamamlandı', fontSize: 10, bold: true, color: '#166534', fillColor: '#dcfce7', margin: [6, 3, 6, 3] }]] },
+            layout: 'noBorders',
+          },
+        ],
+      },
+      {
+        stack: [
+          { text: 'SİFARİŞ', fontSize: 9, bold: true, color: '#9ca3af', alignment: 'right' },
+          { text: `#${order.id}`, fontSize: 20, bold: true, color: '#2563eb', alignment: 'right' },
+          { text: fmtDate(order.created_at), fontSize: 11, color: '#6b7280', alignment: 'right', margin: [0, 4, 0, 0] },
+          { text: `${order.estimated_days} gün`, fontSize: 11, color: '#6b7280', alignment: 'right' },
+        ],
+      },
+    ],
+    margin: [0, 0, 0, 0],
+  })
+
+  content.push(divider())
+
+  // ── Tapşırıq ─────────────────────────────────────────────
+  if (order.description) {
+    content.push({ text: 'TAPŞIRIQ', fontSize: 9, bold: true, color: '#9ca3af', margin: [0, 0, 0, 4] })
+    content.push({ text: order.description, fontSize: 12, color: '#374151', lineHeight: 1.5, margin: [0, 0, 0, 14] })
+  }
+
+  // ── Services + Products side by side ─────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const servicesBody: any[][] = [
+    [{ text: 'İŞLƏR VƏ QİYMƏTLƏR', fontSize: 9, bold: true, color: '#9ca3af', border: [false, false, false, false] },
+     { text: '', border: [false, false, false, false] }],
+    ...services.map(s => [
+      { text: s.name, fontSize: 11, border: [false, false, false, true], borderColor: ['', '', '', '#f3f4f6'], margin: [0, 3, 0, 3] },
+      { text: fmt(parseFloat(String(s.price))), fontSize: 11, alignment: 'right', border: [false, false, false, true], borderColor: ['', '', '', '#f3f4f6'], margin: [0, 3, 0, 3] },
+    ]),
+  ]
+  if (!services.length) {
+    servicesBody.push([{ text: 'İş qeyd edilməyib', fontSize: 11, color: '#9ca3af', border: [false, false, false, false] }, { text: '', border: [false, false, false, false] }])
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const productsBody: any[][] = [
+    [{ text: 'İSTİFADƏ EDİLƏN MƏHSULLAR', fontSize: 9, bold: true, color: '#9ca3af', border: [false, false, false, false] },
+     { text: '', border: [false, false, false, false] }],
+    ...products.map(p => [
+      { text: `${p.product_name} × ${p.quantity}`, fontSize: 11, border: [false, false, false, true], borderColor: ['', '', '', '#f3f4f6'], margin: [0, 3, 0, 3] },
+      { text: fmt(p.sell_price * p.quantity), fontSize: 11, alignment: 'right', border: [false, false, false, true], borderColor: ['', '', '', '#f3f4f6'], margin: [0, 3, 0, 3] },
+    ]),
+  ]
+  if (!products.length) {
+    productsBody.push([{ text: 'Məhsul yoxdur', fontSize: 11, color: '#9ca3af', border: [false, false, false, false] }, { text: '', border: [false, false, false, false] }])
+  }
+
+  content.push({
+    columns: [
+      { table: { widths: ['*', 'auto'], body: servicesBody }, layout: { hLineColor: () => '#f3f4f6', vLineWidth: () => 0 }, margin: [0, 0, 12, 0] },
+      { table: { widths: ['*', 'auto'], body: productsBody }, layout: { hLineColor: () => '#f3f4f6', vLineWidth: () => 0 } },
+    ],
+    margin: [0, 0, 0, 14],
+  })
+
+  // ── Total + payment ───────────────────────────────────────
+  content.push(divider())
+  content.push({
+    columns: [
+      { text: 'Ümumi məbləğ', fontSize: 14, bold: true },
+      { text: fmt(grandTotal), fontSize: 14, bold: true, alignment: 'right' },
+    ],
+    margin: [0, 0, 0, 8],
+  })
+  content.push({
+    table: {
+      widths: ['*', 'auto'],
+      body: [[
+        { text: paymentLabel, fontSize: 12, bold: true, color: paymentColor, border: [false, false, false, false], margin: [10, 8, 0, 8] },
+        order.payment_status !== 'unpaid'
+          ? { text: fmt(paidAmount), fontSize: 14, bold: true, color: paymentColor, alignment: 'right', border: [false, false, false, false], margin: [0, 8, 10, 8] }
+          : { text: '', border: [false, false, false, false] },
+      ]],
+    },
+    layout: { fillColor: () => order.payment_status === 'paid' ? '#f0fdf4' : order.payment_status === 'partial' ? '#fffbeb' : '#fef2f2' },
+    margin: [0, 0, 0, 14],
+  })
+
+  // ── Customer ──────────────────────────────────────────────
+  if (customerName || order.customer_phone) {
+    content.push({ text: 'MÜŞTƏRİ', fontSize: 9, bold: true, color: '#9ca3af', margin: [0, 0, 0, 6] })
+    content.push({
+      table: {
+        widths: ['*'],
+        body: [[{
+          stack: [
+            customerName ? { text: customerName, fontSize: 12 } : null,
+            order.customer_phone ? { text: order.customer_phone, fontSize: 12, color: '#6b7280' } : null,
+          ].filter(Boolean),
+          fillColor: '#f9fafb', border: [false, false, false, false], margin: [12, 10, 12, 10],
+        }]],
+      },
+      layout: 'noBorders',
+      margin: [0, 0, 0, 14],
+    })
+  }
+
+  // ── Notes ─────────────────────────────────────────────────
+  if (order.notes) {
+    content.push({ text: 'ƏLAVƏ QEYDLƏR', fontSize: 9, bold: true, color: '#9ca3af', margin: [0, 0, 0, 6] })
+    content.push({
+      table: {
+        widths: ['*'],
+        body: [[{ text: order.notes, fontSize: 12, color: '#92400e', fillColor: '#fffbeb', border: [false, false, false, false], margin: [12, 10, 12, 10] }]],
+      },
+      layout: 'noBorders',
+      margin: [0, 0, 0, 14],
+    })
+  }
+
+  // ── Mechanic ──────────────────────────────────────────────
+  if (order.mechanic_name || order.mechanic_email) {
+    content.push({ text: 'USTA', fontSize: 9, bold: true, color: '#9ca3af', margin: [0, 0, 0, 6] })
+    content.push({
+      table: {
+        widths: ['*'],
+        body: [[{ text: order.mechanic_name ?? order.mechanic_email ?? '', fontSize: 12, fillColor: '#f9fafb', border: [false, false, false, false], margin: [12, 10, 12, 10] }]],
+      },
+      layout: 'noBorders',
+      margin: [0, 0, 0, 14],
+    })
+  }
+
+  // ── Footer ────────────────────────────────────────────────
+  content.push(divider())
+  content.push({
+    text: `Bu sənəd avtomatik yaradılmışdır · ${new Date().toLocaleDateString('az-AZ')}`,
+    fontSize: 10, color: '#9ca3af', alignment: 'center', margin: [0, 4, 0, 0],
+  })
+
+  pdfMake.createPdf({
+    pageSize: 'A4',
+    pageMargins: [40, 40, 40, 40],
+    defaultStyle: { font: 'Roboto', fontSize: 12, color: '#111827' },
+    content,
+  }).download(`Sifaris_${order.id}_${order.plate_number}.pdf`)
 }
