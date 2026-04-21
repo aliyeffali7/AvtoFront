@@ -89,7 +89,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     columns: [
       {
         stack: [
-          { text: order.plate_number, fontSize: 26, bold: true, font: 'Courier', color: '#111827' },
+          { text: order.plate_number, fontSize: 26, bold: true, color: '#111827', characterSpacing: 2 },
           { text: `${order.car_brand} ${order.car_model}`, fontSize: 13, color: '#374151', margin: [0, 3, 0, 5] },
           {
             table: { body: [[{ text: 'Tamamlandı', fontSize: 10, bold: true, color: '#166534', fillColor: '#dcfce7', margin: [6, 3, 6, 3] }]] },
