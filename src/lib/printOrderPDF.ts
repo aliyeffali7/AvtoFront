@@ -106,17 +106,17 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     if (logoDataUrl) {
       content.push({
         columns: [
-          { image: logoDataUrl, width: 48, height: 48 },
+          { image: logoDataUrl, width: 60, height: 60 },
           {
             stack: [
               { text: business.name, fontSize: 15, bold: true, color: DARK },
-              business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 3, 0, 0] } : null,
+              business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 4, 0, 0] } : null,
               business.address ? { text: business.address, fontSize: 10, color: GRAY } : null,
             ].filter(Boolean),
-            margin: [12, 4, 0, 0],
+            margin: [0, 8, 0, 0],
           },
         ],
-        columnGap: 0,
+        columnGap: 16,
         margin: [0, 0, 0, 0],
       })
     } else {
