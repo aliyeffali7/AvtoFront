@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Order, Mechanic, Product } from '@/types'
+import { Order, Mechanic, Product, Business } from '@/types'
 import {
   getOrder, assignMechanic, changeOrderStatus,
   addProductToOrder, removeProductFromOrder,
@@ -10,6 +10,7 @@ import {
 } from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts, createProduct, createSupplierDebt } from '@/services/warehouse.service'
+import { getBusinessProfile } from '@/services/auth.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import { printOrderPDF } from '@/lib/printOrderPDF'
 import StatusBadge from './StatusBadge'
@@ -144,6 +145,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const navigate = useNavigate()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
+  const [business, setBusiness] = useState<Business | null>(null)
 
   const [mechanics, setMechanics] = useState<Mechanic[]>([])
   const [mechanicsLoaded, setMechanicsLoaded] = useState(false)
@@ -232,6 +234,10 @@ export default function OrderDetailClient({ id }: { id: string }) {
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    getBusinessProfile().then(res => setBusiness(res.data)).catch(() => null)
+  }, [])
 
   async function ensureMechanics() {
     if (mechanicsLoaded) return
@@ -516,7 +522,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
               {/* Edit + Delete + PDF buttons */}
               <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                 <button
-                  onClick={() => printOrderPDF(order)}
+                  onClick={() => printOrderPDF(order, business)}
                   className="flex items-center gap-1.5 text-sm font-medium text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-2 rounded-xl transition-colors min-h-[40px]"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

@@ -1,6 +1,6 @@
 import api from '@/lib/axios'
 import { setTokens, clearTokens } from '@/lib/auth'
-import { LoginCredentials, AuthTokens } from '@/types'
+import { LoginCredentials, AuthTokens, Business } from '@/types'
 
 export async function login(credentials: LoginCredentials): Promise<AuthTokens> {
   const response = await api.post<AuthTokens>('/api/auth/login', credentials)
@@ -19,6 +19,14 @@ export async function register(data: {
   await login({ email: data.email, password: data.password })
   return response.data
 }
+
+export const getBusinessProfile = () =>
+  api.get<Business>('/api/auth/business/profile')
+
+export const updateBusinessProfile = (data: FormData) =>
+  api.patch<Business>('/api/auth/business/profile', data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 
 export async function logout(): Promise<void> {
   try {

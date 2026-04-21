@@ -1,4 +1,4 @@
-import { Order } from '@/types'
+import { Order, Business } from '@/types'
 
 function fmt(n: number) {
   return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' ₼'
@@ -8,7 +8,7 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export function printOrderPDF(order: Order) {
+export function printOrderPDF(order: Order, business?: Business | null) {
   const services = order.services ?? []
   const products = order.products ?? []
   const servicesTotal = services.reduce((s, t) => s + parseFloat(String(t.price)), 0)
@@ -72,6 +72,11 @@ export function printOrderPDF(order: Order) {
     .customer-value { font-size: 14px; color: #111827; line-height: 1.8; }
     .description-block { background: #f9fafb; border-radius: 10px; padding: 14px 16px; }
     .footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 12px; }
+    .biz-header { display: flex; align-items: center; gap: 16px; padding-bottom: 20px; margin-bottom: 24px; border-bottom: 2px solid #e5e7eb; }
+    .biz-logo { width: 64px; height: 64px; object-fit: contain; border-radius: 8px; }
+    .biz-logo-placeholder { width: 64px; height: 64px; background: #f3f4f6; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .biz-name { font-size: 18px; font-weight: 800; color: #111827; line-height: 1.2; }
+    .biz-meta { font-size: 13px; color: #6b7280; margin-top: 3px; line-height: 1.6; }
     @media print {
       body { padding: 20px; }
       @page { margin: 1cm; size: A4; }
@@ -79,6 +84,20 @@ export function printOrderPDF(order: Order) {
   </style>
 </head>
 <body>
+
+  ${business ? `
+  <div class="biz-header">
+    ${business.logo
+      ? `<img src="${business.logo}" alt="Logo" class="biz-logo" />`
+      : ''}
+    <div>
+      <div class="biz-name">${business.name}</div>
+      <div class="biz-meta">
+        ${business.phone ? `<div>${business.phone}</div>` : ''}
+        ${business.address ? `<div>${business.address}</div>` : ''}
+      </div>
+    </div>
+  </div>` : ''}
 
   <div class="header">
     <div>

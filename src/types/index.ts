@@ -1,10 +1,21 @@
 export type Role = 'SUPER_ADMIN' | 'BUSINESS_OWNER' | 'MECHANIC'
 
+export interface Business {
+  id: number
+  name: string
+  phone?: string
+  address?: string
+  logo?: string | null
+  is_subscription_active?: boolean
+  trial_ends_at?: string
+  subscription_ends_at?: string
+}
+
 export interface User {
   id: number
   email: string
   role: Role
-  business?: number
+  business?: Business
 }
 
 export interface OrderService {

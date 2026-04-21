@@ -16,6 +16,7 @@ import CreditorsPage from '@/pages/business/CreditorsPage'
 import ReservationsPage from '@/pages/business/ReservationsPage'
 import CustomersPage from '@/pages/business/CustomersPage'
 import CustomerDetailPage from '@/pages/business/CustomerDetailPage'
+import SettingsPage from '@/pages/business/SettingsPage'
 import MechanicOrdersPage from '@/pages/mechanic/MechanicOrdersPage'
 import MechanicOrderDetailPage from '@/pages/mechanic/MechanicOrderDetailPage'
 import AdminPage from '@/pages/admin/AdminPage'
@@ -101,6 +102,7 @@ export default function App() {
               <Route path="/business/reservations" element={<ReservationsPage />} />
               <Route path="/business/customers" element={<CustomersPage />} />
               <Route path="/business/customers/:id" element={<CustomerDetailPage />} />
+              <Route path="/business/settings" element={<SettingsPage />} />
             </Route>
           </Route>
           <Route element={<RoleGuard role="MECHANIC" />}>
