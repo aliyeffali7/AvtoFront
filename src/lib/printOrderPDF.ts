@@ -88,7 +88,7 @@ export function printOrderPDF(order: Order, business?: Business | null) {
   ${business ? `
   <div class="biz-header">
     ${business.logo
-      ? `<img src="${business.logo}" alt="Logo" class="biz-logo" />`
+      ? `<img src="${business.logo.startsWith('http') ? business.logo : (import.meta.env.VITE_API_URL ?? '') + business.logo}" alt="Logo" class="biz-logo" />`
       : ''}
     <div>
       <div class="biz-name">${business.name}</div>
