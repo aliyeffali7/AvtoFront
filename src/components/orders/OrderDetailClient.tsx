@@ -197,6 +197,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
   // Edit / delete order
   const [editOpen, setEditOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
 
   // Confirm dialogs
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -522,13 +523,21 @@ export default function OrderDetailClient({ id }: { id: string }) {
               {/* Edit + Delete + PDF buttons */}
               <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                 <button
-                  onClick={() => printOrderPDF(order, business)}
-                  className="flex items-center gap-1.5 text-sm font-medium text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-2 rounded-xl transition-colors min-h-[40px]"
+                  disabled={generatingPdf}
+                  onClick={async () => {
+                    setGeneratingPdf(true)
+                    try { await printOrderPDF(order, business) } finally { setGeneratingPdf(false) }
+                  }}
+                  className="flex items-center gap-1.5 text-sm font-medium text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-2 rounded-xl transition-colors min-h-[40px] disabled:opacity-60"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  PDF
+                  {generatingPdf ? (
+                    <div className="w-4 h-4 border-2 border-green-300 border-t-green-700 rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  )}
+                  {generatingPdf ? 'Hazırlanır...' : 'PDF'}
                 </button>
                 {order.payment_status !== 'paid' && (
                   <button
