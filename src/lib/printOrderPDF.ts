@@ -196,7 +196,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
       filename: `Sifaris_${order.id}_${order.plate_number}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, logging: false },
-      jsPDF: { unit: 'px', format: 'a4', orientation: 'portrait', hotfixes: ['px_scaling'] },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     })
     .from(el)
     .save()
