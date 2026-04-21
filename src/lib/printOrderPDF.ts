@@ -103,20 +103,31 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
 
   // ── Business header ───────────────────────────────────────
   if (business) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cols: any[] = []
     if (logoDataUrl) {
-      cols.push({ image: logoDataUrl, width: 48, height: 48, margin: [0, 0, 14, 0] })
+      content.push({
+        columns: [
+          { image: logoDataUrl, width: 48, height: 48 },
+          {
+            stack: [
+              { text: business.name, fontSize: 15, bold: true, color: DARK },
+              business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 3, 0, 0] } : null,
+              business.address ? { text: business.address, fontSize: 10, color: GRAY } : null,
+            ].filter(Boolean),
+            margin: [12, 4, 0, 0],
+          },
+        ],
+        columnGap: 0,
+        margin: [0, 0, 0, 0],
+      })
+    } else {
+      content.push({
+        stack: [
+          { text: business.name, fontSize: 15, bold: true, color: DARK },
+          business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 3, 0, 0] } : null,
+          business.address ? { text: business.address, fontSize: 10, color: GRAY } : null,
+        ].filter(Boolean),
+      })
     }
-    cols.push({
-      stack: [
-        { text: business.name, fontSize: 15, bold: true, color: DARK },
-        business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 2, 0, 0] } : null,
-        business.address ? { text: business.address, fontSize: 10, color: GRAY } : null,
-      ].filter(Boolean),
-      margin: [0, logoDataUrl ? 4 : 0, 0, 0],
-    })
-    content.push({ columns: cols, margin: [0, 0, 0, 0] })
     content.push(line())
   }
 
