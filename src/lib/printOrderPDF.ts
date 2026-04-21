@@ -106,7 +106,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     if (logoDataUrl) {
       content.push({
         columns: [
-          { image: logoDataUrl, width: 90, height: 90 },
+          { image: logoDataUrl, width: 90 },
           {
             stack: [
               { text: business.name, fontSize: 15, bold: true, color: DARK },
