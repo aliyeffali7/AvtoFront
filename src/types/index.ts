@@ -32,6 +32,7 @@ export interface Order {
   car_year?: string
   vin_code?: string
   plate_number: string
+  mileage?: number | null
   description: string
   estimated_days: number
   mechanic: number | null

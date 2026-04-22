@@ -53,6 +53,7 @@ function CreateOrderDrawer({
   const [model, setModel] = useState('')
   const [carYear, setCarYear] = useState('')
   const [vinCode, setVinCode] = useState('')
+  const [mileage, setMileage] = useState('')
   const [description, setDescription] = useState('')
   const [days, setDays] = useState('')
   const [mechanic, setMechanic] = useState('')
@@ -124,7 +125,7 @@ function CreateOrderDrawer({
   }
 
   function reset() {
-    setPlate(''); setBrand(''); setModel(''); setCarYear(''); setVinCode(''); setDescription(''); setDays(''); setMechanic('')
+    setPlate(''); setBrand(''); setModel(''); setCarYear(''); setVinCode(''); setMileage(''); setDescription(''); setDays(''); setMechanic('')
     setServices([{ name: '', price: '', hasMechanicAmount: false, mechanicAmount: '' }])
     setOrderProducts([])
     setNewProducts([])
@@ -257,6 +258,7 @@ function CreateOrderDrawer({
         car_model: model,
         car_year: carYear || undefined,
         vin_code: vinCode || undefined,
+        mileage: mileage ? parseInt(mileage) : undefined,
         description,
         estimated_days: parseInt(days),
         mechanic: mechanic ? parseInt(mechanic) : null,
@@ -412,6 +414,10 @@ function CreateOrderDrawer({
                   <label className="text-sm font-medium text-gray-700">VIN kod</label>
                   <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="WBA3A5C50CF256985" maxLength={17} className="input font-mono text-sm" />
                 </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Kilometraj</label>
+                <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="75000" className="input" />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Tapşırıq</label>

@@ -512,6 +512,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                 <p className="text-gray-600">{order.car_brand} {order.car_model}</p>
                 <p className="text-xs text-gray-400 mt-1">
                   {formatDate(order.created_at)} · {order.estimated_days} gün
+                  {order.mileage != null && <> · {order.mileage.toLocaleString()} km</>}
                   {(order.mechanic_name || order.mechanic_email) && (
                     <> · <span className="text-blue-500">{order.mechanic_name ?? order.mechanic_email}</span></>
                   )}

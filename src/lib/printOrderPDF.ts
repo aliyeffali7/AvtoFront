@@ -137,7 +137,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
       {
         stack: [
           { text: order.plate_number, fontSize: 28, bold: true, color: DARK, characterSpacing: 1 },
-          { text: `${order.car_brand} ${order.car_model}`, fontSize: 13, color: '#374151', margin: [0, 4, 0, 6] },
+          { text: `${order.car_brand} ${order.car_model}${order.mileage != null ? ` · ${order.mileage.toLocaleString()} km` : ''}`, fontSize: 13, color: '#374151', margin: [0, 4, 0, 6] },
           {
             table: { body: [[{ text: 'Tamamlandı', fontSize: 9, bold: true, color: '#166534', fillColor: '#dcfce7', margin: [8, 3, 8, 3], border: [false,false,false,false] }]] },
             layout: 'noBorders',
