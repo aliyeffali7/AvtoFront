@@ -111,10 +111,10 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
             <img
               src={business.logo.startsWith('http') ? business.logo : (import.meta.env.VITE_API_URL ?? '') + business.logo}
               alt="logo"
-              className="w-9 h-9 rounded-xl object-cover shrink-0"
+              className="w-14 rounded-xl object-contain shrink-0"
             />
           ) : (
-            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+            <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 .001M13 16H9m4 0h2m2 0h1a1 1 0 001-1v-5l-3-4H13" />
@@ -122,7 +122,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-bold text-gray-900 leading-tight truncate">{business?.name ?? 'Avtoservis'}</p>
+            <p className="text-base font-bold text-gray-900 leading-tight truncate">{business?.name ?? 'Avtoservis'}</p>
             <p className="text-xs text-gray-500">CRM Panel</p>
           </div>
         </div>
