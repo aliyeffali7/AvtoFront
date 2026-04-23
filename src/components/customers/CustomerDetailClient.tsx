@@ -26,6 +26,7 @@ function EditCustomerDrawer({
   const [carModel, setCarModel] = useState(customer.car_model ?? '')
   const [carYear, setCarYear] = useState(customer.car_year ?? '')
   const [carPlate, setCarPlate] = useState(customer.car_plate ?? '')
+  const [vinCode, setVinCode] = useState(customer.vin_code ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -37,6 +38,7 @@ function EditCustomerDrawer({
       setCarModel(customer.car_model ?? '')
       setCarYear(customer.car_year ?? '')
       setCarPlate(customer.car_plate ?? '')
+      setVinCode(customer.vin_code ?? '')
       setError('')
     }
   }, [open, customer])
@@ -53,6 +55,7 @@ function EditCustomerDrawer({
         car_model: carModel || undefined,
         car_year: carYear || undefined,
         car_plate: carPlate || undefined,
+        vin_code: vinCode || undefined,
       })
       onUpdated(res.data)
       onClose()
@@ -121,6 +124,16 @@ function EditCustomerDrawer({
                   <label className="text-sm font-medium text-gray-700">Dövlət nişanı</label>
                   <PlateInput value={carPlate} onChange={setCarPlate} className="input font-mono tracking-wider" />
                 </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">VIN kod</label>
+                <input
+                  value={vinCode}
+                  onChange={e => setVinCode(e.target.value)}
+                  placeholder="WBA3A5C50CF256985"
+                  maxLength={17}
+                  className="input font-mono text-sm"
+                />
               </div>
             </div>
           </div>
@@ -227,6 +240,9 @@ export default function CustomerDetailClient() {
                         <span key={plate} className="px-2.5 py-1 rounded-lg bg-gray-100 text-sm font-mono text-gray-700 font-semibold">{plate}</span>
                       ))}
                     </div>
+                  )}
+                  {customer.vin_code && (
+                    <p className="text-xs text-gray-500 font-mono mt-2">VIN: {customer.vin_code}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

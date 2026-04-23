@@ -196,6 +196,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     ['Marka / Model', `${order.car_brand} ${order.car_model}`],
     order.car_year   ? ['İl',          order.car_year]                              : null,
     order.mileage != null ? ['Kilometraj',  `${order.mileage.toLocaleString()} km`] : null,
+    order.vin_code   ? ['VIN kodu',    order.vin_code]                              : null,
   ].filter(Boolean) as [string, string | object][]
 
   const customerRows = [
@@ -392,6 +393,28 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     margin: [0, 0, 0, 24],
   })
 
+  // ── Signatures ─────────────────────────────────────────────
+  content.push({
+    columns: [
+      {
+        width: '*',
+        stack: [
+          { text: 'Müştəri imzası', fontSize: 10, color: GRAY, margin: [0, 0, 0, 6] },
+          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 220, y2: 0, lineWidth: 1, lineColor: BORDER }] },
+        ],
+      },
+      { width: 40, text: '' },
+      {
+        width: '*',
+        stack: [
+          { text: 'Servis imzası', fontSize: 10, color: GRAY, margin: [0, 0, 0, 6], alignment: 'right' },
+          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 220, y2: 0, lineWidth: 1, lineColor: BORDER }] },
+        ],
+      },
+    ],
+    margin: [0, 28, 0, 24],
+  })
+
   // ── Footer ────────────────────────────────────────────────
   content.push({
     canvas: [{ type: 'rect', x: 0, y: 0, w: 515, h: 1, color: BORDER }],
@@ -460,9 +483,12 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
   // ── Customer info card ────────────────────────────────────
   content.push({ text: customer.full_name, fontSize: 20, bold: true, color: DARK })
   const metaParts = [
-    customer.phone,
-    [customer.car_brand, customer.car_model, customer.car_year].filter(Boolean).join(' '),
-    customer.car_plate,
+    customer.phone ? `Number: ${customer.phone}` : null,
+    [customer.car_brand, customer.car_model, customer.car_year].filter(Boolean).join(' ')
+      ? `Car: ${[customer.car_brand, customer.car_model, customer.car_year].filter(Boolean).join(' ')}`
+      : null,
+    customer.car_plate ? `Plate number: ${customer.car_plate}` : null,
+    customer.vin_code ? `VIN code: ${customer.vin_code}` : null,
   ].filter(Boolean)
   if (metaParts.length) content.push({ text: metaParts.join('   ·   '), fontSize: 10, color: GRAY, margin: [0, 4, 0, 12] })
 
@@ -511,7 +537,18 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
           {
             stack: [
               { text: order.plate_number, fontSize: 14, bold: true, color: WHITE, characterSpacing: 1 },
-              { text: `${order.car_brand} ${order.car_model}${order.mileage != null ? ` · ${order.mileage.toLocaleString()} km` : ''}`, fontSize: 9, color: '#93c5fd', margin: [0, 2, 0, 0] },
+              {
+                text: [
+                  `Car: ${[order.car_brand, order.car_model, order.car_year].filter(Boolean).join(' ')}`,
+                  order.mileage != null ? `Mileage: ${order.mileage.toLocaleString()} km` : '',
+                  `Plate number: ${order.plate_number}`,
+                  order.vin_code ? `VIN code: ${order.vin_code}` : '',
+                ].filter(Boolean).join(' · '),
+                fontSize: 10,
+                bold: true,
+                color: '#dbeafe',
+                margin: [0, 2, 0, 0],
+              },
             ],
             fillColor: HEADER_BG,
             border: [false, false, false, false],

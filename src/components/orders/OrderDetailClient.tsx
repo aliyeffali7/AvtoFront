@@ -281,6 +281,10 @@ function EditOrderDrawer({
                 <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
                 <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
               </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">VIN kod</label>
+                <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="WBA3A5C50CF256985" maxLength={17} className="input font-mono text-sm" />
+              </div>
             </div>
           </div>
 

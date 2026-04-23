@@ -33,6 +33,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [business, setBusiness] = useState<Business | null>(null)
+  const [logoError, setLogoError] = useState(false)
 
   useEffect(() => {
     getBusinessProfile().then(r => setBusiness(r.data)).catch(() => {})
@@ -48,11 +49,12 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
       {/* Brand */}
       <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          {business?.logo ? (
+          {business?.logo && !logoError ? (
             <img
               src={business.logo.startsWith('http') ? business.logo : (import.meta.env.VITE_API_URL ?? '') + business.logo}
               alt="logo"
               className="w-14 rounded-xl object-contain shrink-0"
+              onError={() => setLogoError(true)}
             />
           ) : (
             <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">

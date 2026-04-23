@@ -4,6 +4,12 @@ import { getMechanics, createMechanic, updateMechanic, deactivateMechanic, activ
 import { mapApiError } from '@/lib/utils'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
+function getMechanicImageUrl(image?: string | null) {
+  if (!image) return ''
+  if (image.startsWith('http')) return image
+  return `${import.meta.env.VITE_API_URL ?? ''}${image}`
+}
+
 function AddMechanicDrawer({
   open,
   onClose,
@@ -18,6 +24,8 @@ function AddMechanicDrawer({
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [workPercent, setWorkPercent] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -35,8 +43,8 @@ function AddMechanicDrawer({
     }
     setLoading(true)
     try {
-      await createMechanic({ full_name: fullName, phone, password, password_confirm: confirmPassword, work_percent: percent })
-      setFullName(''); setPhone(''); setPassword(''); setConfirmPassword(''); setWorkPercent('')
+      await createMechanic({ full_name: fullName, phone, password, password_confirm: confirmPassword, work_percent: percent, image: imageFile })
+      setFullName(''); setPhone(''); setPassword(''); setConfirmPassword(''); setWorkPercent(''); setImageFile(null); setImagePreview('')
       onAdded()
       onClose()
     } catch (err) {
@@ -68,6 +76,24 @@ function AddMechanicDrawer({
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
             <input value={phone} onChange={e => setPhone(e.target.value)} required type="tel" placeholder="+994 50 000 00 00" className="input" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Usta şəkli</label>
+            <input
+              type="file"
+              accept="image/*"
+              className="input"
+              onChange={e => {
+                const file = e.target.files?.[0] ?? null
+                setImageFile(file)
+                setImagePreview(file ? URL.createObjectURL(file) : '')
+              }}
+            />
+            {imagePreview && (
+              <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-200">
+                <img src={imagePreview} alt="Usta şəkli" className="w-full h-full object-cover" />
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">İş faizi (%)</label>
@@ -124,6 +150,8 @@ function EditMechanicDrawer({
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [workPercent, setWorkPercent] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -132,6 +160,8 @@ function EditMechanicDrawer({
       setFullName(mechanic.full_name ?? '')
       setPhone(mechanic.phone ?? '')
       setWorkPercent(String(mechanic.work_percent))
+      setImageFile(null)
+      setImagePreview(getMechanicImageUrl(mechanic.image))
       setError('')
     }
   }, [mechanic])
@@ -146,7 +176,7 @@ function EditMechanicDrawer({
     }
     setLoading(true)
     try {
-      await updateMechanic(mechanic!.id, { full_name: fullName, phone, work_percent: percent })
+      await updateMechanic(mechanic!.id, { full_name: fullName, phone, work_percent: percent, image: imageFile })
       onSaved()
       onClose()
     } catch (err) {
@@ -178,6 +208,24 @@ function EditMechanicDrawer({
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
             <input value={phone} onChange={e => setPhone(e.target.value)} required type="tel" placeholder="+994 50 000 00 00" className="input" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Usta şəkli</label>
+            <input
+              type="file"
+              accept="image/*"
+              className="input"
+              onChange={e => {
+                const file = e.target.files?.[0] ?? null
+                setImageFile(file)
+                setImagePreview(file ? URL.createObjectURL(file) : getMechanicImageUrl(mechanic.image))
+              }}
+            />
+            {imagePreview && (
+              <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-200">
+                <img src={imagePreview} alt="Usta şəkli" className="w-full h-full object-cover" />
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">İş faizi (%)</label>
@@ -291,9 +339,13 @@ export default function MechanicsClient() {
                   {active.map(m => (
                     <li key={m.id} className="flex items-center justify-between px-5 py-4 gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
-                          <span className="text-blue-600 font-semibold text-sm">{(m.full_name ?? m.phone ?? '?')[0].toUpperCase()}</span>
-                        </div>
+                        {m.image ? (
+                          <img src={getMechanicImageUrl(m.image)} alt={m.full_name ?? 'Usta'} className="w-9 h-9 rounded-full object-cover shrink-0 border border-blue-100" />
+                        ) : (
+                          <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                            <span className="text-blue-600 font-semibold text-sm">{(m.full_name ?? m.phone ?? '?')[0].toUpperCase()}</span>
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{m.full_name ?? '—'}</p>
                           {m.phone && <p className="text-xs text-gray-400">{m.phone}</p>}
@@ -338,9 +390,13 @@ export default function MechanicsClient() {
                   {inactive.map(m => (
                     <li key={m.id} className="flex items-center justify-between px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
-                          <span className="text-gray-400 font-semibold text-sm">{(m.full_name ?? m.phone ?? '?')[0].toUpperCase()}</span>
-                        </div>
+                        {m.image ? (
+                          <img src={getMechanicImageUrl(m.image)} alt={m.full_name ?? 'Usta'} className="w-9 h-9 rounded-full object-cover shrink-0 border border-gray-200" />
+                        ) : (
+                          <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
+                            <span className="text-gray-400 font-semibold text-sm">{(m.full_name ?? m.phone ?? '?')[0].toUpperCase()}</span>
+                          </div>
+                        )}
                         <div>
                           <p className="text-sm text-gray-500">{m.full_name ?? '—'}</p>
                           {m.phone && <p className="text-xs text-gray-400">{m.phone}</p>}

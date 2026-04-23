@@ -93,6 +93,7 @@ export interface Mechanic {
   is_active: boolean
   work_percent: number
   total_earnings: number
+  image?: string | null
 }
 
 export interface PaginatedResponse<T> {

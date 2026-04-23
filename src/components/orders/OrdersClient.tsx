@@ -383,6 +383,10 @@ function CreateOrderDrawer({
                 <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
                 <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
               </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">VIN kod</label>
+                <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="WBA3A5C50CF256985" maxLength={17} className="input font-mono text-sm" />
+              </div>
             </div>
           </div>
 
@@ -429,15 +433,15 @@ function CreateOrderDrawer({
                   <label className="text-sm font-medium text-gray-700">Müddət (gün)</label>
                   <input value={days} onChange={e => setDays(e.target.value)} required type="number" min="1" placeholder="3" className="input" />
                 </div>
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Usta</label>
-                  <select value={mechanic} onChange={e => setMechanic(e.target.value)} className="input">
-                    <option value="">Seçilməyib</option>
-                    {mechanics.filter(m => m.is_active).map(m => (
-                      <option key={m.id} value={m.id}>{m.full_name ?? m.phone}</option>
-                    ))}
-                  </select>
-                </div>
+            <div className="flex flex-col gap-1.5 flex-1">
+              <label className="text-sm font-medium text-gray-700">Usta</label>
+              <select value={mechanic} onChange={e => setMechanic(e.target.value)} className="input">
+                <option value="">Seçilməyib</option>
+                {mechanics.filter(m => m.is_active).map(m => (
+                  <option key={m.id} value={m.id}>{m.full_name ?? m.phone}</option>
+                ))}
+              </select>
+            </div>
               </div>
             </div>
           </div>
