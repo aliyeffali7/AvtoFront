@@ -273,9 +273,16 @@ function ReservationCard({
         </div>
       )}
 
-      {/* Cancelled / no-show — just delete */}
+      {/* Cancelled / no-show — convert still allowed + delete */}
       {(res.status === 'legv_edildi' || res.status === 'gelmedi') && (
-        <div className="pt-2 border-t border-gray-100 flex justify-end">
+        <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
+          <button
+            onClick={() => handle(() => convertReservation(res.id).then(r => navigate(`/business/orders/${r.data.order_id}`)))}
+            disabled={actioning}
+            className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-2 rounded-xl transition-colors border border-blue-200"
+          >
+            Sifarişə çevir
+          </button>
           {confirmDelete ? (
             <div className="flex gap-1">
               <button onClick={() => handle(() => deleteReservation(res.id))} className="text-xs bg-red-600 text-white px-2.5 py-1.5 rounded-xl">Bəli, sil</button>

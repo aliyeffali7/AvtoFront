@@ -111,6 +111,7 @@ export interface Customer {
   car_year: string
   car_plate: string
   vin_code?: string
+  notes?: string
   plates: string[]
   order_count: number
   total_paid: number
@@ -121,6 +122,14 @@ export interface Customer {
 
 export interface CustomerDetail extends Customer {
   orders: Order[]
+}
+
+export interface Store {
+  id: number
+  name: string
+  phone?: string
+  contact_person?: string
+  created_at: string
 }
 
 export interface ManualDebt {

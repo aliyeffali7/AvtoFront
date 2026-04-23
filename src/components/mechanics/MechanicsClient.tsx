@@ -254,12 +254,9 @@ export default function MechanicsClient() {
     <>
       <div className="p-6 lg:p-8">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Ustalar</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{active.length} aktiv usta</p>
-          </div>
-          <button onClick={() => setAddOpen(true)} className="btn-primary flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <p className="text-sm text-gray-500 font-medium">{active.length} aktiv usta</p>
+          <button onClick={() => setAddOpen(true)} className="btn-primary">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             Usta əlavə et

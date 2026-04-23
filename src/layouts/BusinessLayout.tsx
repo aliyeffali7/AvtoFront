@@ -1,17 +1,40 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
+import { Menu } from 'lucide-react'
 import BusinessSidebar from '@/components/layout/BusinessSidebar'
 import SubscriptionBanner from '@/components/layout/SubscriptionBanner'
 
+const PAGE_TITLES: Record<string, string> = {
+  '/business/orders':       'Sifarişlər',
+  '/business/customers':    'Müştərilər',
+  '/business/mechanics':    'Ustalar',
+  '/business/warehouse':    'Stok',
+  '/business/finance':      'Maliyyə',
+  '/business/debts':        'Borclar',
+  '/business/creditors':    'Kreditorlar',
+  '/business/reservations': 'Rezervasiyalar',
+  '/business/stores':       'Mağazalar',
+  '/business/settings':     'Tənzimləmələr',
+}
+
+function getPageTitle(pathname: string) {
+  for (const [path, title] of Object.entries(PAGE_TITLES)) {
+    if (pathname.startsWith(path)) return title
+  }
+  return 'Panel'
+}
+
 export default function BusinessLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { pathname } = useLocation()
+  const pageTitle = getPageTitle(pathname)
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-slate-50 flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-20 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -23,25 +46,26 @@ export default function BusinessLayout() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-60">
+
+        {/* Desktop top bar */}
+        <header className="hidden lg:flex items-center justify-between px-8 py-4 bg-white border-b border-gray-100 sticky top-0 z-10">
+          <h1 className="text-lg font-bold text-gray-900">{pageTitle}</h1>
+          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+        </header>
+
         {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 rounded-xl text-gray-600 hover:bg-gray-100 transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 .001M13 16H9m4 0h2m2 0h1a1 1 0 001-1v-5l-3-4H13" />
-              </svg>
-            </div>
-            <span className="text-sm font-bold text-gray-900">Avtoservis CRM</span>
-          </div>
+          <span className="text-sm font-bold text-gray-900">{pageTitle}</span>
         </div>
 
         <SubscriptionBanner />

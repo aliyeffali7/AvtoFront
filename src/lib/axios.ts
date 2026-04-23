@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
-import { getAccessToken, setAccessToken, getRefreshToken, clearTokens } from '@/lib/auth'
+import { getAccessToken, setAccessToken, setTokens, getRefreshToken, clearTokens } from '@/lib/auth'
 
 // Empty = use Vite proxy (same origin, no CORS). Set to full URL for production.
 const BASE_URL = import.meta.env.VITE_API_URL || ''
@@ -53,7 +53,12 @@ api.interceptors.response.use(
           { headers: { 'Content-Type': 'application/json' } }
         )
         const newAccessToken = response.data.access
-        setAccessToken(newAccessToken)
+        const newRefreshToken = response.data.refresh
+        if (newRefreshToken) {
+          setTokens(newAccessToken, newRefreshToken)
+        } else {
+          setAccessToken(newAccessToken)
+        }
         onRefreshed(newAccessToken)
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return api(originalRequest)

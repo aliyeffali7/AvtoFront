@@ -178,12 +178,9 @@ export default function CustomersClient() {
     <>
       <div className="p-6 lg:p-8">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Müştərilər</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{totalCount} müştəri</p>
-          </div>
-          <button onClick={() => setAddOpen(true)} className="btn-primary flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <p className="text-sm text-gray-500 font-medium">{totalCount} müştəri</p>
+          <button onClick={() => setAddOpen(true)} className="btn-primary">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             Yeni Müştəri

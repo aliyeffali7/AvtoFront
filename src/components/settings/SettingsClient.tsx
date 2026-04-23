@@ -24,7 +24,7 @@ export default function SettingsClient() {
         setName(b.name ?? '')
         setPhone(b.phone ?? '')
         setAddress(b.address ?? '')
-        if (b.logo) setLogoPreview(b.logo)
+        if (b.logo) setLogoPreview(b.logo.startsWith('http') ? b.logo : (import.meta.env.VITE_API_URL ?? '') + b.logo)
       })
       .catch(() => setError('Məlumatlar yüklənmədi'))
       .finally(() => setLoading(false))

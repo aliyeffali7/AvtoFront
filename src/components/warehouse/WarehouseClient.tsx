@@ -254,10 +254,7 @@ export default function WarehouseClient() {
       <div className="p-6 lg:p-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
-          <div className="shrink-0">
-            <h1 className="text-xl font-bold text-gray-900">Stok</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{products.length} məhsul</p>
-          </div>
+          <p className="text-sm text-gray-500 font-medium shrink-0">{products.length} məhsul</p>
           <div className="flex items-center gap-2 flex-1 sm:justify-end">
             {/* Search */}
             <div className="relative flex-1 sm:max-w-sm">
@@ -294,8 +291,8 @@ export default function WarehouseClient() {
               )}
               <span className="hidden sm:inline">{importing ? 'Yüklənir...' : 'Excel idxal'}</span>
             </button>
-            <button onClick={() => setAddOpen(true)} className="btn-primary flex items-center gap-2 shrink-0 min-h-[44px]">
-              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <button onClick={() => setAddOpen(true)} className="btn-primary shrink-0">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
               <span className="hidden sm:inline">Məhsul əlavə et</span>
@@ -306,24 +303,24 @@ export default function WarehouseClient() {
         {/* Summary cards */}
         {products.length > 0 && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            <div className="bg-white rounded-2xl border border-gray-200 px-4 py-3">
-              <p className="text-xs text-gray-500 font-medium">Alış dəyəri</p>
-              <p className="text-lg font-bold text-gray-900 mt-0.5">{formatCurrency(totalStockValue)}</p>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Alış dəyəri</p>
+              <p className="text-xl font-bold text-gray-900">{formatCurrency(totalStockValue)}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-200 px-4 py-3">
-              <p className="text-xs text-gray-500 font-medium">Satış dəyəri</p>
-              <p className="text-lg font-bold text-blue-600 mt-0.5">{formatCurrency(totalSellValue)}</p>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Satış dəyəri</p>
+              <p className="text-xl font-bold text-blue-600">{formatCurrency(totalSellValue)}</p>
             </div>
             {lowStockCount > 0 && (
-              <div className="bg-amber-50 rounded-2xl border border-amber-200 px-4 py-3">
-                <p className="text-xs text-amber-600 font-medium">Az qalıb</p>
-                <p className="text-lg font-bold text-amber-700 mt-0.5">{lowStockCount} məhsul</p>
+              <div className="bg-amber-50 rounded-2xl border border-amber-100 shadow-sm px-4 py-4">
+                <p className="text-xs font-semibold text-amber-500 uppercase tracking-widest mb-2">Az qalıb</p>
+                <p className="text-xl font-bold text-amber-700">{lowStockCount} məhsul</p>
               </div>
             )}
             {outOfStockCount > 0 && (
-              <div className="bg-red-50 rounded-2xl border border-red-200 px-4 py-3">
-                <p className="text-xs text-red-600 font-medium">Stokda yoxdur</p>
-                <p className="text-lg font-bold text-red-700 mt-0.5">{outOfStockCount} məhsul</p>
+              <div className="bg-red-50 rounded-2xl border border-red-100 shadow-sm px-4 py-4">
+                <p className="text-xs font-semibold text-red-400 uppercase tracking-widest mb-2">Stokda yoxdur</p>
+                <p className="text-xl font-bold text-red-700">{outOfStockCount} məhsul</p>
               </div>
             )}
           </div>

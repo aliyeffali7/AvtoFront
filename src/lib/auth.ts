@@ -4,16 +4,16 @@ const ACCESS_KEY = 'access_token'
 const REFRESH_KEY = 'refresh_token'
 
 export function setTokens(access: string, refresh: string): void {
-  sessionStorage.setItem(ACCESS_KEY, access)
+  localStorage.setItem(ACCESS_KEY, access)
   localStorage.setItem(REFRESH_KEY, refresh)
 }
 
 export function setAccessToken(token: string): void {
-  sessionStorage.setItem(ACCESS_KEY, token)
+  localStorage.setItem(ACCESS_KEY, token)
 }
 
 export function getAccessToken(): string | null {
-  return sessionStorage.getItem(ACCESS_KEY)
+  return localStorage.getItem(ACCESS_KEY)
 }
 
 export function getRefreshToken(): string | null {
@@ -21,7 +21,7 @@ export function getRefreshToken(): string | null {
 }
 
 export function clearTokens(): void {
-  sessionStorage.removeItem(ACCESS_KEY)
+  localStorage.removeItem(ACCESS_KEY)
   localStorage.removeItem(REFRESH_KEY)
 }
 

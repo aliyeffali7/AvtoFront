@@ -14,7 +14,7 @@ export const getOrder = (id: number) => api.get<Order>(`/api/orders/${id}`)
 export const createOrder = (data: Omit<Partial<Order>, 'products'> & { products?: { product: number; quantity: number }[]; expense_record_ids?: number[] }) =>
   api.post<Order>('/api/orders', data)
 
-export const updateOrder = (id: number, data: Partial<Order>) =>
+export const updateOrder = (id: number, data: Omit<Partial<Order>, 'products' | 'services'> & { products?: { product: number; quantity: number }[]; services?: import('@/types').OrderService[] }) =>
   api.patch<Order>(`/api/orders/${id}`, data)
 
 export const deleteOrder = (id: number) =>
