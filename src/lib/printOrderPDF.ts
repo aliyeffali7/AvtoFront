@@ -19,7 +19,9 @@ function fmtDate(iso: string) {
 async function toDataUrl(url: string): Promise<string> {
   try {
     const res = await fetch(url)
+    if (!res.ok) return ''
     const blob = await res.blob()
+    if (!blob.type.startsWith('image/')) return ''
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onloadend = () => resolve(reader.result as string)
