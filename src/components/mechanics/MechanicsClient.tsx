@@ -337,7 +337,7 @@ export default function MechanicsClient() {
               ) : (
                 <ul className="divide-y divide-gray-100">
                   {active.map(m => (
-                    <li key={m.id} className="flex items-center justify-between px-5 py-4 gap-3">
+                    <li key={m.id} className="flex items-center justify-between px-4 py-4 gap-2 flex-wrap sm:flex-nowrap sm:px-5 sm:gap-3">
                       <div className="flex items-center gap-3 min-w-0">
                         {m.image ? (
                           <img src={getMechanicImageUrl(m.image)} alt={m.full_name ?? 'Usta'} className="w-9 h-9 rounded-full object-cover shrink-0 border border-blue-100" />

@@ -45,7 +45,7 @@ function EditOrderDrawer({
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false)
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [notes, setNotes] = useState('')
-  const [services, setServices] = useState<{ name: string; price: string; hasMechanicAmount: boolean; mechanicAmount: string }[]>([])
+  const [services, setServices] = useState<{ name: string; price: string; mechanicId: string; mechanicAmount: string }[]>([])
   const [orderProducts, setOrderProducts] = useState<{ productId: string; qty: string }[]>([])
   const [newProducts, setNewProducts] = useState<{ name: string; purchasePrice: string; sellPrice: string; qty: string; supplierName: string }[]>([])
   const [warehouseItems, setWarehouseItems] = useState<Product[]>([])
@@ -75,7 +75,7 @@ function EditOrderDrawer({
       setServices((order.services ?? []).map((s: OrderService) => ({
         name: s.name,
         price: String(s.price),
-        hasMechanicAmount: s.mechanic_amount != null,
+        mechanicId: s.mechanic ? String(s.mechanic) : '',
         mechanicAmount: s.mechanic_amount != null ? String(s.mechanic_amount) : '',
       })))
       setOrderProducts((order.products ?? []).map(p => ({
@@ -128,13 +128,23 @@ function EditOrderDrawer({
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  function addService() { setServices(prev => [...prev, { name: '', price: '', hasMechanicAmount: false, mechanicAmount: '' }]) }
+  function addService() { setServices(prev => [...prev, { name: '', price: '', mechanicId: '', mechanicAmount: '' }]) }
   function removeService(i: number) { setServices(prev => prev.filter((_, idx) => idx !== i)) }
-  function updateService(i: number, field: 'name' | 'price' | 'mechanicAmount', value: string) {
-    setServices(prev => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s))
-  }
-  function toggleMechanicAmount(i: number) {
-    setServices(prev => prev.map((s, idx) => idx === i ? { ...s, hasMechanicAmount: !s.hasMechanicAmount, mechanicAmount: '' } : s))
+  function updateService(i: number, field: 'name' | 'price' | 'mechanicId' | 'mechanicAmount', value: string) {
+    setServices(prev => prev.map((s, idx) => {
+      if (idx !== i) return s
+      const updated = { ...s, [field]: value }
+      if (field === 'mechanicId' || field === 'price') {
+        const mech = mechanics.find(m => m.id === parseInt(field === 'mechanicId' ? value : s.mechanicId))
+        const price = parseFloat(field === 'price' ? value : s.price) || 0
+        if (mech && price > 0) {
+          updated.mechanicAmount = (price * mech.work_percent / 100).toFixed(2)
+        } else if (field === 'mechanicId' && !value) {
+          updated.mechanicAmount = ''
+        }
+      }
+      return updated
+    }))
   }
 
   function addProduct() { setOrderProducts(prev => [...prev, { productId: '', qty: '1' }]) }
@@ -155,19 +165,17 @@ function EditOrderDrawer({
     setError('')
     if (!description.trim()) { setError('Tapşırıq sahəsi boş ola bilməz.'); return }
 
-    for (const s of services.filter(s => s.name.trim())) {
-      if (s.hasMechanicAmount && s.mechanicAmount !== '') {
-        const price = parseFloat(s.price) || 0
-        const ma = parseFloat(s.mechanicAmount) || 0
-        if (ma > price) { setError(`"${s.name}" xidməti üçün usta payı qiymətdən çox ola bilməz.`); return }
-      }
-    }
 
     setLoading(true)
     try {
       const filledServices: OrderService[] = services
         .filter(s => s.name.trim())
-        .map(s => ({ name: s.name.trim(), price: s.price || '0', mechanic_amount: s.hasMechanicAmount && s.mechanicAmount !== '' ? s.mechanicAmount : null }))
+        .map(s => ({
+          name: s.name.trim(),
+          price: s.price || '0',
+          mechanic: s.mechanicId ? parseInt(s.mechanicId) : null,
+          mechanic_amount: s.mechanicAmount !== '' ? s.mechanicAmount : null,
+        }))
 
       const filledProducts = orderProducts.filter(p => p.productId).map(p => ({ product: parseInt(p.productId), quantity: parseInt(p.qty) || 1 }))
 
@@ -216,7 +224,7 @@ function EditOrderDrawer({
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col">
+      <div className="w-full max-w-3xl bg-white h-full shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <h2 className="text-base font-semibold text-gray-900">Sifarişi düzəlt</h2>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
@@ -318,28 +326,19 @@ function EditOrderDrawer({
                   <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="WBA3A5C50CF256985" maxLength={17} className="input font-mono text-sm" />
                 </div>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Kilometraj</label>
-                <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="75000" className="input" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Tapşırıq</label>
-                <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={2} placeholder="Görüləcək iş haqqında məlumat..." className="input resize-none" />
-              </div>
               <div className="flex gap-3">
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <label className="text-sm font-medium text-gray-700">Kilometraj</label>
+                  <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="75000" className="input" />
+                </div>
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-sm font-medium text-gray-700">Müddət (gün)</label>
                   <input value={days} onChange={e => setDays(e.target.value)} required type="number" min="1" placeholder="3" className="input" />
                 </div>
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Usta</label>
-                  <select value={mechanic} onChange={e => setMechanic(e.target.value)} className="input">
-                    <option value="">Seçilməyib</option>
-                    {mechanics.filter(m => m.is_active).map(m => (
-                      <option key={m.id} value={m.id}>{m.full_name ?? m.phone}</option>
-                    ))}
-                  </select>
-                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Tapşırıq</label>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={2} placeholder="Görüləcək iş haqqında məlumat..." className="input resize-none" />
               </div>
             </div>
           </div>
@@ -353,36 +352,43 @@ function EditOrderDrawer({
               <button type="button" onClick={addService} className="text-xs text-blue-600 font-medium hover:text-blue-800">+ İş əlavə et</button>
             </div>
             {services.length > 0 && (
-              <div className="grid grid-cols-[1fr_120px_32px_120px_28px] gap-2 mb-1 px-0.5">
+              <div className="hidden sm:grid sm:grid-cols-[1fr_90px_130px_28px] gap-2 mb-1 px-0.5">
                 <p className="text-xs text-gray-400">İş adı</p>
                 <p className="text-xs text-gray-400">Qiymət</p>
-                <span />
-                <p className="text-xs text-gray-400">Usta payı</p>
+                <p className="text-xs text-gray-400">Usta</p>
                 <span />
               </div>
             )}
             <div className="flex flex-col gap-2">
               {services.map((svc, i) => (
-                <div key={i} className="grid grid-cols-[1fr_120px_32px_120px_28px] gap-2 items-center">
-                  <input value={svc.name} onChange={e => updateService(i, 'name', e.target.value)} placeholder="Məs. Yağ dəyişimi" className="input text-sm" />
-                  <div className="relative">
-                    <input value={svc.price} onChange={e => updateService(i, 'price', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm pr-6 w-full" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
+                <div key={i} className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[1fr_90px_130px_28px] sm:items-center bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 rounded-xl sm:rounded-none p-2.5 sm:p-0">
+                    <input value={svc.name} onChange={e => updateService(i, 'name', e.target.value)} placeholder="Məs. Yağ dəyişimi" className="input text-sm" />
+                    <div className="flex gap-2 items-center sm:contents">
+                      <div className="relative flex-1 sm:flex-none">
+                        <input value={svc.price} onChange={e => updateService(i, 'price', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm pr-5 w-full" />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
+                      </div>
+                      <select value={svc.mechanicId} onChange={e => updateService(i, 'mechanicId', e.target.value)} className="input text-sm flex-1 sm:flex-none">
+                        <option value="">— Yoxdur</option>
+                        {mechanics.map(m => (
+                          <option key={m.id} value={m.id}>{m.full_name || m.id} ({m.work_percent}%)</option>
+                        ))}
+                      </select>
+                      <button type="button" onClick={() => removeService(i)} className="p-1 text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
                   </div>
-                  <button type="button" onClick={() => toggleMechanicAmount(i)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors shrink-0 ${svc.hasMechanicAmount ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>U</button>
-                  <div className="relative">
-                    {svc.hasMechanicAmount ? (
-                      <>
-                        <input value={svc.mechanicAmount} onChange={e => updateService(i, 'mechanicAmount', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm pr-6 w-full" />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
-                      </>
-                    ) : (
-                      <p className="text-xs text-gray-400 italic px-1">% ilə hesablanır</p>
-                    )}
-                  </div>
-                  <button type="button" onClick={() => removeService(i)} className="p-1 text-gray-300 hover:text-red-400 transition-colors">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
+                  {svc.mechanicId && (
+                    <div className="flex items-center gap-2 pl-2 pb-1">
+                      <span className="text-xs text-gray-500">Usta payı:</span>
+                      <div className="relative w-28">
+                        <input value={svc.mechanicAmount} onChange={e => updateService(i, 'mechanicAmount', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm pr-5 w-full" />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -407,7 +413,7 @@ function EditOrderDrawer({
             </div>
             {newProducts.length > 0 && (
               <div className="flex flex-col gap-3 mb-3">
-                <div className="grid grid-cols-[1fr_80px_80px_52px_28px] gap-2 px-0.5">
+                <div className="hidden sm:grid sm:grid-cols-[1fr_80px_80px_52px_28px] gap-2 px-0.5">
                   <p className="text-xs text-gray-400">Ad</p>
                   <p className="text-xs text-gray-400">Alış ₼</p>
                   <p className="text-xs text-gray-400">Satış ₼</p>
@@ -416,12 +422,14 @@ function EditOrderDrawer({
                 </div>
                 {newProducts.map((p, i) => (
                   <div key={i} className="flex flex-col gap-1.5 bg-orange-50 border border-orange-100 rounded-xl p-2">
-                    <div className="grid grid-cols-[1fr_80px_80px_52px_28px] gap-2 items-center">
+                    <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[1fr_80px_80px_52px_28px] sm:items-center sm:gap-2">
                       <input value={p.name} onChange={e => updateNewProduct(i, 'name', e.target.value)} placeholder="Məhsul adı" className="input text-sm" />
-                      <input value={p.purchasePrice} onChange={e => updateNewProduct(i, 'purchasePrice', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm" />
-                      <input value={p.sellPrice} onChange={e => updateNewProduct(i, 'sellPrice', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm" />
-                      <input value={p.qty} onChange={e => updateNewProduct(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" className="input text-sm" />
-                      <button type="button" onClick={() => removeNewProduct(i)} className="p-1 text-gray-300 hover:text-red-400"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                      <div className="flex gap-2 items-center sm:contents">
+                        <input value={p.purchasePrice} onChange={e => updateNewProduct(i, 'purchasePrice', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm flex-1 sm:flex-none" />
+                        <input value={p.sellPrice} onChange={e => updateNewProduct(i, 'sellPrice', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm flex-1 sm:flex-none" />
+                        <input value={p.qty} onChange={e => updateNewProduct(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" className="input text-sm w-14 shrink-0 sm:w-auto" />
+                        <button type="button" onClick={() => removeNewProduct(i)} className="p-1 text-gray-300 hover:text-red-400 shrink-0"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                      </div>
                     </div>
                     <input value={p.supplierName} onChange={e => updateNewProduct(i, 'supplierName', e.target.value)} placeholder="Kreditor adı (borc varsa)" className="input text-sm text-orange-800 placeholder-orange-300 bg-white border-orange-200 focus:ring-orange-300" />
                   </div>
@@ -855,11 +863,11 @@ export default function OrderDetailClient({ id }: { id: string }) {
         <div className="w-full lg:w-[65%] lg:shrink-0 flex flex-col gap-4">
 
           {/* Header card */}
-          <div className="bg-white rounded-2xl border border-gray-200 px-6 py-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
+          <div className="bg-white rounded-2xl border border-gray-200 px-5 py-5 sm:px-6">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="min-w-0">
                 <div className="flex items-center gap-3 mb-1 flex-wrap">
-                  <h1 className="text-2xl font-bold text-gray-900 font-mono tracking-wider">{order.plate_number}</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 font-mono tracking-wider">{order.plate_number}</h1>
                   <StatusBadge status={order.status} />
                   {order.status === 'done' && (
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${paymentBadge.cls}`}>
@@ -880,7 +888,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                 </p>
               </div>
               {/* Edit + Delete + PDF buttons */}
-              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0 sm:justify-end">
                 <button
                   disabled={generatingPdf}
                   onClick={async () => {

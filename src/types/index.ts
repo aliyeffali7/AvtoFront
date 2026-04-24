@@ -22,6 +22,8 @@ export interface OrderService {
   id?: number
   name: string
   price: string | number
+  mechanic?: number | null
+  mechanic_name?: string | null
   mechanic_amount?: string | number | null
 }
 

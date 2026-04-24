@@ -148,7 +148,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
           table: {
             body: [[{
               text: statusText,
-              fontSize: 9,
+              fontSize: 9,  
               bold: true,
               color: statusColor,
               fillColor: statusBg,

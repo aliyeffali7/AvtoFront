@@ -73,7 +73,7 @@ export default function LandingPage() {
             <span className="text-blue-400 text-xs font-medium">7 günlük pulsuz sınaq</span>
           </div>
 
-          <h1 className="text-4xl lg:text-5xl font-bold leading-tight tracking-tight mb-5">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight tracking-tight mb-5">
             Avtoservisinizi<br />
             <span className="text-blue-400">rəqəmsal idarə</span><br />
             edin
@@ -125,7 +125,7 @@ export default function LandingPage() {
               </button>
             </div>
 
-            <div className="p-8">
+            <div className="p-6 sm:p-8">
               {tab === 'login' ? (
                 <>
                   <p className="text-gray-900 font-semibold text-base mb-5">Hesabınıza daxil olun</p>
