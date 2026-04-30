@@ -328,7 +328,7 @@ function EditOrderDrawer({
               </div>
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Kilometraj</label>
+                  <label className="text-sm font-medium text-gray-700">Yürüş</label>
                   <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="75000" className="input" />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
@@ -1115,7 +1115,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                     </div>
                     {order.mileage != null && (
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Kilometraj</span>
+                        <span className="text-xs text-gray-400">Yürüş</span>
                         <span className="text-xs font-medium text-gray-700">{order.mileage.toLocaleString()} km</span>
                       </div>
                     )}

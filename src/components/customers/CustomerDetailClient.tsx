@@ -379,7 +379,7 @@ export default function CustomerDetailClient() {
             {/* Mileage history */}
             {mileageHistory.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-200 px-5 py-5">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Kilometraj tarixi</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Yürüş tarixi</p>
                 <div className="flex flex-col gap-0">
                   {mileageHistory.map((order, i) => (
                     <div key={order.id} className={`flex items-center justify-between py-2.5 ${i < mileageHistory.length - 1 ? 'border-b border-gray-100' : ''}`}>

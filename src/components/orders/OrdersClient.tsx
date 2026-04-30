@@ -421,7 +421,7 @@ function CreateOrderDrawer({
               </div>
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Kilometraj</label>
+                  <label className="text-sm font-medium text-gray-700">Yürüş</label>
                   <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="75000" className="input" />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">

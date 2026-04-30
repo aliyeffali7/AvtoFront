@@ -195,7 +195,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     ['Dövlət nişanı', { text: order.plate_number, bold: true, fontSize: 13, color: DARK }],
     ['Marka / Model', `${order.car_brand} ${order.car_model}`],
     order.car_year   ? ['İl',          order.car_year]                              : null,
-    order.mileage != null ? ['Kilometraj',  `${order.mileage.toLocaleString()} km`] : null,
+    order.mileage != null ? ['Yürüş',  `${order.mileage.toLocaleString()} km`] : null,
     order.vin_code   ? ['VIN kodu',    order.vin_code]                              : null,
   ].filter(Boolean) as [string, string | object][]
 
