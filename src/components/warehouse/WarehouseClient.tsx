@@ -19,12 +19,13 @@ function AddProductDrawer({
   const [sellPrice, setSellPrice] = useState('')
   const [discountPercent, setDiscountPercent] = useState('0')
   const [stock, setStock] = useState('')
+  const [supplierName, setSupplierName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   function reset() {
     setName(''); setCode(''); setUnit('ədəd')
-    setPurchasePrice(''); setSellPrice(''); setDiscountPercent('0'); setStock(''); setError('')
+    setPurchasePrice(''); setSellPrice(''); setDiscountPercent('0'); setStock(''); setSupplierName(''); setError('')
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -40,7 +41,8 @@ function AddProductDrawer({
         sell_price: parseFloat(sellPrice),
         discount_percent: parseFloat(discountPercent) || 0,
         stock_quantity: parseInt(stock),
-      })
+        supplier_name: supplierName.trim() || undefined,
+      } as Parameters<typeof createProduct>[0])
       reset()
       onAdded()
       onClose()
@@ -102,6 +104,11 @@ function AddProductDrawer({
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">İlkin stok <span className="text-red-500">*</span></label>
             <input value={stock} onChange={e => setStock(e.target.value)} required type="number" min="0" placeholder="0" className="input" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Kreditor adı</label>
+            <input value={supplierName} onChange={e => setSupplierName(e.target.value)} placeholder="Məs. Avtoehtiyat MMC" className="input" />
+            <p className="text-xs text-gray-400">Bu məbləğ avtomatik olaraq kreditorlara əlavə ediləcək</p>
           </div>
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
           <div className="mt-auto flex flex-col gap-3 pt-2">

@@ -9,7 +9,7 @@ import {
   uploadOrderImage, deleteOrderImage,
 } from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
-import { getProducts, createProduct, createSupplierDebt } from '@/services/warehouse.service'
+import { getProducts, createProduct, createSupplierDebt, updateProduct } from '@/services/warehouse.service'
 import { getBusinessProfile } from '@/services/auth.service'
 import { getCustomers } from '@/services/customers.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
@@ -163,7 +163,6 @@ function EditOrderDrawer({
     e.preventDefault()
     if (!order) return
     setError('')
-    if (!description.trim()) { setError('Tapşırıq sahəsi boş ola bilməz.'); return }
 
 
     setLoading(true)
@@ -181,7 +180,7 @@ function EditOrderDrawer({
 
       for (const np of newProducts.filter(p => p.name.trim())) {
         const qty = parseInt(np.qty) || 1
-        const res = await createProduct({ name: np.name.trim(), purchase_price: parseFloat(np.purchasePrice) || 0, sell_price: parseFloat(np.sellPrice) || 0, stock_quantity: qty })
+        const res = await createProduct({ name: np.name.trim(), purchase_price: parseFloat(np.purchasePrice) || 0, sell_price: parseFloat(np.sellPrice) || 0, stock_quantity: qty, is_warehouse: false })
         filledProducts.push({ product: res.data.id, quantity: qty })
         if (np.supplierName.trim() && parseFloat(np.purchasePrice) > 0) {
           await createSupplierDebt({ supplier_name: np.supplierName.trim(), description: np.name.trim(), total_amount: (parseFloat(np.purchasePrice) || 0) * qty })
@@ -195,8 +194,8 @@ function EditOrderDrawer({
         car_year: carYear || undefined,
         vin_code: vinCode || undefined,
         mileage: mileage ? parseInt(mileage) : undefined,
-        description,
-        estimated_days: parseInt(days),
+        description: description || undefined,
+        estimated_days: days ? parseInt(days) : undefined,
         mechanic: mechanic ? parseInt(mechanic) : null,
         customer: selectedCustomerId ?? undefined,
         customer_name: customerName || undefined,
@@ -535,6 +534,12 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [addingProduct, setAddingProduct] = useState(false)
   const [productError, setProductError] = useState('')
   const [removingProductId, setRemovingProductId] = useState<number | null>(null)
+  const [editingProductId, setEditingProductId] = useState<number | null>(null)
+  const [editProductName, setEditProductName] = useState('')
+  const [editProductPurchase, setEditProductPurchase] = useState('')
+  const [editProductSell, setEditProductSell] = useState('')
+  const [savingProductEdit, setSavingProductEdit] = useState(false)
+  const [editProductError, setEditProductError] = useState('')
 
   // Services
   const [addServiceOpen, setAddServiceOpen] = useState(false)
@@ -709,6 +714,24 @@ export default function OrderDetailClient({ id }: { id: string }) {
         }
       },
     })
+  }
+
+  async function handleSaveProductEdit(productId: number) {
+    setEditProductError('')
+    setSavingProductEdit(true)
+    try {
+      await updateProduct(productId, {
+        name: editProductName.trim() || undefined,
+        purchase_price: editProductPurchase !== '' ? parseFloat(editProductPurchase) : undefined,
+        sell_price: editProductSell !== '' ? parseFloat(editProductSell) : undefined,
+      })
+      setEditingProductId(null)
+      load()
+    } catch {
+      setEditProductError('Saxlanıla bilmədi.')
+    } finally {
+      setSavingProductEdit(false)
+    }
   }
 
   async function handleAddService(e: React.FormEvent) {
@@ -1378,6 +1401,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                         sell_price: parseFloat(newProdSell) || 0,
                         stock_quantity: qty2,
                         order_id: parseInt(id),
+                        is_warehouse: false,
                       })
                       await addProductToOrder(parseInt(id), res.data.id, qty2)
                       if (newProdSupplier.trim() && purchase > 0) {
@@ -1430,29 +1454,98 @@ export default function OrderDetailClient({ id }: { id: string }) {
             ) : (
               <div className="divide-y divide-gray-100">
                 {orderProducts.map(p => (
-                  <div key={p.id} className="flex items-center justify-between px-5 py-3 gap-3 group">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-800 truncate">{p.product_name}</p>
-                      <p className="text-xs text-gray-400">{p.quantity} ədəd</p>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900 shrink-0">
-                      {formatCurrency(p.sell_price * p.quantity)}
-                    </span>
-                    {order.payment_status !== 'paid' && (
-                      <button
-                        onClick={() => handleRemoveProduct(p.id)}
-                        disabled={removingProductId === p.id}
-                        className="p-1 text-gray-300 hover:text-red-500 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
-                        title="Sil"
-                      >
-                        {removingProductId === p.id ? (
-                          <span className="text-xs">...</span>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                  <div key={p.id} className="border-b border-gray-100 last:border-0">
+                    {editingProductId === p.id ? (
+                      <div className="px-5 py-3 bg-blue-50 flex flex-col gap-2">
+                        <input
+                          value={editProductName}
+                          onChange={e => setEditProductName(e.target.value)}
+                          placeholder="Məhsul adı"
+                          className="input text-sm"
+                          autoFocus
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="relative">
+                            <input
+                              value={editProductPurchase}
+                              onChange={e => setEditProductPurchase(e.target.value)}
+                              type="number" min="0" step="0.01"
+                              placeholder="Alış qiyməti"
+                              className="input text-sm pr-5 w-full"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
+                          </div>
+                          <div className="relative">
+                            <input
+                              value={editProductSell}
+                              onChange={e => setEditProductSell(e.target.value)}
+                              type="number" min="0" step="0.01"
+                              placeholder="Satış qiyməti"
+                              className="input text-sm pr-5 w-full"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
+                          </div>
+                        </div>
+                        {editProductError && <p className="text-xs text-red-600">{editProductError}</p>}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSaveProductEdit(p.product)}
+                            disabled={savingProductEdit}
+                            className="btn-primary text-xs py-1.5 flex-1"
+                          >
+                            {savingProductEdit ? 'Saxlanır...' : 'Saxla'}
+                          </button>
+                          <button
+                            onClick={() => { setEditingProductId(null); setEditProductError('') }}
+                            className="btn-ghost text-xs py-1.5 px-3"
+                          >
+                            Ləğv
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between px-5 py-3 gap-3 group">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-800 truncate">{p.product_name}</p>
+                          <p className="text-xs text-gray-400">{p.quantity} ədəd · alış: {formatCurrency(Number(p.purchase_price ?? 0))}</p>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900 shrink-0">
+                          {formatCurrency(p.sell_price * p.quantity)}
+                        </span>
+                        {order.payment_status !== 'paid' && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => {
+                                setEditingProductId(p.id)
+                                setEditProductName(p.product_name)
+                                setEditProductPurchase(p.purchase_price != null ? String(p.purchase_price) : '')
+                                setEditProductSell(String(p.sell_price))
+                                setEditProductError('')
+                              }}
+                              className="p-1 text-gray-300 hover:text-blue-500 transition-colors"
+                              title="Düzəliş et"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleRemoveProduct(p.id)}
+                              disabled={removingProductId === p.id}
+                              className="p-1 text-gray-300 hover:text-red-500 transition-colors"
+                              title="Sil"
+                            >
+                              {removingProductId === p.id ? (
+                                <span className="text-xs">...</span>
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
                         )}
-                      </button>
+                      </div>
                     )}
                   </div>
                 ))}

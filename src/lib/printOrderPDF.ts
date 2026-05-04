@@ -5,6 +5,37 @@ import { Order, Business, CustomerDetail } from '@/types'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ;(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs ?? pdfFonts
 
+let _fontsReady = false
+
+async function setupCustomFonts() {
+  if (_fontsReady) return
+  async function loadFont(path: string): Promise<string> {
+    try {
+      const res = await fetch(path)
+      if (!res.ok) return ''
+      const buf = await res.arrayBuffer()
+      const bytes = new Uint8Array(buf)
+      let b = ''
+      for (let i = 0; i < bytes.byteLength; i++) b += String.fromCharCode(bytes[i])
+      return btoa(b)
+    } catch { return '' }
+  }
+  const font = await loadFont('/fonts/PlayfairDisplay-Bold.ttf')
+  if (!font) return
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(pdfMake as any).vfs = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...(pdfMake as any).vfs,
+    'PlayfairDisplay-Bold.ttf': font,
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(pdfMake as any).fonts = {
+    Roboto: { normal: 'Roboto-Regular.ttf', bold: 'Roboto-Medium.ttf', italics: 'Roboto-Italic.ttf', bolditalics: 'Roboto-MediumItalic.ttf' },
+    PlayfairDisplay: { normal: 'PlayfairDisplay-Bold.ttf', bold: 'PlayfairDisplay-Bold.ttf' },
+  }
+  _fontsReady = true
+}
+
 const MONTHS = ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr']
 
 function fmt(n: number | string) {
@@ -99,6 +130,7 @@ function sectionTitle(text: string) {
 }
 
 export async function printOrderPDF(order: Order, business?: Business | null) {
+  await setupCustomFonts()
   const services      = order.services  ?? []
   const products      = order.products  ?? []
   const servicesTotal = services.reduce((s, t) => s + parseFloat(String(t.price)), 0)
@@ -133,13 +165,14 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
 
   // ── Header: logo + business + doc title ──────────────────
   const bizStack = business ? [
-    { text: business.name, fontSize: 16, bold: true, color: DARK },
-    business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 3, 0, 0] } : null,
+    { text: business.name, font: 'PlayfairDisplay', fontSize: 26, bold: true, color: DARK, characterSpacing: 0.5 },
+    { canvas: [{ type: 'rect', x: 0, y: 0, w: 42, h: 3, r: 1, color: BLUE }], margin: [0, 5, 0, 6] },
+    business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 0, 0, 0] } : null,
     business.address ? { text: business.address, fontSize: 10, color: GRAY } : null,
   ].filter(Boolean) : []
 
   const docInfoStack = [
-    { text: 'XİDMƏT AKTI', fontSize: 18, bold: true, color: HEADER_BG, alignment: 'right' },
+    { text: 'Xidmət Aktı', font: 'PlayfairDisplay', fontSize: 22, bold: true, color: HEADER_BG, alignment: 'right', characterSpacing: 0.5 },
     { text: `Tarix: ${fmtDate(order.created_at)}`, fontSize: 10, color: GRAY, alignment: 'right', margin: [0, 5, 0, 0] },
     {
       columns: [
@@ -434,6 +467,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
 }
 
 export async function printCustomerPDF(customer: CustomerDetail, business?: Business | null) {
+  await setupCustomFonts()
   const orders = [...(customer.orders ?? [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   let logoDataUrl = ''
@@ -453,13 +487,14 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
 
   // ── Header ────────────────────────────────────────────────
   const bizStack = business ? [
-    { text: business.name, fontSize: 16, bold: true, color: DARK },
-    business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 3, 0, 0] } : null,
+    { text: business.name, font: 'PlayfairDisplay', fontSize: 26, bold: true, color: DARK, characterSpacing: 0.5 },
+    { canvas: [{ type: 'rect', x: 0, y: 0, w: 42, h: 3, r: 1, color: BLUE }], margin: [0, 5, 0, 6] },
+    business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 0, 0, 0] } : null,
     business.address ? { text: business.address, fontSize: 10, color: GRAY } : null,
   ].filter(Boolean) : []
 
   const docInfoStack = [
-    { text: 'MÜŞTƏRİ HESABATI', fontSize: 16, bold: true, color: HEADER_BG, alignment: 'right' },
+    { text: 'Müştəri Hesabatı', font: 'PlayfairDisplay', fontSize: 22, bold: true, color: HEADER_BG, alignment: 'right', characterSpacing: 0.5 },
     { text: `Tarix: ${fmtDate(new Date().toISOString())}`, fontSize: 10, color: GRAY, alignment: 'right', margin: [0, 5, 0, 0] },
   ]
 

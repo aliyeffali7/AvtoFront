@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { SupplierDebt } from '@/types'
-import { getSupplierDebts, createSupplierDebt, paySupplierDebt, deleteSupplierDebt } from '@/services/warehouse.service'
+import { getSupplierDebts, createSupplierDebt, paySupplierDebt, deleteSupplierDebt, updateSupplierDebt } from '@/services/warehouse.service'
 import { formatCurrency } from '@/lib/utils'
 
 export default function CreditorsPage() {
@@ -16,6 +16,11 @@ export default function CreditorsPage() {
   // Delete state
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+
+  // Edit name state
+  const [editingNameId, setEditingNameId] = useState<number | null>(null)
+  const [editingNameValue, setEditingNameValue] = useState('')
+  const [savingNameId, setSavingNameId] = useState<number | null>(null)
 
   // Add manual debt drawer
   const [addOpen, setAddOpen] = useState(false)
@@ -70,6 +75,19 @@ export default function CreditorsPage() {
       load()
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  async function handleSaveName(id: number) {
+    const name = editingNameValue.trim()
+    if (!name) return
+    setSavingNameId(id)
+    try {
+      await updateSupplierDebt(id, { supplier_name: name })
+      setEditingNameId(null)
+      load()
+    } finally {
+      setSavingNameId(null)
     }
   }
 
@@ -162,7 +180,43 @@ export default function CreditorsPage() {
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-bold text-gray-900">{debt.supplier_name}</span>
+                    {editingNameId === debt.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          value={editingNameValue}
+                          onChange={e => setEditingNameValue(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') handleSaveName(debt.id); if (e.key === 'Escape') setEditingNameId(null) }}
+                          className="input text-sm font-semibold py-1 h-8 w-44"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleSaveName(debt.id)}
+                          disabled={savingNameId === debt.id}
+                          className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                        >
+                          {savingNameId === debt.id ? '...' : 'Saxla'}
+                        </button>
+                        <button
+                          onClick={() => setEditingNameId(null)}
+                          className="text-xs text-gray-400 hover:text-gray-600 px-1.5 py-1"
+                        >
+                          Ləğv
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 group/name">
+                        <span className="font-bold text-gray-900">{debt.supplier_name}</span>
+                        <button
+                          onClick={() => { setEditingNameId(debt.id); setEditingNameValue(debt.supplier_name) }}
+                          className="p-0.5 text-gray-300 hover:text-blue-500 transition-colors opacity-0 group-hover/name:opacity-100"
+                          title="Adı dəyiş"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
                     {debt.is_paid ? (
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Ödənilib</span>
                     ) : debt.paid_amount > 0 ? (
@@ -171,6 +225,7 @@ export default function CreditorsPage() {
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Ödənilməyib</span>
                     )}
                   </div>
+
                   {debt.phone && (
                     <a href={`tel:${debt.phone}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1 mt-0.5">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

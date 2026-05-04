@@ -62,9 +62,14 @@ api.interceptors.response.use(
         onRefreshed(newAccessToken)
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return api(originalRequest)
-      } catch {
-        clearTokens()
-        window.location.replace('/')
+      } catch (refreshErr) {
+        const e = refreshErr as AxiosError
+        // Only log out if the backend explicitly rejected the refresh token (401 or 400).
+        // Network errors, timeouts, or server errors should NOT log the user out.
+        if (e.response && (e.response.status === 401 || e.response.status === 400)) {
+          clearTokens()
+          window.location.replace('/')
+        }
         return Promise.reject(error)
       } finally {
         isRefreshing = false

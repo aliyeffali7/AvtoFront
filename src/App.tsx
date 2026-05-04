@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { getAccessToken, getRefreshToken, isTokenExpired, setAccessToken, clearTokens, getRoleFromToken } from '@/lib/auth'
+import { getAccessToken, getRefreshToken, isTokenExpired, setAccessToken, setTokens, clearTokens, getRoleFromToken } from '@/lib/auth'
 import api from '@/lib/axios'
 
 import LandingPage from '@/pages/LandingPage'
@@ -36,12 +36,22 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     api.post('/api/auth/token/refresh/', { refresh })
       .then(res => {
-        setAccessToken(res.data.access)
+        if (res.data.refresh) {
+          setTokens(res.data.access, res.data.refresh)
+        } else {
+          setAccessToken(res.data.access)
+        }
         setStatus('ok')
       })
-      .catch(() => {
-        clearTokens()
-        setStatus('fail')
+      .catch((err) => {
+        // Only log out on explicit token rejection (401/400). Network/server
+        // errors should not kick the user out — they are still logged in.
+        if (err.response && (err.response.status === 401 || err.response.status === 400)) {
+          clearTokens()
+          setStatus('fail')
+        } else {
+          setStatus('ok')
+        }
       })
   }, [])
 
@@ -66,8 +76,11 @@ function HomeRedirect() {
   }
   const refresh = getRefreshToken()
   if (refresh) {
-    // Has refresh token but access expired — let AuthGate handle it via a dummy protected route
-    // Just try to go to business orders, AuthGate will refresh and redirect properly
+    // Access expired but refresh token still valid — decode role from refresh token
+    // to navigate to the correct dashboard. AuthGate will do the actual refresh.
+    const role = getRoleFromToken(refresh)
+    if (role === 'MECHANIC') return <Navigate to="/mechanic/orders" replace />
+    if (role === 'SUPER_ADMIN') return <Navigate to="/admin" replace />
     return <Navigate to="/business/orders" replace />
   }
   return <LandingPage />

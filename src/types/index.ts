@@ -67,6 +67,7 @@ export interface OrderProduct {
   product_name: string
   quantity: number
   sell_price: number
+  purchase_price: number
 }
 
 export interface Product {
@@ -78,6 +79,7 @@ export interface Product {
   sell_price: number
   discount_percent: number
   stock_quantity: number
+  is_warehouse?: boolean
 }
 
 export interface FinanceRecord {

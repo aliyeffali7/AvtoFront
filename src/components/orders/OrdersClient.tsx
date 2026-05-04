@@ -208,12 +208,6 @@ function CreateOrderDrawer({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-
-    if (!description.trim()) {
-      setError('Tapşırıq sahəsi boş ola bilməz.')
-      return
-    }
-
     setLoading(true)
     const filledServices: OrderService[] = services
       .filter(t => t.name.trim())
@@ -239,6 +233,7 @@ function CreateOrderDrawer({
           purchase_price: purchasePrice,
           sell_price: parseFloat(np.sellPrice) || 0,
           stock_quantity: qty,
+          is_warehouse: false,
         })
         filledProducts.push({ product: res.data.id, quantity: qty })
         if (res.data.finance_record_id) {
@@ -259,8 +254,8 @@ function CreateOrderDrawer({
         car_year: carYear || undefined,
         vin_code: vinCode || undefined,
         mileage: mileage ? parseInt(mileage) : undefined,
-        description,
-        estimated_days: parseInt(days),
+        description: description || undefined,
+        estimated_days: days ? parseInt(days) : undefined,
         mechanic: mechanic ? parseInt(mechanic) : null,
         services: filledServices,
         products: filledProducts,
@@ -397,22 +392,22 @@ function CreateOrderDrawer({
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Dövlət nişanı</label>
-                <PlateInput value={plate} onChange={setPlate} required className="input font-mono tracking-wider" />
+                <PlateInput value={plate} onChange={setPlate} className="input font-mono tracking-wider" />
               </div>
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-sm font-medium text-gray-700">Marka</label>
-                  <input value={brand} onChange={e => setBrand(e.target.value)} required placeholder="Toyota" className="input" />
+                  <input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Toyota" className="input" />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-sm font-medium text-gray-700">Model</label>
-                  <input value={model} onChange={e => setModel(e.target.value)} required placeholder="Camry" className="input" />
+                  <input value={model} onChange={e => setModel(e.target.value)} placeholder="Camry" className="input" />
                 </div>
               </div>
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-sm font-medium text-gray-700">İl</label>
-                  <input value={carYear} onChange={e => setCarYear(e.target.value)} required placeholder="2019" maxLength={4} className="input" />
+                  <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="2019" maxLength={4} className="input" />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-sm font-medium text-gray-700">VIN kod</label>
@@ -426,12 +421,12 @@ function CreateOrderDrawer({
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-sm font-medium text-gray-700">Müddət (gün)</label>
-                  <input value={days} onChange={e => setDays(e.target.value)} required type="number" min="1" placeholder="3" className="input" />
+                  <input value={days} onChange={e => setDays(e.target.value)} type="number" min="1" placeholder="3" className="input" />
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Tapşırıq</label>
-                <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={2} placeholder="Görüləcək iş haqqında məlumat..." className="input resize-none" />
+                <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Görüləcək iş haqqında məlumat..." className="input resize-none" />
               </div>
             </div>
           </div>
@@ -691,15 +686,27 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
   const [productSearch, setProductSearch] = useState('')
   const [showProductDropdown, setShowProductDropdown] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null)
+  const [mechanics, setMechanics] = useState<Mechanic[]>([])
+  const [selectedMechanicId, setSelectedMechanicId] = useState('')
+  const [mechanicAmount, setMechanicAmount] = useState('')
   const loadedRef = useRef(false)
 
   useEffect(() => {
     if (open && !loadedRef.current) {
       loadedRef.current = true
       getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
+      getMechanics().then(r => setMechanics(r.data)).catch(() => {})
     }
     if (!open) loadedRef.current = false
   }, [open])
+
+  useEffect(() => {
+    if (!selectedMechanicId) { setMechanicAmount(''); return }
+    const mech = mechanics.find(m => m.id === parseInt(selectedMechanicId))
+    if (mech && mech.work_percent > 0 && price) {
+      setMechanicAmount(((parseFloat(price) || 0) * mech.work_percent / 100).toFixed(2))
+    }
+  }, [selectedMechanicId, price, mechanics])
 
   const filteredProducts = warehouseItems.filter(p =>
     p.name.toLowerCase().includes(productSearch.toLowerCase())
@@ -724,20 +731,35 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
   function reset() {
     setName(''); setPrice(''); setError('')
     setProductSearch(''); setSelectedProductId(null); setShowProductDropdown(false)
+    setSelectedMechanicId(''); setMechanicAmount('')
   }
   function handleClose() { reset(); onClose() }
+
+  const parsedPrice = parseFloat(price) || 0
+  const parsedMechanicAmt = parseFloat(mechanicAmount) || 0
+  const net = parsedPrice - parsedMechanicAmt
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
+    const today = new Date().toISOString().slice(0, 10)
     try {
       await createFinanceRecord({
         type: 'income',
-        amount: parseFloat(price),
+        amount: parsedPrice,
         description: name.trim(),
-        date: new Date().toISOString().slice(0, 10),
+        date: today,
       })
+      if (selectedMechanicId && parsedMechanicAmt > 0) {
+        const mech = mechanics.find(m => m.id === parseInt(selectedMechanicId))
+        await createFinanceRecord({
+          type: 'expense',
+          amount: parsedMechanicAmt,
+          description: `Usta payı: ${mech?.full_name || '—'} — ${name.trim()}`,
+          date: today,
+        })
+      }
       reset()
       onCreated()
       onClose()
@@ -819,6 +841,7 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
             )}
           </div>
 
+          {/* Name + Price */}
           <div className="flex gap-3">
             <div className="flex flex-col gap-1.5 flex-1">
               <label className="text-sm font-medium text-gray-700">Məhsul / Xidmət</label>
@@ -848,11 +871,76 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
             </div>
           </div>
 
+          <div className="border-t border-gray-100" />
+
+          {/* Mechanic section */}
+          <div className="flex flex-col gap-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Usta</p>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-gray-700">Usta seç</label>
+              <select
+                value={selectedMechanicId}
+                onChange={e => setSelectedMechanicId(e.target.value)}
+                className="input"
+              >
+                <option value="">— Usta yoxdur —</option>
+                {mechanics.filter(m => m.is_active).map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.full_name || '—'}{m.work_percent > 0 ? ` (${m.work_percent}%)` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {selectedMechanicId && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Usta payı (₼)</label>
+                <div className="relative">
+                  <input
+                    value={mechanicAmount}
+                    onChange={e => setMechanicAmount(e.target.value)}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="input pr-6 w-full"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Finance summary */}
+          {parsedPrice > 0 && (
+            <>
+              <div className="border-t border-gray-100" />
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Maliyyə qeydi</p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Gəlir</span>
+                  <span className="font-semibold text-green-600">+{formatCurrency(parsedPrice)}</span>
+                </div>
+                {selectedMechanicId && parsedMechanicAmt > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Usta payı (xərc)</span>
+                    <span className="font-semibold text-red-500">−{formatCurrency(parsedMechanicAmt)}</span>
+                  </div>
+                )}
+                {selectedMechanicId && parsedMechanicAmt > 0 && (
+                  <div className="flex items-center justify-between text-sm pt-1 border-t border-gray-100">
+                    <span className="font-medium text-gray-700">Xalis</span>
+                    <span className={`font-bold ${net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(net)}</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
           <div className="flex gap-3 pt-1">
             <button type="submit" disabled={loading} className="btn-primary flex-1">
-              {loading ? 'Saxlanılır...' : 'Gəlir kimi saxla'}
+              {loading ? 'Saxlanılır...' : 'Saxla'}
             </button>
             <button type="button" onClick={handleClose} className="btn-ghost px-4">Ləğv et</button>
           </div>
