@@ -8,6 +8,9 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- pdfmake loaded via CDN to avoid Vite/Rollup corrupting the large base64 font data -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfmake@0.3.7/build/pdfmake.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfmake@0.3.7/build/vfs_fonts.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

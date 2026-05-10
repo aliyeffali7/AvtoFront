@@ -1,10 +1,9 @@
-import pdfMake from 'pdfmake/build/pdfmake'
-import pdfFonts from 'pdfmake/build/vfs_fonts'
 import { Order, Business, CustomerDetail } from '@/types'
 
-// pdfmake 0.3.x uses addVirtualFileSystem instead of the old .vfs assignment
+// pdfmake is loaded via CDN script tags in index.html to avoid Vite/Rollup
+// corrupting the large base64 font data inside vfs_fonts.js during production build.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(pdfMake as any).addVirtualFileSystem(pdfFonts)
+function pm(): any { return (window as any).pdfMake }
 
 let _playfairLoaded = false
 
@@ -21,11 +20,9 @@ async function ensurePlayfair(): Promise<boolean> {
       reader.readAsDataURL(blob)
     })
     if (!b64) return false
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(pdfMake as any).addVirtualFileSystem({ 'PlayfairDisplay-Bold.ttf': b64 })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(pdfMake as any).fonts = {
-      Roboto: { normal: 'Roboto-Regular.ttf', bold: 'Roboto-Medium.ttf', italics: 'Roboto-Italic.ttf', bolditalics: 'Roboto-MediumItalic.ttf' },
+    pm().addVirtualFileSystem({ 'PlayfairDisplay-Bold.ttf': b64 })
+    pm().fonts = {
+      ...pm().fonts,
       PlayfairDisplay: { normal: 'PlayfairDisplay-Bold.ttf', bold: 'PlayfairDisplay-Bold.ttf' },
     }
     _playfairLoaded = true
@@ -455,7 +452,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     fontSize: 9, color: MUTED, alignment: 'center',
   })
 
-  pdfMake.createPdf({
+  pm().createPdf({
     pageSize: 'A4',
     pageMargins: [40, 40, 40, 40],
     defaultStyle: { font: 'Roboto', fontSize: 12, color: DARK },
@@ -683,7 +680,7 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
   content.push({ canvas: [{ type: 'rect', x: 0, y: 0, w: 515, h: 1, color: BORDER }], margin: [0, 0, 0, 10] })
   content.push({ text: `Bu sənəd avtomatik yaradılmışdır · ${fmtDate(new Date().toISOString())}`, fontSize: 9, color: MUTED, alignment: 'center' })
 
-  pdfMake.createPdf({
+  pm().createPdf({
     pageSize: 'A4',
     pageMargins: [40, 40, 40, 40],
     defaultStyle: { font: 'Roboto', fontSize: 12, color: DARK },
