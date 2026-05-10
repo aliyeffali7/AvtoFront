@@ -2,38 +2,35 @@ import pdfMake from 'pdfmake/build/pdfmake'
 import pdfFonts from 'pdfmake/build/vfs_fonts'
 import { Order, Business, CustomerDetail } from '@/types'
 
+// pdfmake 0.3.x uses addVirtualFileSystem instead of the old .vfs assignment
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs ?? pdfFonts
+;(pdfMake as any).addVirtualFileSystem(pdfFonts)
 
-let _fontsReady = false
+let _playfairLoaded = false
 
-async function setupCustomFonts() {
-  if (_fontsReady) return
-  async function loadFont(path: string): Promise<string> {
-    try {
-      const res = await fetch(path)
-      if (!res.ok) return ''
-      const buf = await res.arrayBuffer()
-      const bytes = new Uint8Array(buf)
-      let b = ''
-      for (let i = 0; i < bytes.byteLength; i++) b += String.fromCharCode(bytes[i])
-      return btoa(b)
-    } catch { return '' }
-  }
-  const font = await loadFont('/fonts/PlayfairDisplay-Bold.ttf')
-  if (!font) return
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(pdfMake as any).vfs = {
+async function ensurePlayfair(): Promise<boolean> {
+  if (_playfairLoaded) return true
+  try {
+    const res = await fetch('/fonts/PlayfairDisplay-Bold.ttf')
+    if (!res.ok) return false
+    const blob = await res.blob()
+    const b64: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1] ?? '')
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+    if (!b64) return false
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...(pdfMake as any).vfs,
-    'PlayfairDisplay-Bold.ttf': font,
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(pdfMake as any).fonts = {
-    Roboto: { normal: 'Roboto-Regular.ttf', bold: 'Roboto-Medium.ttf', italics: 'Roboto-Italic.ttf', bolditalics: 'Roboto-MediumItalic.ttf' },
-    PlayfairDisplay: { normal: 'PlayfairDisplay-Bold.ttf', bold: 'PlayfairDisplay-Bold.ttf' },
-  }
-  _fontsReady = true
+    ;(pdfMake as any).addVirtualFileSystem({ 'PlayfairDisplay-Bold.ttf': b64 })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(pdfMake as any).fonts = {
+      Roboto: { normal: 'Roboto-Regular.ttf', bold: 'Roboto-Medium.ttf', italics: 'Roboto-Italic.ttf', bolditalics: 'Roboto-MediumItalic.ttf' },
+      PlayfairDisplay: { normal: 'PlayfairDisplay-Bold.ttf', bold: 'PlayfairDisplay-Bold.ttf' },
+    }
+    _playfairLoaded = true
+    return true
+  } catch { return false }
 }
 
 const MONTHS = ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr']
@@ -130,7 +127,7 @@ function sectionTitle(text: string) {
 }
 
 export async function printOrderPDF(order: Order, business?: Business | null) {
-  await setupCustomFonts()
+  const titleFont = (await ensurePlayfair()) ? 'PlayfairDisplay' : 'Roboto'
   const services      = order.services  ?? []
   const products      = order.products  ?? []
   const servicesTotal = services.reduce((s, t) => s + parseFloat(String(t.price)), 0)
@@ -165,14 +162,14 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
 
   // ── Header: logo + business + doc title ──────────────────
   const bizStack = business ? [
-    { text: business.name, font: 'PlayfairDisplay', fontSize: 26, bold: true, color: DARK, characterSpacing: 0.5 },
+    { text: business.name, font: titleFont, fontSize: 26, bold: true, color: DARK, characterSpacing: 0.5 },
     { canvas: [{ type: 'rect', x: 0, y: 0, w: 42, h: 3, r: 1, color: BLUE }], margin: [0, 5, 0, 6] },
     business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 0, 0, 0] } : null,
     business.address ? { text: business.address, fontSize: 10, color: GRAY } : null,
   ].filter(Boolean) : []
 
   const docInfoStack = [
-    { text: 'Xidmət Aktı', font: 'PlayfairDisplay', fontSize: 22, bold: true, color: HEADER_BG, alignment: 'right', characterSpacing: 0.5 },
+    { text: 'Xidmət Aktı', font: titleFont, fontSize: 22, bold: true, color: HEADER_BG, alignment: 'right', characterSpacing: 0.5 },
     { text: `Tarix: ${fmtDate(order.created_at)}`, fontSize: 10, color: GRAY, alignment: 'right', margin: [0, 5, 0, 0] },
     {
       columns: [
@@ -467,7 +464,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
 }
 
 export async function printCustomerPDF(customer: CustomerDetail, business?: Business | null) {
-  await setupCustomFonts()
+  const titleFont = (await ensurePlayfair()) ? 'PlayfairDisplay' : 'Roboto'
   const orders = [...(customer.orders ?? [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   let logoDataUrl = ''
@@ -487,14 +484,14 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
 
   // ── Header ────────────────────────────────────────────────
   const bizStack = business ? [
-    { text: business.name, font: 'PlayfairDisplay', fontSize: 26, bold: true, color: DARK, characterSpacing: 0.5 },
+    { text: business.name, font: titleFont, fontSize: 26, bold: true, color: DARK, characterSpacing: 0.5 },
     { canvas: [{ type: 'rect', x: 0, y: 0, w: 42, h: 3, r: 1, color: BLUE }], margin: [0, 5, 0, 6] },
     business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 0, 0, 0] } : null,
     business.address ? { text: business.address, fontSize: 10, color: GRAY } : null,
   ].filter(Boolean) : []
 
   const docInfoStack = [
-    { text: 'Müştəri Hesabatı', font: 'PlayfairDisplay', fontSize: 22, bold: true, color: HEADER_BG, alignment: 'right', characterSpacing: 0.5 },
+    { text: 'Müştəri Hesabatı', font: titleFont, fontSize: 22, bold: true, color: HEADER_BG, alignment: 'right', characterSpacing: 0.5 },
     { text: `Tarix: ${fmtDate(new Date().toISOString())}`, fontSize: 10, color: GRAY, alignment: 'right', margin: [0, 5, 0, 0] },
   ]
 
@@ -518,12 +515,12 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
   // ── Customer info card ────────────────────────────────────
   content.push({ text: customer.full_name, fontSize: 20, bold: true, color: DARK })
   const metaParts = [
-    customer.phone ? `Number: ${customer.phone}` : null,
+    customer.phone ? `Tel: ${customer.phone}` : null,
     [customer.car_brand, customer.car_model, customer.car_year].filter(Boolean).join(' ')
-      ? `Car: ${[customer.car_brand, customer.car_model, customer.car_year].filter(Boolean).join(' ')}`
+      ? `Avtomobil: ${[customer.car_brand, customer.car_model, customer.car_year].filter(Boolean).join(' ')}`
       : null,
-    customer.car_plate ? `Plate number: ${customer.car_plate}` : null,
-    customer.vin_code ? `VIN code: ${customer.vin_code}` : null,
+    customer.car_plate ? `Nişan: ${customer.car_plate}` : null,
+    customer.vin_code ? `VIN: ${customer.vin_code}` : null,
   ].filter(Boolean)
   if (metaParts.length) content.push({ text: metaParts.join('   ·   '), fontSize: 10, color: GRAY, margin: [0, 4, 0, 12] })
 
@@ -574,10 +571,10 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
               { text: order.plate_number, fontSize: 14, bold: true, color: WHITE, characterSpacing: 1 },
               {
                 text: [
-                  `Car: ${[order.car_brand, order.car_model, order.car_year].filter(Boolean).join(' ')}`,
-                  order.mileage != null ? `Mileage: ${order.mileage.toLocaleString()} km` : '',
-                  `Plate number: ${order.plate_number}`,
-                  order.vin_code ? `VIN code: ${order.vin_code}` : '',
+                  `Avtomobil: ${[order.car_brand, order.car_model, order.car_year].filter(Boolean).join(' ')}`,
+                  order.mileage != null ? `Yürüş: ${order.mileage.toLocaleString()} km` : '',
+                  `Nişan: ${order.plate_number}`,
+                  order.vin_code ? `VIN: ${order.vin_code}` : '',
                 ].filter(Boolean).join(' · '),
                 fontSize: 10,
                 bold: true,

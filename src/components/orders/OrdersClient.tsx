@@ -6,7 +6,6 @@ import { getOrders, createOrder, uploadOrderImage } from '@/services/orders.serv
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts, createProduct, createSupplierDebt } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
-import { createFinanceRecord } from '@/services/finance.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import StatusBadge from './StatusBadge'
 import PlateInput from '@/components/ui/PlateInput'
@@ -83,6 +82,7 @@ function CreateOrderDrawer({
       getMechanics().then(r => setMechanics(r.data)).catch(() => {})
       getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
     }
+    if (!open) loadedRef.current = false
   }, [open])
 
   useEffect(() => {
@@ -221,10 +221,7 @@ function CreateOrderDrawer({
       .filter(p => p.productId)
       .map(p => ({ product: parseInt(p.productId), quantity: parseInt(p.qty) || 1 }))
     try {
-      // Create any new (non-warehouse) products first, then include their IDs
-      // Track which ones have a supplier so we can create debts after
       const supplierDebtsToCreate: { supplier_name: string; description: string; total_amount: number }[] = []
-      const expenseRecordIds: number[] = []
       for (const np of newProducts.filter(p => p.name.trim())) {
         const qty = parseInt(np.qty) || 1
         const purchasePrice = parseFloat(np.purchasePrice) || 0
@@ -236,9 +233,6 @@ function CreateOrderDrawer({
           is_warehouse: false,
         })
         filledProducts.push({ product: res.data.id, quantity: qty })
-        if (res.data.finance_record_id) {
-          expenseRecordIds.push(res.data.finance_record_id)
-        }
         if (np.supplierName.trim() && purchasePrice > 0) {
           supplierDebtsToCreate.push({
             supplier_name: np.supplierName.trim(),
@@ -263,7 +257,6 @@ function CreateOrderDrawer({
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
         notes: notes || undefined,
-        expense_record_ids: expenseRecordIds.length > 0 ? expenseRecordIds : undefined,
       })
       // Upload images sequentially
       for (const file of imageFiles) {
@@ -376,10 +369,6 @@ function CreateOrderDrawer({
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
                 <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">VIN kod</label>
-                <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="WBA3A5C50CF256985" maxLength={17} className="input font-mono text-sm" />
               </div>
             </div>
           </div>
@@ -677,6 +666,12 @@ function CreateOrderDrawer({
   )
 }
 
+function nextQuickLabel(): string {
+  const n = parseInt(localStorage.getItem('_qo_seq') ?? '0') + 1
+  localStorage.setItem('_qo_seq', String(n))
+  return `Sürətli sifariş ${n}`
+}
+
 function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
@@ -743,23 +738,19 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
     e.preventDefault()
     setError('')
     setLoading(true)
-    const today = new Date().toISOString().slice(0, 10)
     try {
-      await createFinanceRecord({
-        type: 'income',
-        amount: parsedPrice,
+      const mechId = selectedMechanicId ? parseInt(selectedMechanicId) : null
+      await createOrder({
+        plate_number: nextQuickLabel(),
         description: name.trim(),
-        date: today,
+        status: 'pending' as const,
+        services: [{
+          name: name.trim(),
+          price: parsedPrice,
+          mechanic: mechId,
+          mechanic_amount: (mechId && parsedMechanicAmt > 0) ? parsedMechanicAmt : null,
+        }],
       })
-      if (selectedMechanicId && parsedMechanicAmt > 0) {
-        const mech = mechanics.find(m => m.id === parseInt(selectedMechanicId))
-        await createFinanceRecord({
-          type: 'expense',
-          amount: parsedMechanicAmt,
-          description: `Usta payı: ${mech?.full_name || '—'} — ${name.trim()}`,
-          date: today,
-        })
-      }
       reset()
       onCreated()
       onClose()
@@ -776,7 +767,7 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Sürətli ödəniş</h2>
+          <h2 className="text-base font-semibold text-gray-900">Sürətli Sifariş</h2>
           <button onClick={handleClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

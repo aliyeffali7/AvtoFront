@@ -6,9 +6,11 @@ export interface Business {
   phone?: string
   address?: string
   logo?: string | null
+  owner_email?: string | null
   is_subscription_active?: boolean
-  trial_ends_at?: string
-  subscription_ends_at?: string
+  trial_ends_at?: string | null
+  subscription_ends_at?: string | null
+  created_at?: string
 }
 
 export interface User {
