@@ -4,9 +4,11 @@ import { Order, PaginatedResponse } from '@/types'
 export const getOrders = (params?: {
   page?: number
   status?: string
+  payment_status?: string
   date_from?: string
   date_to?: string
   search?: string
+  all?: string
 }) => api.get<PaginatedResponse<Order>>('/api/orders', { params })
 
 export const getOrder = (id: number) => api.get<Order>(`/api/orders/${id}`)

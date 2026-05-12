@@ -32,9 +32,12 @@ export default function DebtsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [ordersRes, debtsRes] = await Promise.all([getOrders(), getManualDebts()])
+      const [ordersRes, debtsRes] = await Promise.all([
+        getOrders({ status: 'done', payment_status: 'unpaid_or_partial', all: 'true' }),
+        getManualDebts(),
+      ])
       const all: Order[] = Array.isArray(ordersRes.data) ? ordersRes.data : (ordersRes.data as { results: Order[] }).results ?? []
-      setOrders(all.filter(o => o.status === 'done' && o.payment_status !== 'paid'))
+      setOrders(all)
       setManualDebts(debtsRes.data.filter(d => !d.is_paid))
     } finally {
       setLoading(false)
