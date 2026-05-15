@@ -9,7 +9,7 @@ import {
   uploadOrderImage, deleteOrderImage,
 } from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
-import { getProducts, createProduct, createSupplierDebt, updateProduct } from '@/services/warehouse.service'
+import { getProducts, createProduct, updateProduct } from '@/services/warehouse.service'
 import { getBusinessProfile } from '@/services/auth.service'
 import { getCustomers } from '@/services/customers.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
@@ -178,13 +178,11 @@ function EditOrderDrawer({
 
       const filledProducts = orderProducts.filter(p => p.productId).map(p => ({ product: parseInt(p.productId), quantity: parseInt(p.qty) || 1 }))
 
+      const newNonWarehouseProducts: Array<{ productId: number; qty: number; supplierName: string }> = []
       for (const np of newProducts.filter(p => p.name.trim())) {
         const qty = parseInt(np.qty) || 1
         const res = await createProduct({ name: np.name.trim(), purchase_price: parseFloat(np.purchasePrice) || 0, sell_price: parseFloat(np.sellPrice) || 0, stock_quantity: qty, is_warehouse: false })
-        filledProducts.push({ product: res.data.id, quantity: qty })
-        if (np.supplierName.trim() && parseFloat(np.purchasePrice) > 0) {
-          await createSupplierDebt({ supplier_name: np.supplierName.trim(), description: np.name.trim(), total_amount: (parseFloat(np.purchasePrice) || 0) * qty })
-        }
+        newNonWarehouseProducts.push({ productId: res.data.id, qty, supplierName: np.supplierName.trim() })
       }
 
       await updateOrder(order.id, {
@@ -204,6 +202,10 @@ function EditOrderDrawer({
         services: filledServices,
         products: filledProducts,
       })
+
+      for (const { productId, qty, supplierName } of newNonWarehouseProducts) {
+        await addProductToOrder(order.id, productId, qty, supplierName || undefined)
+      }
 
       for (const file of imageFiles) {
         try { await uploadOrderImage(order.id, file) } catch { /* ignore */ }
@@ -1399,10 +1401,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                         order_id: parseInt(id),
                         is_warehouse: false,
                       })
-                      await addProductToOrder(parseInt(id), res.data.id, qty2)
-                      if (newProdSupplier.trim() && purchase > 0) {
-                        await createSupplierDebt({ supplier_name: newProdSupplier.trim(), description: newProdName.trim(), total_amount: purchase * qty2 })
-                      }
+                      await addProductToOrder(parseInt(id), res.data.id, qty2, newProdSupplier.trim() || undefined)
                       setNewProdName(''); setNewProdPurchase(''); setNewProdSell(''); setNewProdQty('1'); setNewProdSupplier('')
                       setAddProductOpen(false)
                       load()

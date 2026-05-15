@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Zap, ChevronRight } from 'lucide-react'
 import { Order, Mechanic, OrderService, Product, Customer } from '@/types'
-import { getOrders, createOrder, uploadOrderImage } from '@/services/orders.service'
+import { getOrders, createOrder, uploadOrderImage, addProductToOrder } from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
-import { getProducts, createProduct, createSupplierDebt } from '@/services/warehouse.service'
+import { getProducts, createProduct } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import StatusBadge from './StatusBadge'
@@ -221,7 +221,7 @@ function CreateOrderDrawer({
       .filter(p => p.productId)
       .map(p => ({ product: parseInt(p.productId), quantity: parseInt(p.qty) || 1 }))
     try {
-      const supplierDebtsToCreate: { supplier_name: string; description: string; total_amount: number }[] = []
+      const newNonWarehouseProducts: Array<{ productId: number; qty: number; supplierName: string }> = []
       for (const np of newProducts.filter(p => p.name.trim())) {
         const qty = parseInt(np.qty) || 1
         const purchasePrice = parseFloat(np.purchasePrice) || 0
@@ -232,14 +232,7 @@ function CreateOrderDrawer({
           stock_quantity: qty,
           is_warehouse: false,
         })
-        filledProducts.push({ product: res.data.id, quantity: qty })
-        if (np.supplierName.trim() && purchasePrice > 0) {
-          supplierDebtsToCreate.push({
-            supplier_name: np.supplierName.trim(),
-            description: np.name.trim(),
-            total_amount: purchasePrice * qty,
-          })
-        }
+        newNonWarehouseProducts.push({ productId: res.data.id, qty, supplierName: np.supplierName.trim() })
       }
       const orderRes = await createOrder({
         plate_number: plate,
@@ -258,13 +251,13 @@ function CreateOrderDrawer({
         customer_phone: customerPhone || undefined,
         notes: notes || undefined,
       })
+      // Add non-warehouse products via the dedicated endpoint so backend creates expense or debt
+      for (const { productId, qty, supplierName } of newNonWarehouseProducts) {
+        await addProductToOrder(orderRes.data.id, productId, qty, supplierName || undefined)
+      }
       // Upload images sequentially
       for (const file of imageFiles) {
         try { await uploadOrderImage(orderRes.data.id, file) } catch { /* ignore per-image errors */ }
-      }
-      // Create supplier debts for credit purchases
-      for (const debt of supplierDebtsToCreate) {
-        await createSupplierDebt(debt)
       }
       reset()
       onCreated()

@@ -33,8 +33,8 @@ export const changeOrderStatus = (
 export const recordPayment = (orderId: number, paid_amount: number) =>
   api.post<Order>(`/api/orders/${orderId}/payment`, { paid_amount })
 
-export const addProductToOrder = (orderId: number, productId: number, quantity: number) =>
-  api.post<Order>(`/api/orders/${orderId}/products`, { product: productId, quantity })
+export const addProductToOrder = (orderId: number, productId: number, quantity: number, supplier_name?: string) =>
+  api.post<Order>(`/api/orders/${orderId}/products`, { product: productId, quantity, ...(supplier_name ? { supplier_name } : {}) })
 
 export const removeProductFromOrder = (orderId: number, orderProductId: number) =>
   api.delete<Order>(`/api/orders/${orderId}/products/${orderProductId}`)
