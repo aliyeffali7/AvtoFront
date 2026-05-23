@@ -127,11 +127,13 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   const titleFont = (await ensurePlayfair()) ? 'PlayfairDisplay' : 'Roboto'
   const services      = order.services  ?? []
   const products      = order.products  ?? []
-  const servicesTotal = services.reduce((s, t) => s + parseFloat(String(t.price)), 0)
-  const productsTotal = products.reduce((s, p) => s + p.sell_price * p.quantity, 0)
-  const grandTotal    = servicesTotal + productsTotal
-  const paidAmount    = Number(order.paid_amount ?? 0)
-  const debt          = grandTotal - paidAmount
+  const servicesTotal  = services.reduce((s, t) => s + parseFloat(String(t.price)), 0)
+  const productsTotal  = products.reduce((s, p) => s + p.sell_price * p.quantity, 0)
+  const grandTotal     = servicesTotal + productsTotal
+  const discountAmount = Number(order.discount_amount ?? 0)
+  const effectiveTotal = grandTotal - discountAmount
+  const paidAmount     = Number(order.paid_amount ?? 0)
+  const debt           = effectiveTotal - paidAmount
   const customerName  = [order.customer_name, order.customer_surname].filter(Boolean).join(' ')
 
   const statusText  = order.status === 'done' ? 'Tamamlandı' : order.status === 'in_progress' ? 'İcrada' : 'Gözləyir'
@@ -382,9 +384,13 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     { text: 'Parçalar cəmi', fontSize: 10, color: GRAY, border: [false,false,false,false], margin: [0,3,0,3], alignment: 'right' },
     { text: fmt(productsTotal), fontSize: 10, color: GRAY, border: [false,false,false,false], margin: [0,3,0,3], alignment: 'right' },
   ])
+  if (discountAmount > 0) totalRows.push([
+    { text: 'Endirim', fontSize: 10, color: RED, border: [false,false,false,false], margin: [0,3,0,3], alignment: 'right' },
+    { text: `-${fmt(discountAmount)}`, fontSize: 10, color: RED, border: [false,false,false,false], margin: [0,3,0,3], alignment: 'right' },
+  ])
   totalRows.push([
     { text: 'ÜMUMİ MƏBLƏĞ', fontSize: 13, bold: true, color: DARK, border: [false,true,false,false], borderColor: ['','',BORDER,''], margin: [0,8,0,6], alignment: 'right' },
-    { text: fmt(grandTotal), fontSize: 13, bold: true, color: DARK, border: [false,true,false,false], borderColor: ['','',BORDER,''], margin: [0,8,0,6], alignment: 'right' },
+    { text: fmt(effectiveTotal), fontSize: 13, bold: true, color: DARK, border: [false,true,false,false], borderColor: ['','',BORDER,''], margin: [0,8,0,6], alignment: 'right' },
   ])
 
   content.push({
@@ -549,10 +555,12 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
     const order = orders[i]
     const services      = order.services  ?? []
     const products      = order.products  ?? []
-    const servicesTotal = services.reduce((s, t) => s + parseFloat(String(t.price)), 0)
-    const productsTotal = products.reduce((s, p) => s + p.sell_price * p.quantity, 0)
-    const orderTotal    = servicesTotal + productsTotal
-    grandTotal += orderTotal
+    const servicesTotal  = services.reduce((s, t) => s + parseFloat(String(t.price)), 0)
+    const productsTotal  = products.reduce((s, p) => s + p.sell_price * p.quantity, 0)
+    const orderTotal     = servicesTotal + productsTotal
+    const discountAmount = Number(order.discount_amount ?? 0)
+    const effectiveTotal = orderTotal - discountAmount
+    grandTotal += effectiveTotal
 
     const statusText  = order.status === 'done' ? 'Tamamlandı' : order.status === 'in_progress' ? 'İcrada' : 'Gözləyir'
     const statusColor = order.status === 'done' ? GREEN : order.status === 'in_progress' ? BLUE : AMBER
@@ -643,7 +651,7 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
 
     // Order total + payment
     const paidAmount = Number(order.paid_amount ?? 0)
-    const debt = orderTotal - paidAmount
+    const debt = effectiveTotal - paidAmount
     const paymentColor = order.payment_status === 'paid' ? GREEN : order.payment_status === 'partial' ? AMBER : RED
     const paymentBg    = order.payment_status === 'paid' ? GREEN_BG : order.payment_status === 'partial' ? AMBER_BG : RED_BG
     const paymentText  = order.payment_status === 'paid' ? 'Tam ödənilib' : order.payment_status === 'partial' ? `Qismən · borc: ${fmt(debt)}` : 'Ödənilməyib'
@@ -653,8 +661,8 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
         widths: ['*', 'auto', 'auto'],
         body: [[
           { text: paymentText, fontSize: 9, bold: true, color: paymentColor, fillColor: paymentBg, border: [false,false,false,false], margin: [10, 7, 10, 7] },
-          { text: 'Cəmi:', fontSize: 10, color: GRAY, fillColor: LIGHT, border: [false,false,false,false], alignment: 'right', margin: [10, 7, 6, 7] },
-          { text: fmt(orderTotal), fontSize: 11, bold: true, color: DARK, fillColor: LIGHT, border: [false,false,false,false], alignment: 'right', margin: [0, 7, 10, 7] },
+          { text: discountAmount > 0 ? `Endirim: -${fmt(discountAmount)}  ·  Cəmi:` : 'Cəmi:', fontSize: 10, color: GRAY, fillColor: LIGHT, border: [false,false,false,false], alignment: 'right', margin: [10, 7, 6, 7] },
+          { text: fmt(effectiveTotal), fontSize: 11, bold: true, color: DARK, fillColor: LIGHT, border: [false,false,false,false], alignment: 'right', margin: [0, 7, 10, 7] },
         ]],
       },
       layout: 'noBorders',
