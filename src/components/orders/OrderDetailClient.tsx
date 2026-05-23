@@ -1571,11 +1571,14 @@ export default function OrderDetailClient({ id }: { id: string }) {
           <div className="bg-blue-600 rounded-2xl px-5 py-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-blue-200 uppercase tracking-wide">Ümumi məbləğ</p>
+              {Number(order.discount_amount ?? 0) > 0 && (
+                <p className="text-xs text-blue-200 mt-0.5 line-through">{formatCurrency(grandTotal)}</p>
+              )}
               {order.payment_status === 'partial' && (
                 <p className="text-xs text-blue-200 mt-0.5">Ödənilən: {formatCurrency(Number(order.paid_amount))} · Borc: {formatCurrency(debt)}</p>
               )}
             </div>
-            <span className="text-2xl font-bold text-white">{formatCurrency(grandTotal)}</span>
+            <span className="text-2xl font-bold text-white">{formatCurrency(effectiveOrderTotal)}</span>
           </div>
 
         </div>
