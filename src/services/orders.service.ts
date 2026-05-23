@@ -30,8 +30,11 @@ export const changeOrderStatus = (
   status: 'pending' | 'in_progress' | 'done'
 ) => api.patch<Order>(`/api/orders/${orderId}`, { status })
 
-export const recordPayment = (orderId: number, paid_amount: number) =>
-  api.post<Order>(`/api/orders/${orderId}/payment`, { paid_amount })
+export const recordPayment = (orderId: number, paid_amount: number, discount_amount?: number) =>
+  api.post<Order>(`/api/orders/${orderId}/payment`, {
+    paid_amount,
+    ...(discount_amount !== undefined && discount_amount > 0 ? { discount_amount } : {}),
+  })
 
 export const addProductToOrder = (orderId: number, productId: number, quantity: number, supplier_name?: string) =>
   api.post<Order>(`/api/orders/${orderId}/products`, { product: productId, quantity, ...(supplier_name ? { supplier_name } : {}) })

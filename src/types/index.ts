@@ -45,6 +45,7 @@ export interface Order {
   status: 'pending' | 'in_progress' | 'done'
   payment_status: 'unpaid' | 'partial' | 'paid'
   paid_amount: number
+  discount_amount?: number
   products: OrderProduct[]
   services: OrderService[]
   images?: OrderImage[]

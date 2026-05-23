@@ -522,6 +522,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [paidInput, setPaidInput] = useState('')
   const [recordingPayment, setRecordingPayment] = useState(false)
   const [paymentError, setPaymentError] = useState('')
+  const [discountEnabled, setDiscountEnabled] = useState(false)
+  const [discountPrice, setDiscountPrice] = useState('')
 
   // Products
   const [addProductOpen, setAddProductOpen] = useState(false)
@@ -648,6 +650,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
         setPaymentTotal(total)
         setPaidInput(total.toFixed(2))
         setPaymentError('')
+        setDiscountEnabled(false)
+        setDiscountPrice(total.toFixed(2))
         setPaymentDialogOpen(true)
       } finally {
         setChangingStatus(false)
@@ -666,9 +670,11 @@ export default function OrderDetailClient({ id }: { id: string }) {
   async function handleRecordPayment(e: React.FormEvent) {
     e.preventDefault()
     setPaymentError('')
+    const effectiveTotal = discountEnabled ? (parseFloat(discountPrice) || 0) : paymentTotal
+    const discountAmt = discountEnabled ? paymentTotal - effectiveTotal : 0
     setRecordingPayment(true)
     try {
-      await recordPayment(parseInt(id), parseFloat(paidInput) || 0)
+      await recordPayment(parseInt(id), parseFloat(paidInput) || 0, discountAmt > 0 ? discountAmt : undefined)
       setPaymentDialogOpen(false)
       load()
     } catch (err) {
@@ -857,7 +863,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const orderProducts = order.products ?? []
   const productsTotal = orderProducts.reduce((s, p) => s + p.sell_price * p.quantity, 0)
   const grandTotal = servicesTotal + productsTotal
-  const debt = grandTotal - Number(order.paid_amount ?? 0)
+  const effectiveOrderTotal = grandTotal - Number(order.discount_amount ?? 0)
+  const debt = effectiveOrderTotal - Number(order.paid_amount ?? 0)
 
   const paymentBadge = {
     unpaid:  { label: 'Ödənilməyib', cls: 'bg-red-100 text-red-700' },
@@ -1243,15 +1250,18 @@ export default function OrderDetailClient({ id }: { id: string }) {
                     : 'Ödəniş qeyd edilməyib'}
                 </p>
                 <p className={`text-xs mt-0.5 ${order.payment_status === 'partial' ? 'text-amber-600' : 'text-red-600'}`}>
-                  Ümumi: {formatCurrency(grandTotal)}
+                  Ümumi: {formatCurrency(effectiveOrderTotal)}
+                  {order.discount_amount ? ` (endirim: -${formatCurrency(Number(order.discount_amount))})` : ''}
                   {order.payment_status === 'partial' && ` · Ödənilən: ${formatCurrency(Number(order.paid_amount))}`}
                 </p>
               </div>
               <button
                 onClick={() => {
-                  setPaymentTotal(grandTotal)
-                  setPaidInput(grandTotal.toFixed(2))
+                  setPaymentTotal(debt)
+                  setPaidInput(debt.toFixed(2))
                   setPaymentError('')
+                  setDiscountEnabled(false)
+                  setDiscountPrice(debt.toFixed(2))
                   setPaymentDialogOpen(true)
                 }}
                 className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl min-h-[44px] transition-colors"
@@ -1268,7 +1278,10 @@ export default function OrderDetailClient({ id }: { id: string }) {
               </svg>
               <div>
                 <p className="text-sm font-semibold text-green-800">Tam ödənilib</p>
-                <p className="text-xs text-green-600 mt-0.5">{formatCurrency(Number(order.paid_amount))}</p>
+                <p className="text-xs text-green-600 mt-0.5">
+                  {formatCurrency(Number(order.paid_amount))}
+                  {order.discount_amount ? ` · endirim: -${formatCurrency(Number(order.discount_amount))}` : ''}
+                </p>
               </div>
             </div>
           )}
@@ -1579,63 +1592,124 @@ export default function OrderDetailClient({ id }: { id: string }) {
             <p className="text-sm text-gray-500 mt-0.5">Sifariş tamamlandı. Ödəniş vəziyyətini qeyd edin.</p>
           </div>
 
-          <form onSubmit={handleRecordPayment} className="px-6 py-5 flex flex-col gap-4">
-            <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
-              <span className="text-sm text-gray-500">Ümumi məbləğ</span>
-              <span className="text-base font-bold text-gray-900">{formatCurrency(paymentTotal)}</span>
-            </div>
+          {(() => {
+            const effectiveTotal = discountEnabled ? Math.max(0, parseFloat(discountPrice) || 0) : paymentTotal
+            const discountAmt = paymentTotal - effectiveTotal
+            const paid = parseFloat(paidInput) || 0
+            return (
+              <form onSubmit={handleRecordPayment} className="px-6 py-5 flex flex-col gap-4">
+                {/* Original total */}
+                <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Ümumi məbləğ</span>
+                  <span className={`text-base font-bold ${discountEnabled && discountAmt > 0 ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                    {formatCurrency(paymentTotal)}
+                  </span>
+                </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Ödənilən məbləğ</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  max={paymentTotal}
-                  step="0.01"
-                  value={paidInput}
-                  onChange={e => setPaidInput(e.target.value)}
-                  className="input pr-8 text-lg font-semibold"
-                  autoFocus
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">₼</span>
-              </div>
-              <div className="flex gap-2 mt-1">
-                <button type="button" onClick={() => setPaidInput('0')} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">Borc</button>
-                <button type="button" onClick={() => setPaidInput((paymentTotal / 2).toFixed(2))} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">Yarısı</button>
-                <button type="button" onClick={() => setPaidInput(paymentTotal.toFixed(2))} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">Tam</button>
-              </div>
-            </div>
+                {/* Discount toggle */}
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={discountEnabled}
+                      onChange={e => {
+                        setDiscountEnabled(e.target.checked)
+                        if (e.target.checked) {
+                          setPaidInput(discountPrice)
+                        } else {
+                          setPaidInput(paymentTotal.toFixed(2))
+                        }
+                      }}
+                    />
+                    <div className={`w-10 h-6 rounded-full transition-colors ${discountEnabled ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discountEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Endirimli qiymət</span>
+                </label>
 
-            {parseFloat(paidInput) < paymentTotal && parseFloat(paidInput) >= 0 && (
-              <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                <span className="text-sm text-amber-700 font-medium">Borc qalır</span>
-                <span className="text-base font-bold text-amber-700">
-                  {formatCurrency(paymentTotal - (parseFloat(paidInput) || 0))}
-                </span>
-              </div>
-            )}
+                {/* Discount price input */}
+                {discountEnabled && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-gray-700">Yeni qiymət (endirimli)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0.01"
+                        max={paymentTotal - 0.01}
+                        step="0.01"
+                        value={discountPrice}
+                        onChange={e => {
+                          setDiscountPrice(e.target.value)
+                          setPaidInput(e.target.value)
+                        }}
+                        className="input pr-8 text-lg font-semibold"
+                        autoFocus
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">₼</span>
+                    </div>
+                    {discountAmt > 0 && (
+                      <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mt-1">
+                        <span className="text-sm text-blue-700 font-medium">Endirim məbləği</span>
+                        <span className="text-base font-bold text-blue-700">-{formatCurrency(discountAmt)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-            {parseFloat(paidInput) >= paymentTotal && (
-              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                <svg className="w-4 h-4 text-green-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span className="text-sm text-green-700 font-medium">Tam ödənilib</span>
-              </div>
-            )}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">Ödənilən məbləğ</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max={effectiveTotal}
+                      step="0.01"
+                      value={paidInput}
+                      onChange={e => setPaidInput(e.target.value)}
+                      className="input pr-8 text-lg font-semibold"
+                      autoFocus={!discountEnabled}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">₼</span>
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    <button type="button" onClick={() => setPaidInput('0')} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">Borc</button>
+                    <button type="button" onClick={() => setPaidInput((effectiveTotal / 2).toFixed(2))} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">Yarısı</button>
+                    <button type="button" onClick={() => setPaidInput(effectiveTotal.toFixed(2))} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">Tam</button>
+                  </div>
+                </div>
 
-            {paymentError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{paymentError}</p>}
+                {paid < effectiveTotal && paid >= 0 && (
+                  <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                    <span className="text-sm text-amber-700 font-medium">Borc qalır</span>
+                    <span className="text-base font-bold text-amber-700">
+                      {formatCurrency(effectiveTotal - paid)}
+                    </span>
+                  </div>
+                )}
 
-            <div className="flex gap-2 pt-1">
-              <button type="submit" disabled={recordingPayment} className="btn-primary flex-1">
-                {recordingPayment ? 'Saxlanılır...' : 'Qeyd et'}
-              </button>
-              <button type="button" onClick={() => setPaymentDialogOpen(false)} className="btn-ghost px-4">
-                Sonra
-              </button>
-            </div>
-          </form>
+                {paid >= effectiveTotal && (
+                  <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                    <svg className="w-4 h-4 text-green-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm text-green-700 font-medium">Tam ödənilib</span>
+                  </div>
+                )}
+
+                {paymentError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{paymentError}</p>}
+
+                <div className="flex gap-2 pt-1">
+                  <button type="submit" disabled={recordingPayment} className="btn-primary flex-1">
+                    {recordingPayment ? 'Saxlanılır...' : 'Qeyd et'}
+                  </button>
+                  <button type="button" onClick={() => setPaymentDialogOpen(false)} className="btn-ghost px-4">
+                    Sonra
+                  </button>
+                </div>
+              </form>
+            )
+          })()}
         </div>
       </div>
     )}
