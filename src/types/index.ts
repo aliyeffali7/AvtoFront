@@ -6,6 +6,7 @@ export interface Business {
   phone?: string
   address?: string
   logo?: string | null
+  guarantee_text?: string
   owner_email?: string | null
   is_subscription_active?: boolean
   trial_ends_at?: string | null
@@ -54,6 +55,7 @@ export interface Order {
   customer_surname?: string
   customer_phone?: string
   notes?: string
+  has_guarantee?: boolean
   total?: number
   created_at: string
 }

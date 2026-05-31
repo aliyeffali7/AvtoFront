@@ -68,6 +68,7 @@ function CreateOrderDrawer({
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false)
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [notes, setNotes] = useState('')
+  const [hasGuarantee, setHasGuarantee] = useState(false)
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -133,6 +134,7 @@ function CreateOrderDrawer({
     setCustomerName(''); setCustomerPhone(''); setSelectedCustomerId(null)
     setCustomerSearch(''); setCustomerResults([]); setShowCustomerDropdown(false)
     setNotes('')
+    setHasGuarantee(false)
     setImageFiles([]); setImagePreviews([]); setError('')
   }
 
@@ -250,6 +252,7 @@ function CreateOrderDrawer({
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
         notes: notes || undefined,
+        has_guarantee: hasGuarantee,
       })
       // Add non-warehouse products via the dedicated endpoint so backend creates expense or debt
       for (const { productId, qty, supplierName } of newNonWarehouseProducts) {
@@ -644,6 +647,17 @@ function CreateOrderDrawer({
               className="input resize-none"
             />
           </div>
+
+          {/* Guarantee */}
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={hasGuarantee}
+              onChange={e => setHasGuarantee(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Bu sifarişə zəmanət verilib</span>
+          </label>
 
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 

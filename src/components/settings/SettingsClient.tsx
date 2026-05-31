@@ -13,6 +13,7 @@ export default function SettingsClient() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
+  const [guaranteeText, setGuaranteeText] = useState('')
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -24,6 +25,7 @@ export default function SettingsClient() {
         setName(b.name ?? '')
         setPhone(b.phone ?? '')
         setAddress(b.address ?? '')
+        setGuaranteeText(b.guarantee_text ?? '')
         if (b.logo) setLogoPreview(b.logo.startsWith('http') ? b.logo : (import.meta.env.VITE_API_URL ?? '') + b.logo)
       })
       .catch(() => setError('Məlumatlar yüklənmədi'))
@@ -47,6 +49,7 @@ export default function SettingsClient() {
       form.append('name', name.trim())
       form.append('phone', phone.trim())
       form.append('address', address.trim())
+      form.append('guarantee_text', guaranteeText.trim())
       if (logoFile) form.append('logo', logoFile)
       await updateBusinessProfile(form)
       setSuccess(true)
@@ -140,6 +143,19 @@ export default function SettingsClient() {
             onChange={e => setAddress(e.target.value)}
             placeholder="Məs: Binəqədi Şossesi 31"
             className="input"
+          />
+        </div>
+
+        {/* Guarantee text */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-gray-700">Zəmanət mətni</label>
+          <p className="text-xs text-gray-400">Sifarişdə "Zəmanət var" işarələndikdə bu mətn PDF-ə əlavə ediləcək.</p>
+          <textarea
+            value={guaranteeText}
+            onChange={e => setGuaranteeText(e.target.value)}
+            placeholder="Məs: İşimizə 3 ay zəmanət veririk. Eyni nasazlıq baş verərsə pulsuz düzəldilir."
+            rows={3}
+            className="input resize-none"
           />
         </div>
 

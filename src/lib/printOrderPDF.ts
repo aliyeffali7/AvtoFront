@@ -123,6 +123,9 @@ function sectionTitle(text: string) {
   }
 }
 
+const GREEN_DARK = '#15803d'
+const GREEN_MID  = '#bbf7d0'
+
 export async function printOrderPDF(order: Order, business?: Business | null) {
   const titleFont = (await ensurePlayfair()) ? 'PlayfairDisplay' : 'Roboto'
   const services      = order.services  ?? []
@@ -425,6 +428,34 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     ],
     margin: [0, 0, 0, 24],
   })
+
+  // ── Guarantee block ───────────────────────────────────────
+  if (order.has_guarantee && business?.guarantee_text) {
+    content.push({
+      table: {
+        widths: [8, '*'],
+        body: [[
+          {
+            canvas: [{ type: 'rect', x: 2, y: 0, w: 4, h: 48, r: 2, color: GREEN_DARK }],
+            fillColor: GREEN_MID,
+            border: [false, false, false, false],
+            margin: [0, 0, 0, 0],
+          },
+          {
+            stack: [
+              { text: 'ZƏMANƏT', fontSize: 8, bold: true, color: GREEN_DARK, characterSpacing: 1, margin: [0, 0, 0, 4] },
+              { text: business.guarantee_text, fontSize: 10, color: GREEN_DARK },
+            ],
+            fillColor: GREEN_MID,
+            border: [false, false, false, false],
+            margin: [10, 12, 12, 12],
+          },
+        ]],
+      },
+      layout: 'noBorders',
+      margin: [0, 0, 0, 20],
+    })
+  }
 
   // ── Signatures ─────────────────────────────────────────────
   content.push({

@@ -45,6 +45,7 @@ function EditOrderDrawer({
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false)
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [notes, setNotes] = useState('')
+  const [hasGuarantee, setHasGuarantee] = useState(false)
   const [services, setServices] = useState<{ name: string; price: string; mechanicId: string; mechanicAmount: string }[]>([])
   const [orderProducts, setOrderProducts] = useState<{ productId: string; qty: string }[]>([])
   const [newProducts, setNewProducts] = useState<{ name: string; purchasePrice: string; sellPrice: string; qty: string; supplierName: string }[]>([])
@@ -72,6 +73,7 @@ function EditOrderDrawer({
       setCustomerSearch(order.customer_name ?? '')
       setSelectedCustomerId(order.customer ?? null)
       setNotes(order.notes ?? '')
+      setHasGuarantee(order.has_guarantee ?? false)
       setServices((order.services ?? []).map((s: OrderService) => ({
         name: s.name,
         price: String(s.price),
@@ -199,6 +201,7 @@ function EditOrderDrawer({
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
         notes: notes || undefined,
+        has_guarantee: hasGuarantee,
         services: filledServices,
         products: filledProducts,
       })
@@ -491,6 +494,17 @@ function EditOrderDrawer({
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Əlavə qeydlər</p>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Məs. Maşına çirkli paltarla oturulmasın..." className="input resize-none" />
           </div>
+
+          {/* Guarantee */}
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={hasGuarantee}
+              onChange={e => setHasGuarantee(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Bu sifarişə zəmanət verilib</span>
+          </label>
 
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
@@ -901,6 +915,25 @@ export default function OrderDetailClient({ id }: { id: string }) {
                       {paymentBadge.label}
                     </span>
                   )}
+                  <button
+                    onClick={async () => {
+                      try {
+                        await updateOrder(parseInt(id), { has_guarantee: !order.has_guarantee })
+                        load()
+                      } catch { /* ignore */ }
+                    }}
+                    title={order.has_guarantee ? 'Zəmanəti ləğv et' : 'Zəmanət ver'}
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors ${
+                      order.has_guarantee
+                        ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
+                        : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                    </svg>
+                    {order.has_guarantee ? 'Zəmanətli' : 'Zəmanətsiz'}
+                  </button>
                 </div>
                 <p className="text-gray-600">{order.car_brand} {order.car_model}</p>
                 <p className="text-xs text-gray-400 mt-1">
