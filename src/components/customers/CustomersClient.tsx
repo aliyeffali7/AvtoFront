@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Customer } from '@/types'
 import { getCustomers, createCustomer } from '@/services/customers.service'
-import { formatCurrency, mapApiError } from '@/lib/utils'
+import { formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
 import PlateInput from '@/components/ui/PlateInput'
 
 function formatLastVisit(iso: string | null): string {
@@ -194,7 +194,7 @@ export default function CustomersClient() {
           </svg>
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => setSearch(autoFormatSearch(e.target.value))}
             placeholder="Ad, telefon və ya nişan ilə axtar..."
             className="input pl-10"
           />

@@ -12,7 +12,8 @@ import { getMechanics } from '@/services/mechanics.service'
 import { getProducts, createProduct, updateProduct } from '@/services/warehouse.service'
 import { getBusinessProfile } from '@/services/auth.service'
 import { getCustomers } from '@/services/customers.service'
-import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
+import { getSupplierNames } from '@/services/warehouse.service'
+import { formatDate, formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
 import { printOrderPDF } from '@/lib/printOrderPDF'
 import StatusBadge from './StatusBadge'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -33,8 +34,9 @@ function EditOrderDrawer({
   const [carYear, setCarYear] = useState('')
   const [vinCode, setVinCode] = useState('')
   const [mileage, setMileage] = useState('')
+  const [mileageUnit, setMileageUnit] = useState<'km' | 'mil'>('km')
+  const [fuelType, setFuelType] = useState('')
   const [description, setDescription] = useState('')
-  const [days, setDays] = useState('')
   const [mechanic, setMechanic] = useState('')
   const [mechanics, setMechanics] = useState<Mechanic[]>([])
   const [customerName, setCustomerName] = useState('')
@@ -52,10 +54,13 @@ function EditOrderDrawer({
   const [warehouseItems, setWarehouseItems] = useState<Product[]>([])
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [supplierNames, setSupplierNames] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const customerSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const customerAbortRef = useRef<AbortController | null>(null)
+  const skipSearchRef = useRef(false)
 
   useEffect(() => {
     if (order) {
@@ -65,8 +70,9 @@ function EditOrderDrawer({
       setCarYear(order.car_year ?? '')
       setVinCode(order.vin_code ?? '')
       setMileage(order.mileage != null ? String(order.mileage) : '')
+      setMileageUnit(order.mileage_unit ?? 'km')
+      setFuelType(order.fuel_type ?? '')
       setDescription(order.description)
-      setDays(String(order.estimated_days))
       setMechanic(order.mechanic ? String(order.mechanic) : '')
       setCustomerName(order.customer_name ?? '')
       setCustomerPhone(order.customer_phone ?? '')
@@ -90,20 +96,28 @@ function EditOrderDrawer({
       setError('')
       getMechanics().then(r => setMechanics(r.data)).catch(() => {})
       getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
+      getSupplierNames().then(r => setSupplierNames(r.data)).catch(() => {})
     }
   }, [order])
 
   useEffect(() => {
+    if (skipSearchRef.current) { skipSearchRef.current = false; return }
     if (!customerSearch.trim()) { setCustomerResults([]); setShowCustomerDropdown(false); return }
     if (customerSearchRef.current) clearTimeout(customerSearchRef.current)
+    customerAbortRef.current?.abort()
+    const controller = new AbortController()
+    customerAbortRef.current = controller
     customerSearchRef.current = setTimeout(() => {
       setCustomerSearchLoading(true)
       getCustomers({ search: customerSearch, page: 1 })
-        .then(r => { setCustomerResults(r.data.results); setShowCustomerDropdown(true) })
+        .then(r => { if (!controller.signal.aborted) { setCustomerResults(r.data.results); setShowCustomerDropdown(true) } })
         .catch(() => {})
-        .finally(() => setCustomerSearchLoading(false))
+        .finally(() => { if (!controller.signal.aborted) setCustomerSearchLoading(false) })
     }, 300)
-    return () => { if (customerSearchRef.current) clearTimeout(customerSearchRef.current) }
+    return () => {
+      clearTimeout(customerSearchRef.current ?? undefined)
+      controller.abort()
+    }
   }, [customerSearch])
 
   function selectCustomer(c: Customer) {
@@ -115,6 +129,7 @@ function EditOrderDrawer({
     if (c.car_model) setModel(c.car_model)
     if (c.car_year) setCarYear(c.car_year)
     if (c.vin_code) setVinCode(c.vin_code)
+    skipSearchRef.current = true
     setCustomerSearch(c.full_name)
     setShowCustomerDropdown(false)
     setCustomerResults([])
@@ -194,8 +209,9 @@ function EditOrderDrawer({
         car_year: carYear || undefined,
         vin_code: vinCode || undefined,
         mileage: mileage ? parseInt(mileage) : undefined,
+        mileage_unit: mileageUnit,
+        fuel_type: fuelType || undefined,
         description: description || undefined,
-        estimated_days: days ? parseInt(days) : undefined,
         mechanic: mechanic ? parseInt(mechanic) : null,
         customer: selectedCustomerId ?? undefined,
         customer_name: customerName || undefined,
@@ -249,7 +265,7 @@ function EditOrderDrawer({
                 <div className="relative">
                   <input
                     value={customerSearch}
-                    onChange={e => { setCustomerSearch(e.target.value); setSelectedCustomerId(null) }}
+                    onChange={e => { setCustomerSearch(autoFormatSearch(e.target.value)); setSelectedCustomerId(null) }}
                     placeholder="Ad, telefon və ya nişan..."
                     className="input pr-8"
                     autoComplete="off"
@@ -329,16 +345,30 @@ function EditOrderDrawer({
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
                   <label className="text-sm font-medium text-gray-700">Yürüş</label>
-                  <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="75000" className="input" />
-                </div>
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Müddət (gün)</label>
-                  <input value={days} onChange={e => setDays(e.target.value)} required type="number" min="1" placeholder="3" className="input" />
+                  <div className="flex">
+                    <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="75000" className="input rounded-r-none flex-1" />
+                    <div className="flex border border-l-0 border-gray-300 rounded-r-xl overflow-hidden">
+                      <button type="button" onClick={() => setMileageUnit('km')} className={`px-2.5 text-xs font-semibold transition-colors ${mileageUnit === 'km' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>km</button>
+                      <button type="button" onClick={() => setMileageUnit('mil')} className={`px-2.5 text-xs font-semibold border-l border-gray-300 transition-colors ${mileageUnit === 'mil' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>mil</button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Yanacaq növü</label>
+                <select value={fuelType} onChange={e => setFuelType(e.target.value)} className="input">
+                  <option value="">Seçilməyib</option>
+                  <option value="benzin">Benzin</option>
+                  <option value="dizel">Dizel</option>
+                  <option value="hybrid">Hibrid</option>
+                  <option value="plug_in_hybrid">Plug-in Hibrid</option>
+                  <option value="lpg">LPG</option>
+                  <option value="electric">Tam elektrik</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Tapşırıq</label>
-                <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={2} placeholder="Görüləcək iş haqqında məlumat..." className="input resize-none" />
+                <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Görüləcək iş haqqında məlumat..." className="input resize-none" />
               </div>
             </div>
           </div>
@@ -431,7 +461,10 @@ function EditOrderDrawer({
                         <button type="button" onClick={() => removeNewProduct(i)} className="p-1 text-gray-300 hover:text-red-400 shrink-0"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
                       </div>
                     </div>
-                    <input value={p.supplierName} onChange={e => updateNewProduct(i, 'supplierName', e.target.value)} placeholder="Kreditor adı (borc varsa)" className="input text-sm text-orange-800 placeholder-orange-300 bg-white border-orange-200 focus:ring-orange-300" />
+                    <input list="edit-drawer-supplier-names" value={p.supplierName} onChange={e => updateNewProduct(i, 'supplierName', e.target.value)} placeholder="Kreditor adı (borc varsa)" className="input text-sm text-orange-800 placeholder-orange-300 bg-white border-orange-200 focus:ring-orange-300" />
+                    <datalist id="edit-drawer-supplier-names">
+                      {supplierNames.map(n => <option key={n} value={n} />)}
+                    </datalist>
                   </div>
                 ))}
               </div>
@@ -937,8 +970,8 @@ export default function OrderDetailClient({ id }: { id: string }) {
                 </div>
                 <p className="text-gray-600">{order.car_brand} {order.car_model}</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {formatDate(order.created_at)} · {order.estimated_days} gün
-                  {order.mileage != null && <> · {order.mileage.toLocaleString()} km</>}
+                  {formatDate(order.created_at)}
+                  {order.mileage != null && <> · {order.mileage.toLocaleString()} {order.mileage_unit ?? 'km'}</>}
                   {(order.mechanic_name || order.mechanic_email) && (
                     <> · <span className="text-blue-500">{order.mechanic_name ?? order.mechanic_email}</span></>
                   )}
@@ -1177,7 +1210,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                     {order.mileage != null && (
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-gray-400">Yürüş</span>
-                        <span className="text-xs font-medium text-gray-700">{order.mileage.toLocaleString()} km</span>
+                        <span className="text-xs font-medium text-gray-700">{order.mileage.toLocaleString()} {order.mileage_unit ?? 'km'}</span>
                       </div>
                     )}
                   </div>

@@ -1,16 +1,99 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Product } from '@/types'
-import { getProducts, createProduct, adjustStock, deleteProduct, importProductsExcel } from '@/services/warehouse.service'
+import { getProducts, createProduct, adjustStock, deleteProduct, bulkDeleteProducts, importProductsExcel, getSupplierNames, getProductUsage, ProductUsage } from '@/services/warehouse.service'
 import { formatCurrency, mapApiError } from '@/lib/utils'
+
+const STATUS_LABEL: Record<string, string> = { pending: 'Gözləyir', in_progress: 'İcrada', done: 'Tamamlandı' }
+const STATUS_CLS:   Record<string, string> = {
+  pending:     'bg-amber-100 text-amber-700',
+  in_progress: 'bg-blue-100 text-blue-700',
+  done:        'bg-green-100 text-green-700',
+}
+
+function ProductUsageModal({ product, onClose }: { product: Product; onClose: () => void }) {
+  const navigate = useNavigate()
+  const [usages, setUsages] = useState<ProductUsage[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getProductUsage(product.id)
+      .then(r => setUsages(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [product.id])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">{product.name}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">İstifadə tarixçəsi</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-7 h-7 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+            </div>
+          ) : usages.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-gray-500 font-medium">Bu məhsul heç bir sifarişdə istifadə edilməyib.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {usages.map((u, i) => (
+                <button
+                  key={i}
+                  onClick={() => { onClose(); navigate(`/business/orders/${u.order_id}`) }}
+                  className="w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex items-center justify-between gap-4"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-mono font-bold text-gray-900 text-sm">{u.plate || `#${u.order_id}`}</span>
+                      {u.car && <span className="text-xs text-gray-500">{u.car}</span>}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLS[u.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {STATUS_LABEL[u.status] ?? u.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400">{u.date}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold text-gray-900">{u.quantity} ədəd</p>
+                    <p className="text-xs text-gray-400">{formatCurrency(Number(u.sell_price))} / ədəd</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-100 shrink-0 flex items-center justify-between">
+          <p className="text-xs text-gray-400">{usages.length} sifariş</p>
+          <button onClick={onClose} className="btn-ghost text-sm py-2 px-4">Bağla</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function AddProductDrawer({
   open,
   onClose,
   onAdded,
+  supplierNames = [],
 }: {
   open: boolean
   onClose: () => void
   onAdded: () => void
+  supplierNames?: string[]
 }) {
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
@@ -107,7 +190,10 @@ function AddProductDrawer({
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Kreditor adı</label>
-            <input value={supplierName} onChange={e => setSupplierName(e.target.value)} placeholder="Məs. Avtoehtiyat MMC" className="input" />
+            <input list="warehouse-supplier-names" value={supplierName} onChange={e => setSupplierName(e.target.value)} placeholder="Məs. Avtoehtiyat MMC" className="input" />
+            <datalist id="warehouse-supplier-names">
+              {supplierNames.map(n => <option key={n} value={n} />)}
+            </datalist>
             <p className="text-xs text-gray-400">Bu məbləğ avtomatik olaraq kreditorlara əlavə ediləcək</p>
           </div>
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
@@ -195,33 +281,90 @@ function computedFields(p: Product) {
 
 export default function WarehouseClient() {
   const [products, setProducts] = useState<Product[]>([])
+  const [supplierNames, setSupplierNames] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null)
+  const [usageProduct, setUsageProduct] = useState<Product | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deleteErrorId, setDeleteErrorId] = useState<number | null>(null)
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState('')
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ detail: string; errors: string[] } | null>(null)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkDeleteError, setBulkDeleteError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const allSelected = products.length > 0 && products.every(p => selectedIds.has(p.id))
+  const someSelected = selectedIds.size > 0
+
+  function toggleSelect(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(products.map(p => p.id)))
+    }
+  }
+
+  function closeConfirmDelete() {
+    setConfirmDeleteId(null)
+    setDeleteErrorId(null)
+    setDeleteErrorMsg('')
+  }
 
   async function handleDelete(id: number) {
     setDeletingId(id)
+    setDeleteErrorId(null)
+    setDeleteErrorMsg('')
     try {
       await deleteProduct(id)
       setProducts(prev => prev.filter(p => p.id !== id))
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n })
+      setConfirmDeleteId(null)
+    } catch (err) {
+      setDeleteErrorId(id)
+      setDeleteErrorMsg(mapApiError(err))
     } finally {
       setDeletingId(null)
-      setConfirmDeleteId(null)
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (!someSelected) return
+    setBulkDeleting(true)
+    setBulkDeleteError('')
+    try {
+      const res = await bulkDeleteProducts(Array.from(selectedIds))
+      if (res.data.protected.length > 0) {
+        setBulkDeleteError(`Bəzi məhsullar silinə bilmədi (sifarişdə istifadə olunub): ${res.data.protected.join(', ')}`)
+      }
+      setSelectedIds(new Set())
+      load()
+    } catch (err) {
+      setBulkDeleteError(mapApiError(err))
+    } finally {
+      setBulkDeleting(false)
     }
   }
 
   const load = useCallback(async (q?: string) => {
     setLoading(true)
     try {
-      const res = await getProducts(q)
-      setProducts(res.data)
+      const [productsRes, namesRes] = await Promise.all([getProducts(q), getSupplierNames().catch(() => ({ data: [] as string[] }))])
+      setProducts(productsRes.data)
+      setSupplierNames(namesRes.data)
     } finally {
       setLoading(false)
     }
@@ -333,6 +476,44 @@ export default function WarehouseClient() {
           </div>
         )}
 
+        {/* Bulk action bar */}
+        {someSelected && (
+          <div className="mb-4 flex items-center justify-between gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+              />
+              <span className="text-sm font-semibold text-blue-800">{selectedIds.size} məhsul seçilib</span>
+              <button onClick={() => setSelectedIds(new Set())} className="text-xs text-blue-500 hover:text-blue-700 underline">Seçimi sıfırla</button>
+            </div>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60 transition-colors"
+            >
+              {bulkDeleting ? (
+                <div className="w-4 h-4 border-2 border-red-300 border-t-white rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              )}
+              {bulkDeleting ? 'Silinir...' : `${selectedIds.size} məhsulu sil`}
+            </button>
+          </div>
+        )}
+        {bulkDeleteError && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 flex items-start justify-between gap-3">
+            <p className="text-sm text-red-700">{bulkDeleteError}</p>
+            <button onClick={() => setBulkDeleteError('')} className="text-red-400 hover:text-red-600 shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        )}
+
         {/* Import result banner */}
         {importResult && (
           <div className={`mb-4 px-4 py-3 rounded-xl flex items-start justify-between gap-3 ${importResult.errors.length > 0 ? 'bg-amber-50 border border-amber-200' : 'bg-green-50 border border-green-200'}`}>
@@ -372,20 +553,23 @@ export default function WarehouseClient() {
               {products.map((p, i) => {
                 const { discountedPrice, discountedTotal } = computedFields(p)
                 return (
-                  <div key={p.id} className={`bg-white rounded-2xl border px-4 py-4 ${p.stock_quantity === 0 ? 'border-red-200 bg-red-50/30' : p.stock_quantity < 3 ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200'}`}>
+                  <div key={p.id} className={`bg-white rounded-2xl border px-4 py-4 ${selectedIds.has(p.id) ? 'border-blue-300 bg-blue-50/30' : p.stock_quantity === 0 ? 'border-red-200 bg-red-50/30' : p.stock_quantity < 3 ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200'}`}>
                     <div className="flex items-start justify-between mb-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="text-xs text-gray-400 font-mono">#{i + 1}</span>
-                          {p.code && <span className="text-xs font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{p.code}</span>}
-                          <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{p.unit}</span>
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)} className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-xs text-gray-400 font-mono">#{i + 1}</span>
+                            {p.code && <span className="text-xs font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{p.code}</span>}
+                            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{p.unit}</span>
+                          </div>
+                          <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
+                          {p.stock_quantity === 0 ? (
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium mt-1 inline-block">Stokda yoxdur</span>
+                          ) : p.stock_quantity < 3 && (
+                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium mt-1 inline-block">Az qalıb</span>
+                          )}
                         </div>
-                        <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
-                        {p.stock_quantity === 0 ? (
-                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium mt-1 inline-block">Stokda yoxdur</span>
-                        ) : p.stock_quantity < 3 && (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium mt-1 inline-block">Az qalıb</span>
-                        )}
                       </div>
                       <span className={`text-lg font-bold shrink-0 ml-3 ${p.stock_quantity === 0 ? 'text-red-600' : p.stock_quantity < 3 ? 'text-amber-600' : 'text-gray-900'}`}>
                         {p.stock_quantity} <span className="text-xs font-normal text-gray-400">{p.unit}</span>
@@ -413,18 +597,26 @@ export default function WarehouseClient() {
                       </div>
                     </div>
                     <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                      <button onClick={() => setUsageProduct(p)} className="text-xs font-semibold text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+                        Tarixçə
+                      </button>
                       <button onClick={() => setAdjustProduct(p)} className="text-xs font-semibold text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50">
                         Stok tənzimlə
                       </button>
                       {confirmDeleteId === p.id ? (
-                        <div className="flex gap-1">
-                          <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} className="text-xs font-medium px-2 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
-                            {deletingId === p.id ? '...' : 'Bəli'}
-                          </button>
-                          <button onClick={() => setConfirmDeleteId(null)} className="text-xs font-medium px-2 py-1.5 rounded-lg border border-gray-300 text-gray-600">Xeyr</button>
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex gap-1">
+                            <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} className="text-xs font-medium px-2 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                              {deletingId === p.id ? '...' : 'Bəli, sil'}
+                            </button>
+                            <button onClick={closeConfirmDelete} className="text-xs font-medium px-2 py-1.5 rounded-lg border border-gray-300 text-gray-600">Xeyr</button>
+                          </div>
+                          {deleteErrorId === p.id && (
+                            <p className="text-xs text-red-600 text-right max-w-[180px]">{deleteErrorMsg}</p>
+                          )}
                         </div>
                       ) : (
-                        <button onClick={() => setConfirmDeleteId(p.id)} className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                        <button onClick={() => { setConfirmDeleteId(p.id); setDeleteErrorId(null) }} className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
@@ -442,6 +634,9 @@ export default function WarehouseClient() {
                 <table className="w-full min-w-[1000px]">
                   <thead>
                     <tr className="bg-orange-50 border-b-2 border-orange-200">
+                      <th className="px-3 py-3 w-10">
+                        <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer" />
+                      </th>
                       <th className="text-center text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-10">Sıra</th>
                       <th className="text-left text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-24">Kodu</th>
                       <th className="text-left text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3">Adı</th>
@@ -462,7 +657,10 @@ export default function WarehouseClient() {
                       const isOut = p.stock_quantity === 0
                       const isLow = !isOut && p.stock_quantity < 3
                       return (
-                        <tr key={p.id} className={`hover:bg-gray-50/80 transition-colors ${isOut ? 'bg-red-50/40' : isLow ? 'bg-amber-50/60' : ''}`}>
+                        <tr key={p.id} className={`hover:bg-gray-50/80 transition-colors ${selectedIds.has(p.id) ? 'bg-blue-50/60' : isOut ? 'bg-red-50/40' : isLow ? 'bg-amber-50/60' : ''}`}>
+                          <td className="px-3 py-3 text-center">
+                            <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)} className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer" />
+                          </td>
                           <td className="px-3 py-3 text-center">
                             <span className="text-xs text-gray-400 font-mono">{i + 1}</span>
                           </td>
@@ -523,18 +721,26 @@ export default function WarehouseClient() {
                           </td>
                           <td className="px-3 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => setUsageProduct(p)} className="text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline whitespace-nowrap">
+                                Tarixçə
+                              </button>
                               <button onClick={() => setAdjustProduct(p)} className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap">
                                 Stok
                               </button>
                               {confirmDeleteId === p.id ? (
-                                <div className="flex items-center gap-1">
-                                  <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} className="text-xs font-medium px-2 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
-                                    {deletingId === p.id ? '...' : 'Bəli'}
-                                  </button>
-                                  <button onClick={() => setConfirmDeleteId(null)} className="text-xs font-medium px-2 py-1 rounded-lg border border-gray-200 text-gray-600">Xeyr</button>
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="flex items-center gap-1">
+                                    <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} className="text-xs font-medium px-2 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                                      {deletingId === p.id ? '...' : 'Bəli, sil'}
+                                    </button>
+                                    <button onClick={closeConfirmDelete} className="text-xs font-medium px-2 py-1 rounded-lg border border-gray-200 text-gray-600">Xeyr</button>
+                                  </div>
+                                  {deleteErrorId === p.id && (
+                                    <p className="text-xs text-red-600 text-right max-w-[200px] leading-tight">{deleteErrorMsg}</p>
+                                  )}
                                 </div>
                               ) : (
-                                <button onClick={() => setConfirmDeleteId(p.id)} className="text-gray-300 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors">
+                                <button onClick={() => { setConfirmDeleteId(p.id); setDeleteErrorId(null) }} className="text-gray-300 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors">
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                   </svg>
@@ -549,7 +755,7 @@ export default function WarehouseClient() {
                   {/* Totals row */}
                   <tfoot>
                     <tr className="bg-orange-50/60 border-t-2 border-orange-200">
-                      <td colSpan={5} className="px-3 py-3 text-xs font-bold text-orange-700 uppercase tracking-wide">Cəmi</td>
+                      <td colSpan={6} className="px-3 py-3 text-xs font-bold text-orange-700 uppercase tracking-wide">Cəmi</td>
                       <td className="px-3 py-3 text-right text-sm font-bold text-gray-700">—</td>
                       <td className="px-3 py-3 text-right text-sm font-bold text-gray-700">
                         {formatCurrency(products.reduce((s, p) => s + p.purchase_price * p.stock_quantity, 0))}
@@ -575,8 +781,9 @@ export default function WarehouseClient() {
         )}
       </div>
 
-      <AddProductDrawer open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} />
+      <AddProductDrawer open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} supplierNames={supplierNames} />
       <AdjustStockDrawer product={adjustProduct} onClose={() => setAdjustProduct(null)} onUpdated={load} />
+      {usageProduct && <ProductUsageModal product={usageProduct} onClose={() => setUsageProduct(null)} />}
 
       {/* Excel import info modal */}
       {importModalOpen && (

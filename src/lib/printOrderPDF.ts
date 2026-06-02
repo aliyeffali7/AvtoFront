@@ -128,6 +128,11 @@ const GREEN_MID  = '#bbf7d0'
 
 export async function printOrderPDF(order: Order, business?: Business | null) {
   const titleFont = (await ensurePlayfair()) ? 'PlayfairDisplay' : 'Roboto'
+  let signatureDataUrl = ''
+  if (business?.signature) {
+    const fullUrl = business.signature.startsWith('http') ? business.signature : (import.meta.env.VITE_API_URL ?? '') + business.signature
+    signatureDataUrl = await toDataUrl(fullUrl)
+  }
   const services      = order.services  ?? []
   const products      = order.products  ?? []
   const servicesTotal  = services.reduce((s, t) => s + parseFloat(String(t.price)), 0)
@@ -458,6 +463,18 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   }
 
   // ── Signatures ─────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const serviceSignatureStack: any[] = signatureDataUrl
+    ? [
+        { image: signatureDataUrl, width: 100, alignment: 'right', margin: [0, 0, 0, 4] },
+        { text: 'Servis imzası', fontSize: 10, color: GRAY, alignment: 'right', margin: [0, 0, 0, 6] },
+        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 220, y2: 0, lineWidth: 1, lineColor: BORDER }] },
+      ]
+    : [
+        { text: 'Servis imzası', fontSize: 10, color: GRAY, margin: [0, 0, 0, 6], alignment: 'right' },
+        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 220, y2: 0, lineWidth: 1, lineColor: BORDER }] },
+      ]
+
   content.push({
     columns: [
       {
@@ -470,10 +487,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
       { width: 40, text: '' },
       {
         width: '*',
-        stack: [
-          { text: 'Servis imzası', fontSize: 10, color: GRAY, margin: [0, 0, 0, 6], alignment: 'right' },
-          { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 220, y2: 0, lineWidth: 1, lineColor: BORDER }] },
-        ],
+        stack: serviceSignatureStack,
       },
     ],
     margin: [0, 28, 0, 24],

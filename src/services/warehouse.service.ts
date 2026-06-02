@@ -16,6 +16,22 @@ export const adjustStock = (id: number, quantity: number) =>
 export const deleteProduct = (id: number) =>
   api.delete(`/api/products/${id}`)
 
+export interface ProductUsage {
+  order_id: number
+  plate: string
+  car: string
+  status: 'pending' | 'in_progress' | 'done'
+  date: string
+  quantity: number
+  sell_price: string
+}
+
+export const getProductUsage = (id: number) =>
+  api.get<ProductUsage[]>(`/api/products/${id}/usage/`)
+
+export const bulkDeleteProducts = (ids: number[]) =>
+  api.delete<{ deleted: number; protected: string[] }>('/api/products/bulk-delete/', { data: { ids } })
+
 export const importProductsExcel = (file: File) => {
   const form = new FormData()
   form.append('file', file)
@@ -23,6 +39,9 @@ export const importProductsExcel = (file: File) => {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
+
+export const getSupplierNames = () =>
+  api.get<string[]>('/api/products/supplier-names/')
 
 export const getSupplierDebts = (showPaid = false) =>
   api.get<SupplierDebt[]>(`/api/products/supplier-debts/?paid=${showPaid}`)

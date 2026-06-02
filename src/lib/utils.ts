@@ -31,6 +31,30 @@ export function getStatusColor(
   return colors[status]
 }
 
+/**
+ * Auto-formats a search string as an Azerbaijan plate number when it starts
+ * with a digit and contains at least one letter. Leaves names and phone
+ * numbers (digits only) completely unchanged.
+ *
+ * "90 rk"    → "90-RK"
+ * "90rk641"  → "90-RK-641"
+ * "Murad"    → "Murad"   (unchanged)
+ * "507..."   → "507..."  (unchanged)
+ */
+export function autoFormatSearch(value: string): string {
+  const trimmed = value.trimStart()
+  if (!/^\d/.test(trimmed) || !/[a-zA-Z]/.test(trimmed)) return value
+  const clean = trimmed.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+  const digits1 = clean.match(/^\d+/)?.[0] ?? ''
+  const rest    = clean.slice(digits1.length)
+  const letters = rest.match(/^[A-Z]+/)?.[0] ?? ''
+  const digits2 = rest.slice(letters.length)
+  let result = digits1
+  if (letters) result += '-' + letters
+  if (digits2) result += '-' + digits2
+  return result
+}
+
 export function mapApiError(error: unknown): string {
   const genericMessage = 'Xəta baş verdi. Yenidən cəhd edin.'
 

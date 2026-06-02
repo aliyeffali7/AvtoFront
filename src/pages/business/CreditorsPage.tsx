@@ -1,57 +1,99 @@
 import { useState, useEffect, useCallback } from 'react'
 import { SupplierDebt } from '@/types'
-import { getSupplierDebts, createSupplierDebt, paySupplierDebt, deleteSupplierDebt, updateSupplierDebt } from '@/services/warehouse.service'
+import { getSupplierDebts, getSupplierNames, createSupplierDebt, paySupplierDebt, deleteSupplierDebt, updateSupplierDebt } from '@/services/warehouse.service'
 import { formatCurrency } from '@/lib/utils'
 
+interface SupplierGroup {
+  name: string
+  phone: string
+  debts: SupplierDebt[]
+  totalAmount: number
+  totalPaid: number
+  remaining: number
+  isFullyPaid: boolean
+  hasUnpaid: boolean
+}
+
+function groupBySupplier(debts: SupplierDebt[]): SupplierGroup[] {
+  const map = new Map<string, SupplierDebt[]>()
+  for (const d of debts) {
+    const key = d.supplier_name
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(d)
+  }
+  return Array.from(map.entries()).map(([name, list]) => {
+    const totalAmount = list.reduce((s, d) => s + Number(d.total_amount), 0)
+    const totalPaid   = list.reduce((s, d) => s + Number(d.paid_amount), 0)
+    const remaining   = Math.max(totalAmount - totalPaid, 0)
+    const phone       = list.find(d => d.phone)?.phone ?? ''
+    return {
+      name,
+      phone,
+      debts: list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+      totalAmount,
+      totalPaid,
+      remaining,
+      isFullyPaid: remaining <= 0,
+      hasUnpaid: remaining > 0,
+    }
+  }).sort((a, b) => (b.hasUnpaid ? 1 : 0) - (a.hasUnpaid ? 1 : 0) || a.name.localeCompare(b.name))
+}
+
 export default function CreditorsPage() {
-  const [debts, setDebts] = useState<SupplierDebt[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showPaid, setShowPaid] = useState(false)
+  const [debts, setDebts]           = useState<SupplierDebt[]>([])
+  const [supplierNames, setSupplierNames] = useState<string[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [showPaidGroups, setShowPaidGroups] = useState(false)
+  const [expandedName, setExpandedName]     = useState<string | null>(null)
 
   // Pay state
-  const [payingId, setPayingId] = useState<number | null>(null)
-  const [payInputs, setPayInputs] = useState<Record<number, string>>({})
-  const [payErrors, setPayErrors] = useState<Record<number, string>>({})
+  const [payingId, setPayingId]     = useState<number | null>(null)
+  const [payInputs, setPayInputs]   = useState<Record<number, string>>({})
+  const [payErrors, setPayErrors]   = useState<Record<number, string>>({})
 
   // Delete state
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deletingId, setDeletingId]           = useState<number | null>(null)
 
-  // Edit name state
-  const [editingNameId, setEditingNameId] = useState<number | null>(null)
-  const [editingNameValue, setEditingNameValue] = useState('')
-  const [savingNameId, setSavingNameId] = useState<number | null>(null)
-
-  // Add manual debt drawer
-  const [addOpen, setAddOpen] = useState(false)
+  // Add drawer
+  const [addOpen, setAddOpen]       = useState(false)
   const [newSupplier, setNewSupplier] = useState('')
-  const [newPhone, setNewPhone] = useState('')
-  const [newDesc, setNewDesc] = useState('')
-  const [newAmount, setNewAmount] = useState('')
-  const [adding, setAdding] = useState(false)
-  const [addError, setAddError] = useState('')
+  const [newPhone, setNewPhone]     = useState('')
+  const [newDesc, setNewDesc]       = useState('')
+  const [newAmount, setNewAmount]   = useState('')
+  const [adding, setAdding]         = useState(false)
+  const [addError, setAddError]     = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await getSupplierDebts(showPaid)
-      setDebts(res.data)
+      const [debtsRes, namesRes] = await Promise.all([
+        getSupplierDebts(true),   // always fetch all
+        getSupplierNames(),
+      ])
+      setDebts(debtsRes.data)
+      setSupplierNames(namesRes.data)
     } finally {
       setLoading(false)
     }
-  }, [showPaid])
+  }, [])
 
   useEffect(() => { load() }, [load])
 
+  const groups = groupBySupplier(debts)
+  const visibleGroups = showPaidGroups ? groups : groups.filter(g => g.hasUnpaid)
+  const totalUnpaid = groups.filter(g => g.hasUnpaid).reduce((s, g) => s + g.remaining, 0)
+  const unpaidCount = groups.filter(g => g.hasUnpaid).length
+
   async function handlePay(debt: SupplierDebt) {
     const remaining = debt.remaining
-    const amount = parseFloat(payInputs[debt.id] ?? remaining.toFixed(2)) || 0
+    const amount    = parseFloat(payInputs[debt.id] ?? remaining.toFixed(2)) || 0
     if (amount <= 0) {
       setPayErrors(prev => ({ ...prev, [debt.id]: 'Məbləğ 0-dan böyük olmalıdır.' }))
       return
     }
     if (amount > remaining + 0.001) {
-      setPayErrors(prev => ({ ...prev, [debt.id]: `Məbləğ qalan borcu (${formatCurrency(remaining)}) aşa bilməz.` }))
+      setPayErrors(prev => ({ ...prev, [debt.id]: `Qalan borcu (${formatCurrency(remaining)}) aşa bilməz.` }))
       return
     }
     setPayErrors(prev => ({ ...prev, [debt.id]: '' }))
@@ -75,19 +117,6 @@ export default function CreditorsPage() {
       load()
     } finally {
       setDeletingId(null)
-    }
-  }
-
-  async function handleSaveName(id: number) {
-    const name = editingNameValue.trim()
-    if (!name) return
-    setSavingNameId(id)
-    try {
-      await updateSupplierDebt(id, { supplier_name: name })
-      setEditingNameId(null)
-      load()
-    } finally {
-      setSavingNameId(null)
     }
   }
 
@@ -115,10 +144,9 @@ export default function CreditorsPage() {
     }
   }
 
-  const totalDebt = debts.filter(d => !d.is_paid).reduce((s, d) => s + d.remaining, 0)
-
   return (
     <div className="p-6 lg:p-8">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Kreditorlar</h1>
@@ -133,37 +161,38 @@ export default function CreditorsPage() {
       </div>
 
       {/* Summary */}
-      {totalDebt > 0 && (
+      {totalUnpaid > 0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-2xl px-6 py-4 mb-6 flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-orange-500 uppercase tracking-wide">Ümumi ödənilməmiş borc</p>
-            <p className="text-2xl font-bold text-orange-700 mt-0.5">{formatCurrency(totalDebt)}</p>
+            <p className="text-2xl font-bold text-orange-700 mt-0.5">{formatCurrency(totalUnpaid)}</p>
           </div>
-          <p className="text-sm text-orange-500">{debts.filter(d => !d.is_paid).length} kreditor</p>
+          <p className="text-sm text-orange-500">{unpaidCount} kreditor</p>
         </div>
       )}
 
-      {/* Show paid toggle */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* Filter */}
+      <div className="flex items-center gap-2 mb-5">
         <button
-          onClick={() => setShowPaid(false)}
-          className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${!showPaid ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+          onClick={() => setShowPaidGroups(false)}
+          className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${!showPaidGroups ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
         >
           Ödənilməmiş
         </button>
         <button
-          onClick={() => setShowPaid(true)}
-          className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${showPaid ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+          onClick={() => setShowPaidGroups(true)}
+          className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${showPaidGroups ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
         >
-          Bütün borclar
+          Bütün kreditorlar
         </button>
       </div>
 
+      {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
         </div>
-      ) : debts.length === 0 ? (
+      ) : visibleGroups.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
           <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <svg className="w-7 h-7 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -175,162 +204,142 @@ export default function CreditorsPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {debts.map(debt => (
-            <div key={debt.id} className={`bg-white rounded-2xl border px-5 py-4 ${debt.is_paid ? 'border-gray-200 opacity-60' : 'border-gray-200'}`}>
-              <div className="flex items-start justify-between gap-4 mb-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    {editingNameId === debt.id ? (
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          value={editingNameValue}
-                          onChange={e => setEditingNameValue(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleSaveName(debt.id); if (e.key === 'Escape') setEditingNameId(null) }}
-                          className="input text-sm font-semibold py-1 h-8 w-44"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => handleSaveName(debt.id)}
-                          disabled={savingNameId === debt.id}
-                          className="text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-60"
-                        >
-                          {savingNameId === debt.id ? '...' : 'Saxla'}
-                        </button>
-                        <button
-                          onClick={() => setEditingNameId(null)}
-                          className="text-xs text-gray-400 hover:text-gray-600 px-1.5 py-1"
-                        >
-                          Ləğv
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 group/name">
-                        <span className="font-bold text-gray-900">{debt.supplier_name}</span>
-                        <button
-                          onClick={() => { setEditingNameId(debt.id); setEditingNameValue(debt.supplier_name) }}
-                          className="p-0.5 text-gray-300 hover:text-blue-500 transition-colors opacity-0 group-hover/name:opacity-100"
-                          title="Adı dəyiş"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
-                    {debt.is_paid ? (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Ödənilib</span>
-                    ) : debt.paid_amount > 0 ? (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Qismən</span>
-                    ) : (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Ödənilməyib</span>
-                    )}
-                  </div>
-
-                  {debt.phone && (
-                    <a href={`tel:${debt.phone}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1 mt-0.5">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                      {debt.phone}
-                    </a>
-                  )}
-                  {debt.description && (
-                    <p className="text-sm text-gray-500 mt-0.5">{debt.description}</p>
-                  )}
-                  <p className="text-xs text-gray-400 mt-0.5">{debt.date}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-xs text-gray-400">Cəmi</p>
-                  <p className="text-base font-bold text-gray-900">{formatCurrency(debt.total_amount)}</p>
-                  {debt.paid_amount > 0 && (
-                    <p className="text-xs text-green-600">Ödənilib: {formatCurrency(debt.paid_amount)}</p>
-                  )}
-                  {!debt.is_paid && (
-                    <p className="text-sm font-bold text-orange-600">Borc: {formatCurrency(debt.remaining)}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Pay / delete actions */}
-              {!debt.is_paid && (
-                <div className="pt-3 border-t border-gray-100">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={payInputs[debt.id] ?? debt.remaining.toFixed(2)}
-                        onChange={e => {
-                          setPayInputs(prev => ({ ...prev, [debt.id]: e.target.value }))
-                          setPayErrors(prev => ({ ...prev, [debt.id]: '' }))
-                        }}
-                        className={`input text-sm pr-7 ${payErrors[debt.id] ? 'border-red-400' : ''}`}
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₼</span>
+          {visibleGroups.map(group => {
+            const isOpen = expandedName === group.name
+            return (
+              <div key={group.name} className={`bg-white rounded-2xl border transition-colors ${group.isFullyPaid ? 'border-gray-200' : 'border-orange-200'}`}>
+                {/* Kreditor card header — click to expand */}
+                <button
+                  className="w-full text-left px-5 py-4 flex items-center justify-between gap-4"
+                  onClick={() => setExpandedName(isOpen ? null : group.name)}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="font-bold text-gray-900 text-base">{group.name}</span>
+                      {group.isFullyPaid ? (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Ödənilib</span>
+                      ) : group.totalPaid > 0 ? (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Qismən</span>
+                      ) : (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Ödənilməyib</span>
+                      )}
+                      <span className="text-xs text-gray-400">{group.debts.length} borc</span>
                     </div>
-                    <button
-                      onClick={() => setPayInputs(prev => ({ ...prev, [debt.id]: debt.remaining.toFixed(2) }))}
-                      className="text-xs px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 shrink-0"
-                    >
-                      Tam
-                    </button>
-                    <button
-                      onClick={() => handlePay(debt)}
-                      disabled={payingId === debt.id}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-xl shrink-0 transition-colors"
-                    >
-                      {payingId === debt.id ? '...' : 'Ödə'}
-                    </button>
-                    {confirmDeleteId === debt.id ? (
-                      <div className="flex gap-1 items-center shrink-0">
-                        <button
-                          onClick={() => handleDelete(debt.id)}
-                          disabled={deletingId === debt.id}
-                          className="text-xs bg-red-600 text-white px-2.5 py-2 rounded-xl hover:bg-red-700 disabled:opacity-60"
-                        >
-                          Bəli
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteId(null)}
-                          className="text-xs bg-gray-100 text-gray-700 px-2.5 py-2 rounded-xl hover:bg-gray-200"
-                        >
-                          Xeyr
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmDeleteId(debt.id)}
-                        className="p-2 text-gray-300 hover:text-red-500 transition-colors shrink-0"
-                        title="Sil"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    {group.phone && (
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                         </svg>
-                      </button>
+                        {group.phone}
+                      </p>
                     )}
                   </div>
-                  {payErrors[debt.id] && (
-                    <p className="text-xs text-red-600 mt-1.5">{payErrors[debt.id]}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Paid — only delete */}
-              {debt.is_paid && (
-                <div className="pt-2 border-t border-gray-100 flex justify-end">
-                  {confirmDeleteId === debt.id ? (
-                    <div className="flex gap-1 items-center">
-                      <button onClick={() => handleDelete(debt.id)} disabled={deletingId === debt.id} className="text-xs bg-red-600 text-white px-2.5 py-1.5 rounded-xl hover:bg-red-700 disabled:opacity-60">Bəli, sil</button>
-                      <button onClick={() => setConfirmDeleteId(null)} className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1.5 rounded-xl hover:bg-gray-200">Xeyr</button>
+                  <div className="text-right shrink-0 flex items-center gap-4">
+                    <div>
+                      <p className="text-xs text-gray-400">Cəmi</p>
+                      <p className="font-bold text-gray-900">{formatCurrency(group.totalAmount)}</p>
+                      {!group.isFullyPaid && (
+                        <p className="text-sm font-bold text-orange-600">Borc: {formatCurrency(group.remaining)}</p>
+                      )}
                     </div>
-                  ) : (
-                    <button onClick={() => setConfirmDeleteId(debt.id)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Sil</button>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                    <svg
+                      className={`w-5 h-5 text-gray-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                      fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+
+                {/* Expanded: list of individual debts */}
+                {isOpen && (
+                  <div className="border-t border-gray-100 divide-y divide-gray-100">
+                    {group.debts.map(debt => (
+                      <div key={debt.id} className={`px-5 py-4 ${debt.is_paid ? 'opacity-60' : ''}`}>
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="min-w-0 flex-1">
+                            {debt.description && (
+                              <p className="text-sm font-medium text-gray-800">{debt.description}</p>
+                            )}
+                            <p className="text-xs text-gray-400 mt-0.5">{debt.date}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-bold text-gray-900">{formatCurrency(debt.total_amount)}</p>
+                            {debt.paid_amount > 0 && (
+                              <p className="text-xs text-green-600">Ödənilib: {formatCurrency(debt.paid_amount)}</p>
+                            )}
+                            {!debt.is_paid && (
+                              <p className="text-xs font-semibold text-orange-600">Qalıb: {formatCurrency(debt.remaining)}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Pay row */}
+                        {!debt.is_paid && (
+                          <div className="flex gap-2 mt-2">
+                            <div className="relative flex-1">
+                              <input
+                                type="number" min="0.01" step="0.01"
+                                value={payInputs[debt.id] ?? debt.remaining.toFixed(2)}
+                                onChange={e => {
+                                  setPayInputs(prev => ({ ...prev, [debt.id]: e.target.value }))
+                                  setPayErrors(prev => ({ ...prev, [debt.id]: '' }))
+                                }}
+                                className={`input text-sm pr-7 ${payErrors[debt.id] ? 'border-red-400' : ''}`}
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₼</span>
+                            </div>
+                            <button
+                              onClick={() => setPayInputs(prev => ({ ...prev, [debt.id]: debt.remaining.toFixed(2) }))}
+                              className="text-xs px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 shrink-0"
+                            >
+                              Tam
+                            </button>
+                            <button
+                              onClick={() => handlePay(debt)}
+                              disabled={payingId === debt.id}
+                              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-xl shrink-0"
+                            >
+                              {payingId === debt.id ? '...' : 'Ödə'}
+                            </button>
+                            {confirmDeleteId === debt.id ? (
+                              <div className="flex gap-1 items-center shrink-0">
+                                <button onClick={() => handleDelete(debt.id)} disabled={deletingId === debt.id} className="text-xs bg-red-600 text-white px-2.5 py-2 rounded-xl hover:bg-red-700 disabled:opacity-60">Bəli</button>
+                                <button onClick={() => setConfirmDeleteId(null)} className="text-xs bg-gray-100 text-gray-700 px-2.5 py-2 rounded-xl">Xeyr</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setConfirmDeleteId(debt.id)} className="p-2 text-gray-300 hover:text-red-500 shrink-0">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {debt.is_paid && (
+                          <div className="flex justify-end mt-1">
+                            {confirmDeleteId === debt.id ? (
+                              <div className="flex gap-1 items-center">
+                                <button onClick={() => handleDelete(debt.id)} disabled={deletingId === debt.id} className="text-xs bg-red-600 text-white px-2.5 py-1.5 rounded-xl hover:bg-red-700 disabled:opacity-60">Bəli, sil</button>
+                                <button onClick={() => setConfirmDeleteId(null)} className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1.5 rounded-xl">Xeyr</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setConfirmDeleteId(debt.id)} className="text-xs text-gray-400 hover:text-red-500">Sil</button>
+                            )}
+                          </div>
+                        )}
+
+                        {payErrors[debt.id] && (
+                          <p className="text-xs text-red-600 mt-1.5">{payErrors[debt.id]}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -349,35 +358,37 @@ export default function CreditorsPage() {
             </div>
             <form onSubmit={handleAdd} className="flex-1 flex flex-col gap-4 px-6 py-6 overflow-y-auto">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Ad <span className="text-red-500">*</span></label>
+                <label className="text-sm font-medium text-gray-700">Kreditor adı <span className="text-red-500">*</span></label>
                 <input
+                  list="creditor-names-list"
                   value={newSupplier}
                   onChange={e => setNewSupplier(e.target.value)}
                   placeholder="Məs. Avtoehtiyat MMC"
                   className="input"
                   autoFocus
                 />
+                <datalist id="creditor-names-list">
+                  {supplierNames.map(n => <option key={n} value={n} />)}
+                </datalist>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Telefon <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
+                <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+994 50 000 00 00" className="input" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Məhsul / Açıqlama <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
+                <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Məs. Mühərrik yağı 5L" className="input" />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Məbləğ <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input
-                    value={newAmount}
-                    onChange={e => setNewAmount(e.target.value)}
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    placeholder="0.00"
-                    className="input pr-8"
-                  />
+                  <input value={newAmount} onChange={e => setNewAmount(e.target.value)} type="number" min="0.01" step="0.01" placeholder="0.00" className="input pr-8" />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">₼</span>
                 </div>
               </div>
               {addError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{addError}</p>}
               <div className="flex flex-col gap-3 pt-2">
-                <button type="submit" disabled={adding} className="btn-primary">
-                  {adding ? 'Əlavə edilir...' : 'Əlavə et'}
-                </button>
+                <button type="submit" disabled={adding} className="btn-primary">{adding ? 'Əlavə edilir...' : 'Əlavə et'}</button>
                 <button type="button" onClick={() => setAddOpen(false)} className="btn-ghost">Ləğv et</button>
               </div>
             </form>

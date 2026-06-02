@@ -16,7 +16,10 @@ export default function SettingsClient() {
   const [guaranteeText, setGuaranteeText] = useState('')
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [signatureFile, setSignatureFile] = useState<File | null>(null)
+  const [signaturePreview, setSignaturePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const signatureInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     getBusinessProfile()
@@ -27,6 +30,7 @@ export default function SettingsClient() {
         setAddress(b.address ?? '')
         setGuaranteeText(b.guarantee_text ?? '')
         if (b.logo) setLogoPreview(b.logo.startsWith('http') ? b.logo : (import.meta.env.VITE_API_URL ?? '') + b.logo)
+        if (b.signature) setSignaturePreview(b.signature.startsWith('http') ? b.signature : (import.meta.env.VITE_API_URL ?? '') + b.signature)
       })
       .catch(() => setError('Məlumatlar yüklənmədi'))
       .finally(() => setLoading(false))
@@ -51,6 +55,7 @@ export default function SettingsClient() {
       form.append('address', address.trim())
       form.append('guarantee_text', guaranteeText.trim())
       if (logoFile) form.append('logo', logoFile)
+      if (signatureFile) form.append('signature', signatureFile)
       await updateBusinessProfile(form)
       setSuccess(true)
       setLogoFile(null)
@@ -157,6 +162,38 @@ export default function SettingsClient() {
             rows={3}
             className="input resize-none"
           />
+        </div>
+
+        {/* Signature image */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">İmza şəkli</label>
+          <p className="text-xs text-gray-400">PDF-ə ixrac zamanı servis imzası yerinə bu şəkil göstəriləcək.</p>
+          <div className="flex items-center gap-4">
+            <div
+              onClick={() => signatureInputRef.current?.click()}
+              className="w-32 h-16 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors overflow-hidden shrink-0"
+            >
+              {signaturePreview ? (
+                <img src={signaturePreview} alt="İmza" className="w-full h-full object-contain p-1" />
+              ) : (
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-sm font-medium text-blue-600 hover:text-blue-800 text-left">
+                {signaturePreview ? 'İmzanı dəyiş' : 'İmza yüklə'}
+              </button>
+              <p className="text-xs text-gray-400">PNG, JPG — ağ fon tövsiyə edilir</p>
+            </div>
+          </div>
+          <input ref={signatureInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
+            const f = e.target.files?.[0]
+            if (!f) return
+            setSignatureFile(f)
+            setSignaturePreview(URL.createObjectURL(f))
+          }} />
         </div>
 
         {error && (

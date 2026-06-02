@@ -1,25 +1,47 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Plus, FileDown, CheckCircle2 } from 'lucide-react'
 import { FinanceRecord } from '@/types'
 import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
 import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
 
-type Period = 'day' | 'week' | 'month' | 'all' | 'custom'
+type Period = 'day' | 'week' | 'month' | 'specific_month' | 'all' | 'custom'
 type TypeFilter = 'all' | 'income' | 'expense'
 
 const PERIODS: { key: Period; label: string }[] = [
   { key: 'day', label: 'Bugün' },
   { key: 'week', label: 'Bu həftə' },
   { key: 'month', label: 'Bu ay' },
+  { key: 'specific_month', label: 'Ay seç' },
   { key: 'all', label: 'Hamısı' },
   { key: 'custom', label: 'Tarix seç' },
 ]
+
+function getCurrentYearMonth() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+function getMonthRange(ym: string): { start: string; end: string } {
+  const [year, month] = ym.split('-').map(Number)
+  const lastDay = new Date(year, month, 0).getDate()
+  return {
+    start: `${ym}-01`,
+    end:   `${ym}-${String(lastDay).padStart(2, '0')}`,
+  }
+}
+
+function monthLabel(ym: string): string {
+  const [year, month] = ym.split('-').map(Number)
+  const MONTHS = ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr']
+  return `${MONTHS[month - 1]} ${year}`
+}
 
 function getToday() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function getPeriodRange(period: Period): { start: string | null; end: string | null } {
+function getPeriodRange(period: Period, specificMonth?: string): { start: string | null; end: string | null } {
   const now = new Date()
   const today = now.toISOString().slice(0, 10)
   if (period === 'day') return { start: today, end: today }
@@ -33,6 +55,9 @@ function getPeriodRange(period: Period): { start: string | null; end: string | n
   if (period === 'month') {
     const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
     return { start, end: today }
+  }
+  if (period === 'specific_month' && specificMonth) {
+    return getMonthRange(specificMonth)
   }
   return { start: null, end: null }
 }
@@ -272,12 +297,14 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function FinanceClient() {
+  const navigate = useNavigate()
   const [records, setRecords] = useState<FinanceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [endDayOpen, setEndDayOpen] = useState(false)
   const [period, setPeriod] = useState<Period>('day')
   const [customDate, setCustomDate] = useState(getToday())
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth())
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
@@ -297,6 +324,7 @@ export default function FinanceClient() {
 
   const singleDate = period === 'day' ? getToday() : period === 'custom' ? customDate : null
 
+
   useEffect(() => {
     if (!singleDate) { setPageNote(''); return }
     getDayNote(singleDate).then(r => setPageNote(r.data.note)).catch(() => setPageNote(''))
@@ -315,9 +343,9 @@ export default function FinanceClient() {
 
   const periodFiltered = useMemo(() => {
     if (period === 'custom') return filterByRange(records, customDate, customDate)
-    const { start, end } = getPeriodRange(period)
+    const { start, end } = getPeriodRange(period, selectedMonth)
     return filterByRange(records, start, end)
-  }, [records, period, customDate])
+  }, [records, period, customDate, selectedMonth])
 
   const filtered = useMemo(() => {
     if (typeFilter === 'all') return periodFiltered
@@ -330,6 +358,8 @@ export default function FinanceClient() {
 
   const periodLabel = period === 'custom'
     ? customDate
+    : period === 'specific_month'
+    ? monthLabel(selectedMonth)
     : PERIODS.find(p => p.key === period)?.label ?? ''
 
   function exportPDF() {
@@ -455,6 +485,25 @@ export default function FinanceClient() {
           </div>
         )}
 
+        {/* Specific month picker */}
+        {period === 'specific_month' && (
+          <div className="flex items-center gap-3 mb-6 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 w-fit">
+            <svg className="w-5 h-5 text-blue-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-blue-600 font-medium">Ay seçin</label>
+              <input
+                type="month"
+                value={selectedMonth}
+                max={getCurrentYearMonth()}
+                onChange={e => setSelectedMonth(e.target.value)}
+                className="text-sm border border-blue-200 bg-white rounded-lg px-3 py-1.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Summary cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5">
@@ -539,18 +588,32 @@ export default function FinanceClient() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map(r => (
-                  <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={r.id}
+                    className={`hover:bg-gray-50 transition-colors ${r.order ? 'cursor-pointer' : ''}`}
+                    onClick={r.order ? () => navigate(`/business/orders/${r.order}`) : undefined}
+                    title={r.order ? 'Sifarişə keç' : undefined}
+                  >
                     <td className="px-5 py-4 text-sm text-gray-500 whitespace-nowrap">{formatDate(r.date)}</td>
                     <td className="px-5 py-4">
                       <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${r.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {r.type === 'income' ? 'Gəlir' : 'Xərc'}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-sm text-gray-700">{r.description}</td>
+                    <td className="px-5 py-4 text-sm text-gray-700">
+                      <span className="flex items-center gap-1.5">
+                        {r.description}
+                        {r.order && (
+                          <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        )}
+                      </span>
+                    </td>
                     <td className={`px-5 py-4 text-right text-sm font-semibold whitespace-nowrap ${r.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                       {r.type === 'income' ? '+' : '-'}{formatCurrency(Number(r.amount))}
                     </td>
-                    <td className="px-3 py-4 text-right whitespace-nowrap">
+                    <td className="px-3 py-4 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
                       {confirmDeleteId === r.id ? (
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-xs text-gray-500">Silinsin?</span>

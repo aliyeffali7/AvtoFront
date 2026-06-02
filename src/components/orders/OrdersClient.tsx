@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom'
 import { Plus, Zap, ChevronRight } from 'lucide-react'
 import { Order, Mechanic, OrderService, Product, Customer } from '@/types'
 import { getOrders, createOrder, uploadOrderImage, addProductToOrder } from '@/services/orders.service'
+import { getSupplierNames } from '@/services/warehouse.service'
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts, createProduct } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
-import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
+import { formatDate, formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
 import StatusBadge from './StatusBadge'
 import PlateInput from '@/components/ui/PlateInput'
 
@@ -54,10 +55,11 @@ function CreateOrderDrawer({
   const [carYear, setCarYear] = useState('')
   const [vinCode, setVinCode] = useState('')
   const [mileage, setMileage] = useState('')
+  const [mileageUnit, setMileageUnit] = useState<'km' | 'mil'>('km')
+  const [fuelType, setFuelType] = useState('')
   const [description, setDescription] = useState('')
-  const [days, setDays] = useState('')
   const [mechanic, setMechanic] = useState('')
-  const [services, setServices] = useState<{ name: string; price: string; mechanicId: string; mechanicAmount: string }[]>([{ name: '', price: '', mechanicId: '', mechanicAmount: '' }])
+  const [services, setServices] = useState<{ name: string; price: string; mechanicId: string; mechanicAmount: string }[]>([])
   const [orderProducts, setOrderProducts] = useState<{ productId: string; qty: string }[]>([])
   const [newProducts, setNewProducts] = useState<{ name: string; purchasePrice: string; sellPrice: string; qty: string; supplierName: string }[]>([])
   const [customerName, setCustomerName] = useState('')
@@ -69,6 +71,7 @@ function CreateOrderDrawer({
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [notes, setNotes] = useState('')
   const [hasGuarantee, setHasGuarantee] = useState(false)
+  const [supplierNames, setSupplierNames] = useState<string[]>([])
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -76,31 +79,41 @@ function CreateOrderDrawer({
   const loadedRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const customerSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const customerAbortRef = useRef<AbortController | null>(null)
+  const skipSearchRef = useRef(false)
 
   useEffect(() => {
     if (open && !loadedRef.current) {
       loadedRef.current = true
       getMechanics().then(r => setMechanics(r.data)).catch(() => {})
       getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
+      getSupplierNames().then(r => setSupplierNames(r.data)).catch(() => {})
     }
     if (!open) loadedRef.current = false
   }, [open])
 
   useEffect(() => {
+    if (skipSearchRef.current) { skipSearchRef.current = false; return }
     if (!customerSearch.trim()) {
       setCustomerResults([])
       setShowCustomerDropdown(false)
       return
     }
     if (customerSearchRef.current) clearTimeout(customerSearchRef.current)
+    customerAbortRef.current?.abort()
+    const controller = new AbortController()
+    customerAbortRef.current = controller
     customerSearchRef.current = setTimeout(() => {
       setCustomerSearchLoading(true)
       getCustomers({ search: customerSearch, page: 1 })
-        .then(r => { setCustomerResults(r.data.results); setShowCustomerDropdown(true) })
+        .then(r => { if (!controller.signal.aborted) { setCustomerResults(r.data.results); setShowCustomerDropdown(true) } })
         .catch(() => {})
-        .finally(() => setCustomerSearchLoading(false))
+        .finally(() => { if (!controller.signal.aborted) setCustomerSearchLoading(false) })
     }, 300)
-    return () => { if (customerSearchRef.current) clearTimeout(customerSearchRef.current) }
+    return () => {
+      clearTimeout(customerSearchRef.current ?? undefined)
+      controller.abort()
+    }
   }, [customerSearch])
 
   function selectCustomer(c: Customer) {
@@ -112,6 +125,7 @@ function CreateOrderDrawer({
     if (c.car_model) setModel(c.car_model)
     if (c.car_year) setCarYear(c.car_year)
     if (c.vin_code) setVinCode(c.vin_code)
+    skipSearchRef.current = true
     setCustomerSearch(c.full_name)
     setShowCustomerDropdown(false)
     setCustomerResults([])
@@ -127,8 +141,8 @@ function CreateOrderDrawer({
   }
 
   function reset() {
-    setPlate(''); setBrand(''); setModel(''); setCarYear(''); setVinCode(''); setMileage(''); setDescription(''); setDays(''); setMechanic('')
-    setServices([{ name: '', price: '', mechanicId: '', mechanicAmount: '' }])
+    setPlate(''); setBrand(''); setModel(''); setCarYear(''); setVinCode(''); setMileage(''); setMileageUnit('km'); setFuelType(''); setDescription(''); setMechanic('')
+    setServices([])
     setOrderProducts([])
     setNewProducts([])
     setCustomerName(''); setCustomerPhone(''); setSelectedCustomerId(null)
@@ -243,8 +257,9 @@ function CreateOrderDrawer({
         car_year: carYear || undefined,
         vin_code: vinCode || undefined,
         mileage: mileage ? parseInt(mileage) : undefined,
+        mileage_unit: mileageUnit,
+        fuel_type: fuelType || undefined,
         description: description || undefined,
-        estimated_days: days ? parseInt(days) : undefined,
         mechanic: mechanic ? parseInt(mechanic) : null,
         services: filledServices,
         products: filledProducts,
@@ -295,11 +310,11 @@ function CreateOrderDrawer({
             <div className="flex flex-col gap-3">
               {/* Customer search */}
               <div className="flex flex-col gap-1.5 relative">
-                <label className="text-sm font-medium text-gray-700">Müştəri axtar</label>
+                <label className="text-sm font-medium text-gray-700">Müştəri axtar <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
                 <div className="relative">
                   <input
                     value={customerSearch}
-                    onChange={e => { setCustomerSearch(e.target.value); setSelectedCustomerId(null) }}
+                    onChange={e => { setCustomerSearch(autoFormatSearch(e.target.value)); setSelectedCustomerId(null) }}
                     placeholder="Ad, telefon və ya nişan..."
                     className="input pr-8"
                     autoComplete="off"
@@ -359,11 +374,11 @@ function CreateOrderDrawer({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
+                <label className="text-sm font-medium text-gray-700">Ad Soyad <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
                 <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Məs. Hüseyn Məmmədov" className="input" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
+                <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
                 <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
               </div>
             </div>
@@ -376,41 +391,53 @@ function CreateOrderDrawer({
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Avtomobil</p>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Dövlət nişanı</label>
+                <label className="text-sm font-medium text-gray-700">Dövlət nişanı <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
                 <PlateInput value={plate} onChange={setPlate} className="input font-mono tracking-wider" />
               </div>
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Marka</label>
+                  <label className="text-sm font-medium text-gray-700">Marka <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
                   <input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Toyota" className="input" />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Model</label>
+                  <label className="text-sm font-medium text-gray-700">Model <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
                   <input value={model} onChange={e => setModel(e.target.value)} placeholder="Camry" className="input" />
                 </div>
               </div>
               <div className="flex gap-3">
                 <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">İl</label>
+                  <label className="text-sm font-medium text-gray-700">İl <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
                   <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="2019" maxLength={4} className="input" />
                 </div>
                 <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">VIN kod</label>
+                  <label className="text-sm font-medium text-gray-700">VIN kod <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
                   <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="WBA3A5C50CF256985" maxLength={17} className="input font-mono text-sm" />
                 </div>
               </div>
-              <div className="flex gap-3">
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Yürüş</label>
-                  <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="75000" className="input" />
-                </div>
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Müddət (gün)</label>
-                  <input value={days} onChange={e => setDays(e.target.value)} type="number" min="1" placeholder="3" className="input" />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Yürüş <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
+                <div className="flex">
+                  <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="75000" className="input rounded-r-none flex-1" />
+                  <div className="flex border border-l-0 border-gray-300 rounded-r-xl overflow-hidden">
+                    <button type="button" onClick={() => setMileageUnit('km')} className={`px-3 text-sm font-semibold transition-colors ${mileageUnit === 'km' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>km</button>
+                    <button type="button" onClick={() => setMileageUnit('mil')} className={`px-3 text-sm font-semibold border-l border-gray-300 transition-colors ${mileageUnit === 'mil' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>mil</button>
+                  </div>
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Tapşırıq</label>
+                <label className="text-sm font-medium text-gray-700">Yanacaq növü <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
+                <select value={fuelType} onChange={e => setFuelType(e.target.value)} className="input">
+                  <option value="">Seçilməyib</option>
+                  <option value="benzin">Benzin</option>
+                  <option value="dizel">Dizel</option>
+                  <option value="hybrid">Hibrid</option>
+                  <option value="plug_in_hybrid">Plug-in Hibrid</option>
+                  <option value="lpg">LPG</option>
+                  <option value="electric">Tam elektrik</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Tapşırıq <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
                 <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Görüləcək iş haqqında məlumat..." className="input resize-none" />
               </div>
             </div>
@@ -539,11 +566,15 @@ function CreateOrderDrawer({
                       </div>
                     </div>
                     <input
+                      list="create-order-supplier-names"
                       value={p.supplierName}
                       onChange={e => updateNewProduct(i, 'supplierName', e.target.value)}
                       placeholder="Kreditor adı (borc varsa — məs. Avtoehtiyat)"
                       className="input text-sm text-orange-800 placeholder-orange-300 bg-white border-orange-200 focus:ring-orange-300"
                     />
+                    <datalist id="create-order-supplier-names">
+                      {supplierNames.map(n => <option key={n} value={n} />)}
+                    </datalist>
                   </div>
                 ))}
               </div>
@@ -638,7 +669,7 @@ function CreateOrderDrawer({
 
           {/* Notes */}
           <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Əlavə qeydlər</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Əlavə qeydlər <span className="text-xs font-normal text-gray-400 normal-case">(ixtiyari)</span></p>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
@@ -656,7 +687,7 @@ function CreateOrderDrawer({
               onChange={e => setHasGuarantee(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
             />
-            <span className="text-sm font-medium text-gray-700">Bu sifarişə zəmanət verilib</span>
+            <span className="text-sm font-medium text-gray-700">Bu sifarişə zəmanət verilib <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></span>
           </label>
 
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}

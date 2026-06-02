@@ -6,6 +6,7 @@ export interface Business {
   phone?: string
   address?: string
   logo?: string | null
+  signature?: string | null
   guarantee_text?: string
   owner_email?: string | null
   is_subscription_active?: boolean
@@ -56,6 +57,8 @@ export interface Order {
   customer_phone?: string
   notes?: string
   has_guarantee?: boolean
+  mileage_unit?: 'km' | 'mil'
+  fuel_type?: string
   total?: number
   created_at: string
 }
@@ -93,6 +96,7 @@ export interface FinanceRecord {
   amount: number
   description: string
   date: string
+  order?: number | null
 }
 
 export interface Mechanic {
