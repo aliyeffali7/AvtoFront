@@ -49,7 +49,8 @@ export default function DebtsPage() {
   function getOrderTotal(order: Order) {
     const svc = order.services?.reduce((s, t) => s + Number(t.price), 0) ?? 0
     const prd = (order.products ?? []).reduce((s, p) => s + Number(p.sell_price) * p.quantity, 0)
-    return svc + prd
+    const discount = Number(order.discount_amount ?? 0)
+    return Math.max(svc + prd - discount, 0)
   }
 
   async function handleOrderPay(order: Order, debt: number) {
