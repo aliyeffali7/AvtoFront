@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Product } from '@/types'
-import { getProducts, createProduct, adjustStock, deleteProduct, bulkDeleteProducts, importProductsExcel, getSupplierNames, getProductUsage, ProductUsage } from '@/services/warehouse.service'
+import { getProducts, createProduct, adjustStock, deleteProduct, bulkDeleteProducts, importProductsExcel, getSupplierDebts, getProductUsage, ProductUsage } from '@/services/warehouse.service'
 import { formatCurrency, mapApiError } from '@/lib/utils'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 
@@ -365,9 +365,13 @@ export default function WarehouseClient() {
   const load = useCallback(async (q?: string) => {
     setLoading(true)
     try {
-      const [productsRes, namesRes] = await Promise.all([getProducts(q), getSupplierNames().catch(() => ({ data: [] as string[] }))])
+      const [productsRes, debtsRes] = await Promise.all([
+        getProducts(q),
+        getSupplierDebts(true).catch(() => ({ data: [] })),
+      ])
       setProducts(productsRes.data)
-      setSupplierNames(namesRes.data)
+      const names = [...new Set(debtsRes.data.map((d: { supplier_name: string }) => d.supplier_name))].sort() as string[]
+      setSupplierNames(names)
     } finally {
       setLoading(false)
     }

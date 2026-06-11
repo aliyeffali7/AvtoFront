@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Plus, Zap, ChevronRight } from 'lucide-react'
 import { Order, Mechanic, OrderService, Product, Customer } from '@/types'
 import { getOrders, createOrder, uploadOrderImage, addProductToOrder } from '@/services/orders.service'
-import { getSupplierNames } from '@/services/warehouse.service'
+import { getSupplierNames, getSupplierDebts } from '@/services/warehouse.service'
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts, createProduct } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
@@ -88,7 +88,10 @@ function CreateOrderDrawer({
       loadedRef.current = true
       getMechanics().then(r => setMechanics(r.data)).catch(() => {})
       getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
-      getSupplierNames().then(r => setSupplierNames(r.data)).catch(() => {})
+      getSupplierDebts(true).then(r => {
+        const names = [...new Set(r.data.map(d => d.supplier_name))].sort()
+        setSupplierNames(names)
+      }).catch(() => {})
     }
     if (!open) loadedRef.current = false
   }, [open])

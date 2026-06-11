@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { SupplierDebt } from '@/types'
-import { getSupplierDebts, getSupplierNames, createSupplierDebt, paySupplierDebt, deleteSupplierDebt, updateSupplierDebt } from '@/services/warehouse.service'
+import { getSupplierDebts, createSupplierDebt, paySupplierDebt, deleteSupplierDebt, updateSupplierDebt } from '@/services/warehouse.service'
 import { formatCurrency } from '@/lib/utils'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 
@@ -68,12 +68,10 @@ export default function CreditorsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [debtsRes, namesRes] = await Promise.all([
-        getSupplierDebts(true),   // always fetch all
-        getSupplierNames(),
-      ])
+      const debtsRes = await getSupplierDebts(true)
       setDebts(debtsRes.data)
-      setSupplierNames(namesRes.data)
+      const names = [...new Set(debtsRes.data.map(d => d.supplier_name))].sort()
+      setSupplierNames(names)
     } finally {
       setLoading(false)
     }

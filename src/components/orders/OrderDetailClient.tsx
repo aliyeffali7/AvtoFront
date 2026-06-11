@@ -10,10 +10,9 @@ import {
   uploadOrderImage, deleteOrderImage,
 } from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
-import { getProducts, createProduct, updateProduct } from '@/services/warehouse.service'
+import { getProducts, createProduct, updateProduct, getSupplierDebts } from '@/services/warehouse.service'
 import { getBusinessProfile } from '@/services/auth.service'
 import { getCustomers } from '@/services/customers.service'
-import { getSupplierNames } from '@/services/warehouse.service'
 import { formatDate, formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
 import { printOrderPDF } from '@/lib/printOrderPDF'
 import StatusBadge from './StatusBadge'
@@ -97,7 +96,10 @@ function EditOrderDrawer({
       setError('')
       getMechanics().then(r => setMechanics(r.data)).catch(() => {})
       getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
-      getSupplierNames().then(r => setSupplierNames(r.data)).catch(() => {})
+      getSupplierDebts(true).then(r => {
+        const names = [...new Set(r.data.map(d => d.supplier_name))].sort()
+        setSupplierNames(names)
+      }).catch(() => {})
     }
   }, [order])
 
