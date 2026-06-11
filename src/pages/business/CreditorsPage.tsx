@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { SupplierDebt } from '@/types'
 import { getSupplierDebts, getSupplierNames, createSupplierDebt, paySupplierDebt, deleteSupplierDebt, updateSupplierDebt } from '@/services/warehouse.service'
 import { formatCurrency } from '@/lib/utils'
+import ComboboxInput from '@/components/ui/ComboboxInput'
 
 interface SupplierGroup {
   name: string
@@ -359,17 +360,13 @@ export default function CreditorsPage() {
             <form onSubmit={handleAdd} className="flex-1 flex flex-col gap-4 px-6 py-6 overflow-y-auto">
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Kreditor adı <span className="text-red-500">*</span></label>
-                <input
-                  list="creditor-names-list"
+                <ComboboxInput
                   value={newSupplier}
-                  onChange={e => setNewSupplier(e.target.value)}
+                  onChange={setNewSupplier}
+                  options={supplierNames}
                   placeholder="Məs. Avtoehtiyat MMC"
-                  className="input"
                   autoFocus
                 />
-                <datalist id="creditor-names-list">
-                  {supplierNames.map(n => <option key={n} value={n} />)}
-                </datalist>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">Telefon <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>

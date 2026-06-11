@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Product } from '@/types'
 import { getProducts, createProduct, adjustStock, deleteProduct, bulkDeleteProducts, importProductsExcel, getSupplierNames, getProductUsage, ProductUsage } from '@/services/warehouse.service'
 import { formatCurrency, mapApiError } from '@/lib/utils'
+import ComboboxInput from '@/components/ui/ComboboxInput'
 
 const STATUS_LABEL: Record<string, string> = { pending: 'Gözləyir', in_progress: 'İcrada', done: 'Tamamlandı' }
 const STATUS_CLS:   Record<string, string> = {
@@ -190,10 +191,12 @@ function AddProductDrawer({
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Kreditor adı</label>
-            <input list="warehouse-supplier-names" value={supplierName} onChange={e => setSupplierName(e.target.value)} placeholder="Məs. Avtoehtiyat MMC" className="input" />
-            <datalist id="warehouse-supplier-names">
-              {supplierNames.map(n => <option key={n} value={n} />)}
-            </datalist>
+            <ComboboxInput
+              value={supplierName}
+              onChange={setSupplierName}
+              options={supplierNames}
+              placeholder="Məs. Avtoehtiyat MMC"
+            />
             <p className="text-xs text-gray-400">Bu məbləğ avtomatik olaraq kreditorlara əlavə ediləcək</p>
           </div>
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Order, Mechanic, Product, Business, OrderService, Customer } from '@/types'
+import ComboboxInput from '@/components/ui/ComboboxInput'
 import {
   getOrder, assignMechanic, changeOrderStatus,
   addProductToOrder, removeProductFromOrder,
@@ -461,10 +462,13 @@ function EditOrderDrawer({
                         <button type="button" onClick={() => removeNewProduct(i)} className="p-1 text-gray-300 hover:text-red-400 shrink-0"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
                       </div>
                     </div>
-                    <input list="edit-drawer-supplier-names" value={p.supplierName} onChange={e => updateNewProduct(i, 'supplierName', e.target.value)} placeholder="Kreditor adı (borc varsa)" className="input text-sm text-orange-800 placeholder-orange-300 bg-white border-orange-200 focus:ring-orange-300" />
-                    <datalist id="edit-drawer-supplier-names">
-                      {supplierNames.map(n => <option key={n} value={n} />)}
-                    </datalist>
+                    <ComboboxInput
+                      value={p.supplierName}
+                      onChange={v => updateNewProduct(i, 'supplierName', v)}
+                      options={supplierNames}
+                      placeholder="Kreditor adı (borc varsa)"
+                      className="text-sm text-orange-800 placeholder-orange-300 bg-white border-orange-200 focus:ring-orange-300"
+                    />
                   </div>
                 ))}
               </div>

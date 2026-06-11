@@ -8,6 +8,7 @@ import { getMechanics } from '@/services/mechanics.service'
 import { getProducts, createProduct } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
 import { formatDate, formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
+import ComboboxInput from '@/components/ui/ComboboxInput'
 import StatusBadge from './StatusBadge'
 import PlateInput from '@/components/ui/PlateInput'
 
@@ -565,16 +566,13 @@ function CreateOrderDrawer({
                         </button>
                       </div>
                     </div>
-                    <input
-                      list="create-order-supplier-names"
+                    <ComboboxInput
                       value={p.supplierName}
-                      onChange={e => updateNewProduct(i, 'supplierName', e.target.value)}
+                      onChange={v => updateNewProduct(i, 'supplierName', v)}
+                      options={supplierNames}
                       placeholder="Kreditor adı (borc varsa — məs. Avtoehtiyat)"
-                      className="input text-sm text-orange-800 placeholder-orange-300 bg-white border-orange-200 focus:ring-orange-300"
+                      className="text-sm text-orange-800 placeholder-orange-300 bg-white border-orange-200 focus:ring-orange-300"
                     />
-                    <datalist id="create-order-supplier-names">
-                      {supplierNames.map(n => <option key={n} value={n} />)}
-                    </datalist>
                   </div>
                 ))}
               </div>
