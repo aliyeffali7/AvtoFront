@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 
 interface Props {
   value: string
@@ -12,25 +13,38 @@ interface Props {
 
 export default function ComboboxInput({ value, onChange, options, placeholder, className = '', autoFocus, id }: Props) {
   const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [style, setStyle] = useState<CSSProperties>({})
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const filtered = value.trim()
     ? options.filter(o => o.toLowerCase().includes(value.toLowerCase()))
     : options
 
+  function position() {
+    if (!inputRef.current) return
+    const r = inputRef.current.getBoundingClientRect()
+    setStyle({ position: 'fixed', top: r.bottom + 4, left: r.left, width: r.width, zIndex: 9999 })
+  }
+
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+    if (!open) return
+    position()
+    const onScroll = () => position()
+    const onMouseDown = (e: MouseEvent) => {
+      if (!inputRef.current?.contains(e.target as Node)) setOpen(false)
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+    window.addEventListener('scroll', onScroll, true)
+    document.addEventListener('mousedown', onMouseDown)
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      document.removeEventListener('mousedown', onMouseDown)
+    }
+  }, [open])
 
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <input
+        ref={inputRef}
         id={id}
         type="text"
         value={value}
@@ -38,12 +52,12 @@ export default function ComboboxInput({ value, onChange, options, placeholder, c
         placeholder={placeholder}
         className={`input ${className}`}
         onChange={e => { onChange(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => { position(); setOpen(true) }}
         onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}
         autoComplete="off"
       />
-      {open && filtered.length > 0 && (
-        <ul className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+      {open && filtered.length > 0 && createPortal(
+        <ul style={style} className="bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto">
           {filtered.map(opt => (
             <li
               key={opt}
@@ -53,7 +67,8 @@ export default function ComboboxInput({ value, onChange, options, placeholder, c
               {opt}
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       )}
     </div>
   )
