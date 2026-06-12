@@ -99,7 +99,7 @@ function EditOrderDrawer({
       getSupplierDebts(true).then(r => {
         const names = [...new Set(r.data.map(d => d.supplier_name))].sort()
         setSupplierNames(names)
-      }).catch(() => {})
+      }).catch(err => console.error('supplier names load failed:', err))
     }
   }, [order])
 
