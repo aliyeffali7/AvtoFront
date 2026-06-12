@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface Props {
   value: string
@@ -11,16 +11,25 @@ interface Props {
 }
 
 export default function ComboboxInput({ value, onChange, options, placeholder, className = '', autoFocus, id }: Props) {
-  const [focused, setFocused] = useState(false)
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const filtered = value.trim()
     ? options.filter(o => o.toLowerCase().includes(value.toLowerCase()))
     : options
 
-  const showSuggestions = focused && filtered.length > 0
+  useEffect(() => {
+    function handleMouseDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [])
 
   return (
-    <div className="flex flex-col gap-1">
+    <div ref={containerRef} className="relative">
       <input
         id={id}
         type="text"
@@ -28,24 +37,23 @@ export default function ComboboxInput({ value, onChange, options, placeholder, c
         autoFocus={autoFocus}
         placeholder={placeholder}
         className={`input ${className}`}
-        onChange={e => onChange(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        onChange={e => { onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}
         autoComplete="off"
       />
-      {showSuggestions && (
-        <div className="flex flex-wrap gap-1">
-          {filtered.slice(0, 8).map(opt => (
-            <button
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-[9999] left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-52 overflow-y-auto">
+          {filtered.map(opt => (
+            <li
               key={opt}
-              type="button"
-              onMouseDown={e => { e.preventDefault(); onChange(opt); setFocused(false) }}
-              className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+              onMouseDown={e => { e.preventDefault(); onChange(opt); setOpen(false) }}
+              className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-blue-50 hover:text-blue-700 ${opt === value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-800'}`}
             >
               {opt}
-            </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   )

@@ -84,14 +84,17 @@ function CreateOrderDrawer({
   const skipSearchRef = useRef(false)
 
   useEffect(() => {
+    getSupplierDebts(true).then(r => {
+      const names = [...new Set(r.data.map(d => d.supplier_name))].sort()
+      setSupplierNames(names)
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
     if (open && !loadedRef.current) {
       loadedRef.current = true
       getMechanics().then(r => setMechanics(r.data)).catch(() => {})
       getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
-      getSupplierDebts(true).then(r => {
-        const names = [...new Set(r.data.map(d => d.supplier_name))].sort()
-        setSupplierNames(names)
-      }).catch(() => {})
     }
     if (!open) loadedRef.current = false
   }, [open])

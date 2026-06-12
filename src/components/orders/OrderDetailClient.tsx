@@ -96,12 +96,15 @@ function EditOrderDrawer({
       setError('')
       getMechanics().then(r => setMechanics(r.data)).catch(() => {})
       getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
-      getSupplierDebts(true).then(r => {
-        const names = [...new Set(r.data.map(d => d.supplier_name))].sort()
-        setSupplierNames(names)
-      }).catch(err => console.error('supplier names load failed:', err))
     }
   }, [order])
+
+  useEffect(() => {
+    getSupplierDebts(true).then(r => {
+      const names = [...new Set(r.data.map(d => d.supplier_name))].sort()
+      setSupplierNames(names)
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (skipSearchRef.current) { skipSearchRef.current = false; return }
