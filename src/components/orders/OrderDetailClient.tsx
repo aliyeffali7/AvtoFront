@@ -614,6 +614,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [newProdSell, setNewProdSell] = useState('')
   const [newProdQty, setNewProdQty] = useState('1')
   const [newProdSupplier, setNewProdSupplier] = useState('')
+  const [supplierNames, setSupplierNames] = useState<string[]>([])
 
   // Images
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -682,6 +683,13 @@ export default function OrderDetailClient({ id }: { id: string }) {
       getProducts().then(r => setWarehouseProducts(r.data)).catch(() => {})
     }
   }, [addProductOpen])
+
+  useEffect(() => {
+    getSupplierDebts(true).then(r => {
+      const names = [...new Set(r.data.map(d => d.supplier_name))].sort()
+      setSupplierNames(names)
+    }).catch(() => {})
+  }, [])
 
   async function handleAssign() {
     if (!selectedMechanic) return
@@ -1511,7 +1519,13 @@ export default function OrderDetailClient({ id }: { id: string }) {
                       </div>
                       <input value={newProdQty} onChange={e => setNewProdQty(e.target.value)} type="number" min="1" placeholder="Ədəd" className="input text-sm" />
                     </div>
-                    <input value={newProdSupplier} onChange={e => setNewProdSupplier(e.target.value)} placeholder="Kreditor adı (borc varsa)" className="input text-sm text-orange-800 placeholder-orange-300 border-orange-200" />
+                    <ComboboxInput
+                      value={newProdSupplier}
+                      onChange={v => setNewProdSupplier(v)}
+                      options={supplierNames}
+                      placeholder="Kreditor adı (borc varsa)"
+                      className="text-sm text-orange-800 placeholder-orange-300 border-orange-200"
+                    />
                     {productError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{productError}</p>}
                     <div className="flex gap-2">
                       <button type="submit" disabled={addingProduct} className="btn-primary flex-1 text-sm py-2">
