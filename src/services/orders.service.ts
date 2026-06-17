@@ -42,6 +42,9 @@ export const addProductToOrder = (orderId: number, productId: number, quantity: 
 export const removeProductFromOrder = (orderId: number, orderProductId: number) =>
   api.delete<Order>(`/api/orders/${orderId}/products/${orderProductId}`)
 
+export const updateOrderProductQty = (orderId: number, orderProductId: number, quantity: number) =>
+  api.patch<Order>(`/api/orders/${orderId}/products/${orderProductId}`, { quantity })
+
 export const addServiceToOrder = (orderId: number, name: string, price: number, mechanic?: number | null, mechanic_amount?: number | null) =>
   api.post<Order>(`/api/orders/${orderId}/services`, { name, price, mechanic: mechanic ?? null, mechanic_amount: mechanic_amount ?? null })
 

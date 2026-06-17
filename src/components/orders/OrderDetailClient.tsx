@@ -4,7 +4,7 @@ import { Order, Mechanic, Product, Business, OrderService, Customer } from '@/ty
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import {
   getOrder, assignMechanic, changeOrderStatus,
-  addProductToOrder, removeProductFromOrder,
+  addProductToOrder, removeProductFromOrder, updateOrderProductQty,
   addServiceToOrder, removeServiceFromOrder,
   recordPayment, updateOrder, deleteOrder,
   uploadOrderImage, deleteOrderImage,
@@ -594,6 +594,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
   const [editProductName, setEditProductName] = useState('')
   const [editProductPurchase, setEditProductPurchase] = useState('')
   const [editProductSell, setEditProductSell] = useState('')
+  const [editProductQty, setEditProductQty] = useState('')
   const [savingProductEdit, setSavingProductEdit] = useState(false)
   const [editProductError, setEditProductError] = useState('')
 
@@ -786,17 +787,25 @@ export default function OrderDetailClient({ id }: { id: string }) {
 
   async function handleSaveProductEdit(productId: number) {
     setEditProductError('')
+    const newQty = parseInt(editProductQty)
+    if (!newQty || newQty < 1) {
+      setEditProductError('Miqdar müsbət tam ədəd olmalıdır.')
+      return
+    }
     setSavingProductEdit(true)
     try {
-      await updateProduct(productId, {
-        name: editProductName.trim() || undefined,
-        purchase_price: editProductPurchase !== '' ? parseFloat(editProductPurchase) : undefined,
-        sell_price: editProductSell !== '' ? parseFloat(editProductSell) : undefined,
-      })
+      await Promise.all([
+        updateProduct(productId, {
+          name: editProductName.trim() || undefined,
+          purchase_price: editProductPurchase !== '' ? parseFloat(editProductPurchase) : undefined,
+          sell_price: editProductSell !== '' ? parseFloat(editProductSell) : undefined,
+        }),
+        updateOrderProductQty(parseInt(id), editingProductId!, newQty),
+      ])
       setEditingProductId(null)
       load()
-    } catch {
-      setEditProductError('Saxlanıla bilmədi.')
+    } catch (err) {
+      setEditProductError(mapApiError(err))
     } finally {
       setSavingProductEdit(false)
     }
@@ -1561,7 +1570,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                           className="input text-sm"
                           autoFocus
                         />
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           <div className="relative">
                             <input
                               value={editProductPurchase}
@@ -1582,6 +1591,13 @@ export default function OrderDetailClient({ id }: { id: string }) {
                             />
                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
                           </div>
+                          <input
+                            value={editProductQty}
+                            onChange={e => setEditProductQty(e.target.value)}
+                            type="number" min="1"
+                            placeholder="Ədəd"
+                            className="input text-sm w-full"
+                          />
                         </div>
                         {editProductError && <p className="text-xs text-red-600">{editProductError}</p>}
                         <div className="flex gap-2">
@@ -1617,6 +1633,7 @@ export default function OrderDetailClient({ id }: { id: string }) {
                                 setEditProductName(p.product_name)
                                 setEditProductPurchase(p.purchase_price != null ? String(p.purchase_price) : '')
                                 setEditProductSell(String(p.sell_price))
+                                setEditProductQty(String(p.quantity))
                                 setEditProductError('')
                               }}
                               className="p-1 text-gray-300 hover:text-blue-500 transition-colors"
