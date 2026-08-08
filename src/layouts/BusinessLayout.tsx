@@ -8,7 +8,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/business/orders':       'Sifarişlər',
   '/business/customers':    'Müştərilər',
   '/business/mechanics':    'Ustalar',
-  '/business/warehouse':    'Stok',
+  '/business/warehouse':    'Anbar',
   '/business/finance':      'Maliyyə',
   '/business/debts':        'Borclar',
   '/business/creditors':    'Kreditorlar',
@@ -30,11 +30,11 @@ export default function BusinessLayout() {
   const pageTitle = getPageTitle(pathname)
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-bg flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-20 bg-ink/50"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -45,31 +45,21 @@ export default function BusinessLayout() {
       </div>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-60">
-
-        {/* Desktop top bar */}
-        <header className="hidden lg:flex items-center justify-between px-8 py-4 bg-white border-b border-gray-100 sticky top-0 z-10">
-          <h1 className="text-lg font-bold text-gray-900">{pageTitle}</h1>
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </div>
-        </header>
+      <div className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-56">
 
         {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-surface border-b border-rule sticky top-0 z-10">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-xl text-gray-600 hover:bg-gray-100 transition-colors"
+            className="p-2 rounded text-ink hover:bg-surface-alt transition-colors"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <span className="text-sm font-bold text-gray-900">{pageTitle}</span>
+          <span className="font-serif font-semibold text-base text-ink">{pageTitle}</span>
         </div>
 
         <SubscriptionBanner />
-        <main className="flex-1"><Outlet /></main>
+        <main className="flex-1 p-6 lg:p-10"><Outlet /></main>
       </div>
     </div>
   )

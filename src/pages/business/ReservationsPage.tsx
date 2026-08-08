@@ -8,6 +8,12 @@ import {
 } from '@/services/reservations.service'
 import { getMechanics } from '@/services/mechanics.service'
 import { mapApiError } from '@/lib/utils'
+import Badge, { BadgeVariant } from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
+import EmptyState from '@/components/ui/EmptyState'
+import Spinner from '@/components/ui/Spinner'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -35,9 +41,16 @@ const STATUS_LABELS: Record<string, string> = {
   legv_edildi: 'Ləğv edildi',
 }
 
-// ─── Create Drawer ───────────────────────────────────────────────────────────
+const STATUS_BADGE: Record<string, BadgeVariant> = {
+  gozlenilir: 'warning',
+  sifarise_cevrildi: 'success',
+  gelmedi: 'danger',
+  legv_edildi: 'neutral',
+}
 
-function CreateReservationDrawer({
+// ─── Create Panel (inline, expands above the list) ──────────────────────────
+
+function CreateReservationPanel({
   open, onClose, onCreated,
 }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const [customerName, setCustomerName] = useState('')
@@ -102,78 +115,75 @@ function CreateReservationDrawer({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={handleClose} />
-      <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="text-base font-semibold text-gray-900">Yeni rezervasiya</h2>
-          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-4">
-          {/* Date + Time — most important, at top */}
-          <div className="flex gap-3">
-            <div className="flex flex-col gap-1.5 flex-1">
-              <label className="text-sm font-medium text-gray-700">Tarix <span className="text-red-500">*</span></label>
-              <input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} required className="input" />
-            </div>
-            <div className="flex flex-col gap-1.5 flex-1">
-              <label className="text-sm font-medium text-gray-700">Vaxt <span className="text-red-500">*</span></label>
-              <input type="time" value={scheduledTime} onChange={e => setScheduledTime(e.target.value)} required className="input" />
-            </div>
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Müştəri adı</label>
-            <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Hüseyn Məmmədov" className="input" autoFocus />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Telefon</label>
-            <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          <div className="flex gap-3">
-            <div className="flex flex-col gap-1.5 flex-1">
-              <label className="text-sm font-medium text-gray-700">Marka</label>
-              <input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Toyota" className="input" />
-            </div>
-            <div className="flex flex-col gap-1.5 flex-1">
-              <label className="text-sm font-medium text-gray-700">Model</label>
-              <input value={model} onChange={e => setModel(e.target.value)} placeholder="Prado" className="input" />
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">İş təsviri</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Məs. Yağ dəyişimi, əyləc yoxlaması" className="input resize-none" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Usta</label>
-            <select value={mechanic} onChange={e => setMechanic(e.target.value)} className="input">
-              <option value="">Seçilməyib</option>
-              {mechanics.filter(m => m.is_active).map(m => (
-                <option key={m.id} value={m.id}>{m.full_name ?? m.phone}</option>
-              ))}
-            </select>
-          </div>
-
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-
-          <div className="flex flex-col gap-3 mt-auto pt-2">
-            <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? 'Saxlanılır...' : 'Rezervasiya yarat'}
-            </button>
-            <button type="button" onClick={handleClose} className="btn-ghost">Ləğv et</button>
-          </div>
-        </form>
+    <Card className="px-6 py-6 mb-6">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="card-title">Yeni rezervasiya</h2>
+        <button onClick={handleClose} className="p-2 rounded text-ink-muted hover:bg-surface-alt hover:text-ink transition-colors">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
-    </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* Date + Time — most important, at top */}
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="label">Tarix <span className="text-danger">*</span></label>
+            <input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} required className="input-mono" />
+          </div>
+          <div className="flex-1">
+            <label className="label">Vaxt <span className="text-danger">*</span></label>
+            <input type="time" value={scheduledTime} onChange={e => setScheduledTime(e.target.value)} required className="input-mono" />
+          </div>
+        </div>
+
+        <div className="border-t border-rule" />
+
+        <div>
+          <label className="label">Müştəri adı</label>
+          <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Hüseyn Məmmədov" className="input" autoFocus />
+        </div>
+        <div>
+          <label className="label">Telefon</label>
+          <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input-mono" />
+        </div>
+
+        <div className="border-t border-rule" />
+
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="label">Marka</label>
+            <input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Toyota" className="input" />
+          </div>
+          <div className="flex-1">
+            <label className="label">Model</label>
+            <input value={model} onChange={e => setModel(e.target.value)} placeholder="Prado" className="input" />
+          </div>
+        </div>
+        <div>
+          <label className="label">İş təsviri</label>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Məs. Yağ dəyişimi, əyləc yoxlaması" className="input resize-none" />
+        </div>
+        <div>
+          <label className="label">Usta</label>
+          <select value={mechanic} onChange={e => setMechanic(e.target.value)} className="input">
+            <option value="">Seçilməyib</option>
+            {mechanics.filter(m => m.is_active).map(m => (
+              <option key={m.id} value={m.id}>{m.full_name ?? m.phone}</option>
+            ))}
+          </select>
+        </div>
+
+        {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
+
+        <div className="flex gap-3 pt-2">
+          <Button type="submit" disabled={loading} loading={loading} className="flex-1">
+            {loading ? 'Saxlanılır...' : 'Rezervasiya yarat'}
+          </Button>
+          <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">Ləğv et</Button>
+        </div>
+      </form>
+    </Card>
   )
 }
 
@@ -193,107 +203,101 @@ function ReservationCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 px-5 py-4">
+    <Card className="px-5 py-4">
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="min-w-0 flex-1">
           {(res.car_brand || res.car_model) && (
-            <p className="text-sm font-semibold text-gray-800 mb-1">{res.car_brand} {res.car_model}</p>
+            <p className="text-sm font-semibold text-ink mb-1">{res.car_brand} {res.car_model}</p>
           )}
           {res.customer_name && (
-            <p className="text-sm text-gray-700 font-medium">{res.customer_name}</p>
+            <p className="text-sm text-ink-soft font-medium">{res.customer_name}</p>
           )}
           {res.customer_phone && (
-            <a href={`tel:${res.customer_phone}`} className="text-sm text-blue-600 hover:underline">{res.customer_phone}</a>
+            <a href={`tel:${res.customer_phone}`} className="text-sm font-mono text-accent hover:underline">{res.customer_phone}</a>
           )}
           {res.description && (
-            <p className="text-xs text-gray-500 mt-1">{res.description}</p>
+            <p className="text-xs text-ink-muted mt-1">{res.description}</p>
           )}
           {res.mechanic_name && (
-            <p className="text-xs text-blue-500 mt-0.5">Usta: {res.mechanic_name}</p>
+            <p className="text-xs text-accent mt-0.5">Usta: {res.mechanic_name}</p>
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm font-bold text-gray-900">{formatScheduled(res.scheduled_at)}</p>
+          <p className="text-sm font-mono font-semibold text-ink">{formatScheduled(res.scheduled_at)}</p>
           {res.status !== 'gozlenilir' && (
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-1 inline-block ${
-              res.status === 'sifarise_cevrildi' ? 'bg-green-100 text-green-700' :
-              res.status === 'gelmedi' ? 'bg-red-100 text-red-700' :
-              'bg-gray-100 text-gray-600'
-            }`}>
-              {STATUS_LABELS[res.status]}
-            </span>
+            <div className="mt-1">
+              <Badge variant={STATUS_BADGE[res.status]}>{STATUS_LABELS[res.status]}</Badge>
+            </div>
           )}
         </div>
       </div>
 
       {/* Actions — only for pending */}
       {isDue && (
-        <div className="pt-3 border-t border-gray-100 flex flex-wrap gap-2">
-          <button
+        <div className="pt-3 border-t border-rule flex flex-wrap gap-2">
+          <Button
             onClick={() => handle(() => convertReservation(res.id).then(r => navigate(`/business/orders/${r.data.order_id}`)))}
             disabled={actioning}
-            className="flex-1 min-w-0 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold px-3 py-2 rounded-xl transition-colors"
+            className="flex-1 min-w-0 !py-2 !text-sm"
           >
             Sifarişə çevir
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="danger"
             onClick={() => handle(() => updateReservationStatus(res.id, 'gelmedi'))}
             disabled={actioning}
-            className="flex-1 min-w-0 bg-red-50 hover:bg-red-100 text-red-700 text-sm font-semibold px-3 py-2 rounded-xl transition-colors border border-red-200"
+            className="flex-1 min-w-0 !py-2 !text-sm"
           >
             Gəlmədi
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => handle(() => updateReservationStatus(res.id, 'legv_edildi'))}
             disabled={actioning}
-            className="flex-1 min-w-0 bg-gray-50 hover:bg-gray-100 text-gray-600 text-sm font-semibold px-3 py-2 rounded-xl transition-colors border border-gray-200"
+            className="flex-1 min-w-0 !py-2 !text-sm"
           >
             Ləğv et
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Converted — link to order */}
       {res.status === 'sifarise_cevrildi' && res.order && (
-        <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+        <div className="pt-3 border-t border-rule flex items-center justify-between">
           <button
             onClick={() => navigate(`/business/orders/${res.order}`)}
-            className="text-sm text-blue-600 hover:underline font-medium"
+            className="text-sm text-accent hover:underline font-medium"
           >
             Sifarişə bax →
           </button>
-          {confirmDelete ? (
-            <div className="flex gap-1">
-              <button onClick={() => handle(() => deleteReservation(res.id))} className="text-xs bg-red-600 text-white px-2.5 py-1.5 rounded-xl">Bəli</button>
-              <button onClick={() => setConfirmDelete(false)} className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1.5 rounded-xl">Xeyr</button>
-            </div>
-          ) : (
-            <button onClick={() => setConfirmDelete(true)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Sil</button>
-          )}
+          <button onClick={() => setConfirmDelete(true)} className="text-xs text-ink-muted hover:text-danger transition-colors">Sil</button>
         </div>
       )}
 
       {/* Cancelled / no-show — convert still allowed + delete */}
       {(res.status === 'legv_edildi' || res.status === 'gelmedi') && (
-        <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
+        <div className="pt-3 border-t border-rule flex items-center justify-between gap-2 flex-wrap">
           <button
             onClick={() => handle(() => convertReservation(res.id).then(r => navigate(`/business/orders/${r.data.order_id}`)))}
             disabled={actioning}
-            className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-2 rounded-xl transition-colors border border-blue-200"
+            className="text-xs font-mono font-semibold uppercase tracking-wide text-accent bg-surface-alt hover:bg-rule px-3 py-2 rounded transition-colors"
           >
             Sifarişə çevir
           </button>
-          {confirmDelete ? (
-            <div className="flex gap-1">
-              <button onClick={() => handle(() => deleteReservation(res.id))} className="text-xs bg-red-600 text-white px-2.5 py-1.5 rounded-xl">Bəli, sil</button>
-              <button onClick={() => setConfirmDelete(false)} className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1.5 rounded-xl">Xeyr</button>
-            </div>
-          ) : (
-            <button onClick={() => setConfirmDelete(true)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Sil</button>
-          )}
+          <button onClick={() => setConfirmDelete(true)} className="text-xs text-ink-muted hover:text-danger transition-colors">Sil</button>
         </div>
       )}
-    </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Rezervasiyanı sil"
+        message="Bu rezervasiya silinsin? Bu əməliyyat geri qaytarıla bilməz."
+        confirmLabel="Bəli, sil"
+        danger
+        onConfirm={() => { handle(() => deleteReservation(res.id)); setConfirmDelete(false) }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    </Card>
   )
 }
 
@@ -342,129 +346,122 @@ export default function ReservationsPage() {
   }
 
   return (
-    <>
-      <div className="p-6 lg:p-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Rezervasiyalar</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Müştəri görüşlərini idarə edin</p>
-          </div>
-          <button onClick={() => setCreateOpen(true)} className="btn-primary flex items-center gap-2">
+    <div className="p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="page-title">Rezervasiyalar</h1>
+          <p className="text-sm text-ink-muted mt-0.5">Müştəri görüşlərini idarə edin</p>
+        </div>
+        {!createOpen && (
+          <Button onClick={() => setCreateOpen(true)}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             Yeni rezervasiya
-          </button>
-        </div>
-
-        {/* Stats */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-            <div className="bg-white rounded-2xl border border-gray-200 px-4 py-4 text-center">
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-              <p className="text-xs text-gray-500 mt-0.5">Ümumi</p>
-            </div>
-            <div className="bg-green-50 rounded-2xl border border-green-200 px-4 py-4 text-center">
-              <p className="text-2xl font-bold text-green-700">{stats.converted}</p>
-              <p className="text-xs text-green-600 mt-0.5">Sifarişə çevrildi</p>
-              {stats.conversion_rate !== null && (
-                <p className="text-xs font-semibold text-green-500 mt-0.5">{stats.conversion_rate}%</p>
-              )}
-            </div>
-            <div className="bg-red-50 rounded-2xl border border-red-200 px-4 py-4 text-center">
-              <p className="text-2xl font-bold text-red-700">{stats.no_show}</p>
-              <p className="text-xs text-red-600 mt-0.5">Gəlmədi</p>
-            </div>
-            <div className="bg-gray-50 rounded-2xl border border-gray-200 px-4 py-4 text-center">
-              <p className="text-2xl font-bold text-gray-600">{stats.cancelled}</p>
-              <p className="text-xs text-gray-500 mt-0.5">Ləğv edildi</p>
-            </div>
-            <div className="bg-blue-50 rounded-2xl border border-blue-200 px-4 py-4 text-center">
-              <p className="text-2xl font-bold text-blue-700">{stats.pending}</p>
-              <p className="text-xs text-blue-600 mt-0.5">Gözlənilir</p>
-            </div>
-          </div>
-        )}
-
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-6">
-
-            {/* Due now */}
-            {due.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-                  <h2 className="text-sm font-bold text-red-700 uppercase tracking-wide">Vaxtı çatıb — {due.length} rezervasiya</h2>
-                </div>
-                <div className="flex flex-col gap-3">
-                  {due.map(r => <ReservationCard key={r.id} res={r} onAction={load} />)}
-                </div>
-              </div>
-            )}
-
-            {/* Upcoming */}
-            {upcoming.length > 0 ? (
-              <div>
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Gələcək rezervasiyalar</h2>
-                <div className="flex flex-col gap-5">
-                  {Object.entries(upcomingGroups).map(([dateKey, group]) => (
-                    <div key={dateKey}>
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">
-                        {formatDateGroup(group[0].scheduled_at)}
-                      </p>
-                      <div className="flex flex-col gap-3">
-                        {group.map(r => <ReservationCard key={r.id} res={r} onAction={load} />)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : due.length === 0 && (
-              <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
-                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <p className="text-gray-900 font-medium">Gözləyən rezervasiya yoxdur</p>
-                <p className="text-gray-500 text-sm mt-1">Yeni rezervasiya əlavə etmək üçün + düyməsini basın.</p>
-              </div>
-            )}
-
-            {/* History toggle */}
-            {history.length > 0 && (
-              <div>
-                <button
-                  onClick={() => setShowHistory(v => !v)}
-                  className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 font-medium transition-colors mb-3"
-                >
-                  <svg className={`w-4 h-4 transition-transform ${showHistory ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                  Tarixçə ({history.length})
-                </button>
-                {showHistory && (
-                  <div className="flex flex-col gap-3">
-                    {history.map(r => <ReservationCard key={r.id} res={r} onAction={load} />)}
-                  </div>
-                )}
-              </div>
-            )}
-
-          </div>
+          </Button>
         )}
       </div>
 
-      <CreateReservationDrawer
+      <CreateReservationPanel
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={load}
       />
-    </>
+
+      {/* Stats */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+          <Card className="px-4 py-4 text-center">
+            <p className="text-2xl font-mono font-semibold text-ink">{stats.total}</p>
+            <p className="section-label mt-0.5">Ümumi</p>
+          </Card>
+          <Card className="px-4 py-4 text-center">
+            <p className="text-2xl font-mono font-semibold text-success">{stats.converted}</p>
+            <p className="section-label mt-0.5">Sifarişə çevrildi</p>
+            {stats.conversion_rate !== null && (
+              <p className="text-xs font-mono font-semibold text-success mt-0.5">{stats.conversion_rate}%</p>
+            )}
+          </Card>
+          <Card className="px-4 py-4 text-center">
+            <p className="text-2xl font-mono font-semibold text-danger">{stats.no_show}</p>
+            <p className="section-label mt-0.5">Gəlmədi</p>
+          </Card>
+          <Card className="px-4 py-4 text-center">
+            <p className="text-2xl font-mono font-semibold text-ink-muted">{stats.cancelled}</p>
+            <p className="section-label mt-0.5">Ləğv edildi</p>
+          </Card>
+          <Card className="px-4 py-4 text-center">
+            <p className="text-2xl font-mono font-semibold text-warning">{stats.pending}</p>
+            <p className="section-label mt-0.5">Gözlənilir</p>
+          </Card>
+        </div>
+      )}
+
+      {loading ? (
+        <Spinner />
+      ) : (
+        <div className="flex flex-col gap-6">
+
+          {/* Due now */}
+          {due.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2.5 h-2.5 bg-danger rounded-full animate-pulse" />
+                <h2 className="section-label text-danger">Vaxtı çatıb — {due.length} rezervasiya</h2>
+              </div>
+              <div className="flex flex-col gap-3">
+                {due.map(r => <ReservationCard key={r.id} res={r} onAction={load} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Upcoming */}
+          {upcoming.length > 0 ? (
+            <div>
+              <h2 className="section-label mb-3">Gələcək rezervasiyalar</h2>
+              <div className="flex flex-col gap-5">
+                {Object.entries(upcomingGroups).map(([dateKey, group]) => (
+                  <div key={dateKey}>
+                    <p className="text-xs font-mono font-semibold text-ink-muted uppercase tracking-wide mb-2">
+                      {formatDateGroup(group[0].scheduled_at)}
+                    </p>
+                    <div className="flex flex-col gap-3">
+                      {group.map(r => <ReservationCard key={r.id} res={r} onAction={load} />)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : due.length === 0 && (
+            <EmptyState
+              title="Gözləyən rezervasiya yoxdur"
+              subtitle="Yeni rezervasiya əlavə etmək üçün + düyməsini basın."
+            />
+          )}
+
+          {/* History toggle */}
+          {history.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowHistory(v => !v)}
+                className="flex items-center gap-2 text-sm text-ink-muted hover:text-ink font-medium transition-colors mb-3"
+              >
+                <svg className={`w-4 h-4 transition-transform ${showHistory ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+                Tarixçə ({history.length})
+              </button>
+              {showHistory && (
+                <div className="flex flex-col gap-3">
+                  {history.map(r => <ReservationCard key={r.id} res={r} onAction={load} />)}
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      )}
+    </div>
   )
 }

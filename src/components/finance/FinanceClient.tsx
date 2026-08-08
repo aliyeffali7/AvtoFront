@@ -4,6 +4,11 @@ import { Plus, FileDown, CheckCircle2 } from 'lucide-react'
 import { FinanceRecord } from '@/types'
 import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
 import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
+import EmptyState from '@/components/ui/EmptyState'
+import Spinner from '@/components/ui/Spinner'
 
 type Period = 'day' | 'week' | 'month' | 'specific_month' | 'all' | 'custom'
 type TypeFilter = 'all' | 'income' | 'expense'
@@ -71,9 +76,9 @@ function filterByRange(records: FinanceRecord[], start: string | null, end: stri
   })
 }
 
-// ── Add record drawer ────────────────────────────────────────────────────────
+// ── Add record inline form ───────────────────────────────────────────────────
 
-function AddRecordDrawer({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded: () => void }) {
+function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const [type, setType] = useState<'income' | 'expense'>('income')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
@@ -96,48 +101,47 @@ function AddRecordDrawer({ open, onClose, onAdded }: { open: boolean; onClose: (
     }
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Yeni qeyd</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-6">
+    <Card className="p-5 mb-4">
+      <div className="flex items-center justify-between mb-4">
+        <p className="card-title">Yeni qeyd</p>
+        <button type="button" onClick={onClose} className="text-ink-muted hover:text-ink transition-colors" aria-label="Bağla">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-wrap gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Növ</label>
-            <div className="flex rounded-xl border border-gray-300 overflow-hidden">
+            <label className="label">Növ</label>
+            <div className="flex border border-rule rounded overflow-hidden">
               <button type="button" onClick={() => setType('income')}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${type === 'income' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                className={`px-4 py-2.5 text-sm font-semibold transition-colors ${type === 'income' ? 'bg-success text-cream' : 'bg-surface text-ink-soft hover:bg-surface-alt'}`}>
                 Gəlir
               </button>
               <button type="button" onClick={() => setType('expense')}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${type === 'expense' ? 'bg-red-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                className={`px-4 py-2.5 text-sm font-semibold transition-colors border-l border-rule ${type === 'expense' ? 'bg-danger text-cream' : 'bg-surface text-ink-soft hover:bg-surface-alt'}`}>
                 Xərc
               </button>
             </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Məbləğ (₼)</label>
-            <input value={amount} onChange={e => setAmount(e.target.value)} required type="number" step="0.01" min="0.01" placeholder="0.00" className="input" />
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[140px]">
+            <label className="label">Məbləğ (₼)</label>
+            <input value={amount} onChange={e => setAmount(e.target.value)} required type="number" step="0.01" min="0.01" placeholder="0.00" className="input-mono" />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Açıqlama</label>
+          <div className="flex flex-col gap-1.5 flex-[2] min-w-[200px]">
+            <label className="label">Açıqlama</label>
             <input value={description} onChange={e => setDescription(e.target.value)} required placeholder="Məs. Ehtiyat hissəsi alışı" className="input" />
           </div>
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-          <button type="submit" disabled={loading} className="btn-primary mt-2">{loading ? 'Saxlanılır...' : 'Saxla'}</button>
-          <button type="button" onClick={onClose} className="btn-ghost">Ləğv et</button>
-        </form>
-      </div>
-    </div>
+        </div>
+        {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
+        <div className="flex gap-2">
+          <Button type="submit" loading={loading}>Saxla</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Ləğv et</Button>
+        </div>
+      </form>
+    </Card>
   )
 }
 
@@ -168,28 +172,34 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
     const win = window.open('', '_blank')
     if (!win) return
     win.document.write(`<html><head><title>Günlük Hesabat</title>
-      <style>body{font-family:sans-serif;padding:24px;color:#111}table{width:100%;border-collapse:collapse}
-      td,th{padding:8px 12px;border-bottom:1px solid #eee;text-align:left}
-      .right{text-align:right}.green{color:#16a34a}.red{color:#dc2626}
-      h2{margin-bottom:4px}p{color:#6b7280;margin:0 0 16px}
-      .note-box{margin-top:24px;border-top:1px solid #e5e7eb;padding-top:14px}
-      .note-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:4px}
-      .note-text{font-size:13px;color:#111827;white-space:pre-wrap;margin:0}</style>
+      <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+      *{box-sizing:border-box}
+      body{font-family:'IBM Plex Sans','Noto Sans',sans-serif;padding:24px;color:#1F2A24;background:#FFFFFF}
+      table{width:100%;border-collapse:collapse}
+      td,th{padding:8px 12px;border-bottom:1px solid #CBD3C7;text-align:left}
+      th{font-family:'IBM Plex Mono','Noto Sans',monospace;text-transform:uppercase;font-size:10px;letter-spacing:.06em;color:#6b7264;border-bottom:2px solid #1F2A24}
+      .right{text-align:right}.green{color:#1F4D36}.red{color:#A13D2B}
+      h2{font-family:'Newsreader','Noto Sans',serif;font-weight:600;margin-bottom:4px}
+      p{color:#6b7264;margin:0 0 16px}
+      .note-box{margin-top:24px;border-top:1px solid #CBD3C7;padding-top:14px}
+      .note-label{font-family:'IBM Plex Mono','Noto Sans',monospace;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6b7264;margin-bottom:4px}
+      .note-text{font-family:'IBM Plex Sans','Noto Sans',sans-serif;font-size:13px;color:#1F2A24;white-space:pre-wrap;margin:0}</style>
       </head><body>${content}</body></html>`)
     win.document.close()
     win.print()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/45">
+      <div className="bg-surface rounded shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] border border-rule">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-rule">
           <div>
-            <h2 className="text-base font-bold text-gray-900">Günün bağlanışı</h2>
-            <p className="text-xs text-gray-400 mt-0.5">{new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <h2 className="font-serif font-semibold text-lg text-ink">Günün bağlanışı</h2>
+            <p className="text-xs text-ink-muted mt-0.5">{new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
           </div>
-          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+          <button onClick={handleClose} className="p-2 rounded hover:bg-surface-alt text-ink-muted transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -198,49 +208,47 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
 
         {/* Printable content */}
         <div className="overflow-y-auto flex-1 px-6 py-5" ref={printRef}>
-          <h2 className="text-base font-bold text-gray-900">Avtoservis CRM — Günlük Hesabat</h2>
-          <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+          <h2 className="font-serif font-semibold text-lg text-ink">Avtoservis CRM — Günlük Hesabat</h2>
+          <p style={{ color: '#6b7264', marginBottom: '16px' }}>
             {new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
 
           {/* Summary */}
           <div className="grid grid-cols-3 sm:grid-cols-3 gap-3 mb-5">
-            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-              <p className="text-xs text-green-600 font-medium mb-0.5">Gəlir</p>
-              <p className="text-lg font-bold text-green-700">{formatCurrency(income)}</p>
+            <div className="bg-success-bg border border-rule rounded px-4 py-3">
+              <p className="text-xs text-success font-medium mb-0.5">Gəlir</p>
+              <p className="text-lg font-mono font-bold text-success">{formatCurrency(income)}</p>
             </div>
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-              <p className="text-xs text-red-600 font-medium mb-0.5">Xərc</p>
-              <p className="text-lg font-bold text-red-700">{formatCurrency(expense)}</p>
+            <div className="bg-danger-bg border border-rule rounded px-4 py-3">
+              <p className="text-xs text-danger font-medium mb-0.5">Xərc</p>
+              <p className="text-lg font-mono font-bold text-danger">{formatCurrency(expense)}</p>
             </div>
-            <div className={`border rounded-xl px-4 py-3 ${net >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
-              <p className={`text-xs font-medium mb-0.5 ${net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>Xalis</p>
-              <p className={`text-lg font-bold ${net >= 0 ? 'text-blue-700' : 'text-red-700'}`}>{net >= 0 ? '+' : ''}{formatCurrency(net)}</p>
+            <div className={`border border-rule rounded px-4 py-3 ${net >= 0 ? 'bg-success-bg' : 'bg-danger-bg'}`}>
+              <p className={`text-xs font-medium mb-0.5 ${net >= 0 ? 'text-success' : 'text-danger'}`}>Xalis</p>
+              <p className={`text-lg font-mono font-bold ${net >= 0 ? 'text-success' : 'text-danger'}`}>{net >= 0 ? '+' : ''}{formatCurrency(net)}</p>
             </div>
           </div>
 
           {/* Transactions */}
           {todayRecords.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-8">Bu gün heç bir əməliyyat yoxdur.</p>
+            <p className="text-sm text-ink-muted text-center py-8">Bu gün heç bir əməliyyat yoxdur.</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="ledger-table">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left text-xs text-gray-500 font-semibold pb-2">Açıqlama</th>
-                  <th className="text-left text-xs text-gray-500 font-semibold pb-2">Növ</th>
-                  <th className="text-right text-xs text-gray-500 font-semibold pb-2">Məbləğ</th>
+                <tr>
+                  <th className="ledger-th">Açıqlama</th>
+                  <th className="ledger-th">Növ</th>
+                  <th className="ledger-th text-right">Məbləğ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {todayRecords.map(r => (
                   <tr key={r.id}>
-                    <td className="py-2.5 text-gray-700 pr-4">{r.description}</td>
-                    <td className="py-2.5">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${r.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {r.type === 'income' ? 'Gəlir' : 'Xərc'}
-                      </span>
+                    <td className="ledger-td text-ink">{r.description}</td>
+                    <td className="ledger-td">
+                      <Badge variant={r.type === 'income' ? 'success' : 'danger'}>{r.type === 'income' ? 'Gəlir' : 'Xərc'}</Badge>
                     </td>
-                    <td className={`py-2.5 text-right font-semibold ${r.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className={`ledger-td text-right font-mono font-semibold ${r.type === 'income' ? 'text-success' : 'text-danger'}`}>
                       {r.type === 'income' ? '+' : '-'}{formatCurrency(Number(r.amount))}
                     </td>
                   </tr>
@@ -251,43 +259,36 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
 
           {/* Comment — at the end, only rendered if filled, appears in print */}
           {comment.trim() && (
-            <div className="note-box" style={{ marginTop: '24px', borderTop: '1px solid #e5e7eb', paddingTop: '14px' }}>
-              <p className="note-label" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280', marginBottom: '4px' }}>Qeyd</p>
-              <p className="note-text" style={{ fontSize: '13px', color: '#111827', whiteSpace: 'pre-wrap', margin: 0 }}>{comment}</p>
+            <div className="note-box" style={{ marginTop: '24px', borderTop: '1px solid #CBD3C7', paddingTop: '14px' }}>
+              <p className="note-label" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6b7264', marginBottom: '4px' }}>Qeyd</p>
+              <p className="note-text" style={{ fontSize: '13px', color: '#1F2A24', whiteSpace: 'pre-wrap', margin: 0 }}>{comment}</p>
             </div>
           )}
         </div>
 
         {/* Comment input */}
-        <div className="px-6 pt-3 pb-2 border-t border-gray-100">
-          <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Qeyd</label>
+        <div className="px-6 pt-3 pb-2 border-t border-rule">
+          <label className="label">Qeyd</label>
           <textarea
             value={comment}
             onChange={e => setComment(e.target.value)}
             rows={2}
             placeholder="Bu gün üçün qeyd əlavə edin..."
-            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 text-gray-800 placeholder:text-gray-400"
+            className="input resize-none"
           />
         </div>
 
         {/* Footer */}
         <div className="flex gap-2 px-6 py-4">
-          <button
-            onClick={handlePrint}
-            className="flex-1 flex items-center justify-center gap-2 border border-gray-200 text-gray-700 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
-          >
+          <Button type="button" variant="secondary" onClick={handlePrint} className="flex-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
             Çap et
-          </button>
-          <button
-            onClick={handleClose}
-            disabled={saving}
-            className="flex-1 bg-gray-900 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-60"
-          >
-            {saving ? 'Saxlanılır...' : 'Günü bağla'}
-          </button>
+          </Button>
+          <Button type="button" variant="primary" onClick={handleClose} loading={saving} className="flex-1">
+            Günü bağla
+          </Button>
         </div>
       </div>
     </div>
@@ -378,34 +379,35 @@ export default function FinanceClient() {
     const win = window.open('', '_blank')
     if (!win) return
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Maliyyə Hesabatı — ${periodLabel}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:sans-serif;padding:32px;color:#111;font-size:13px}
-      h1{font-size:18px;font-weight:700;margin-bottom:4px}
-      .sub{color:#6b7280;margin-bottom:24px;font-size:12px}
+      body{font-family:'IBM Plex Sans','Noto Sans',sans-serif;padding:32px;color:#1F2A24;font-size:13px;background:#FFFFFF}
+      h1{font-family:'Newsreader','Noto Sans',serif;font-size:22px;font-weight:600;margin-bottom:4px}
+      .sub{color:#6b7264;margin-bottom:24px;font-size:12px;font-family:'IBM Plex Mono','Noto Sans',monospace}
       .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
-      .card{border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px}
-      .card-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-      .card-value{font-size:20px;font-weight:700}
-      .green{color:#16a34a}.red{color:#dc2626}.blue{color:#2563eb}
+      .card{border:1px solid #CBD3C7;border-radius:3px;padding:14px 16px}
+      .card-label{font-family:'IBM Plex Mono','Noto Sans',monospace;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+      .card-value{font-family:'Newsreader','Noto Sans',serif;font-size:22px;font-weight:600}
+      .green{color:#1F4D36}.red{color:#A13D2B}
       table{width:100%;border-collapse:collapse;font-size:12px}
-      th{text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;padding:8px 10px;border-bottom:2px solid #e5e7eb}
-      td{padding:9px 10px;border-bottom:1px solid #f3f4f6}
+      th{text-align:left;font-family:'IBM Plex Mono','Noto Sans',monospace;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6b7264;padding:8px 10px;border-bottom:2px solid #1F2A24}
+      td{padding:9px 10px;border-bottom:1px solid #CBD3C7}
       tr:last-child td{border-bottom:none}
-      .amount{text-align:right;font-weight:600}
-      .income{color:#16a34a}.expense{color:#dc2626}
-      .note-box{margin-top:28px;border-top:1px solid #e5e7eb;padding-top:16px}
-      .note-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:6px}
-      .note-text{font-size:13px;color:#111;line-height:1.6}
+      .amount{text-align:right;font-weight:600;font-family:'IBM Plex Mono','Noto Sans',monospace}
+      .income{color:#1F4D36}.expense{color:#A13D2B}
+      .note-box{margin-top:28px;border-top:1px solid #CBD3C7;padding-top:16px}
+      .note-label{font-family:'IBM Plex Mono','Noto Sans',monospace;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6b7264;margin-bottom:6px}
+      .note-text{font-family:'IBM Plex Sans','Noto Sans',sans-serif;font-size:13px;color:#1F2A24;line-height:1.6}
     </style></head><body>
     <h1>Maliyyə Hesabatı</h1>
     <p class="sub">${periodLabel} · Gəlir: ${income.toFixed(2)} ₼ · Xərc: ${expense.toFixed(2)} ₼ · Xalis: ${net >= 0 ? '+' : ''}${net.toFixed(2)} ₼</p>
     <div class="summary">
       <div class="card"><p class="card-label green">Gəlir</p><p class="card-value green">${income.toFixed(2)} ₼</p></div>
       <div class="card"><p class="card-label red">Xərc</p><p class="card-value red">${expense.toFixed(2)} ₼</p></div>
-      <div class="card"><p class="card-label ${net >= 0 ? 'blue' : 'red'}">Xalis</p><p class="card-value ${net >= 0 ? 'blue' : 'red'}">${net >= 0 ? '+' : ''}${net.toFixed(2)} ₼</p></div>
+      <div class="card"><p class="card-label ${net >= 0 ? 'green' : 'red'}">Xalis</p><p class="card-value ${net >= 0 ? 'green' : 'red'}">${net >= 0 ? '+' : ''}${net.toFixed(2)} ₼</p></div>
     </div>
-    ${periodFiltered.length === 0 ? '<p style="color:#6b7280;text-align:center;padding:32px 0">Bu dövr üzrə əməliyyat yoxdur.</p>' : `
+    ${periodFiltered.length === 0 ? '<p style="color:#6b7264;text-align:center;padding:32px 0">Bu dövr üzrə əməliyyat yoxdur.</p>' : `
     <table>
       <thead><tr><th>Tarix</th><th>Açıqlama</th><th>Növ</th><th style="text-align:right">Məbləğ</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -420,39 +422,33 @@ export default function FinanceClient() {
     <>
       <div className="p-6 lg:p-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-gray-500 font-medium">{periodLabel} üzrə hesabat</p>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <h1 className="page-title">Maliyyə</h1>
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={exportPDF}
-              className="btn-ghost"
-            >
+            <Button variant="secondary" onClick={exportPDF}>
               <FileDown className="w-4 h-4 shrink-0" strokeWidth={2} />
               <span className="hidden sm:inline">PDF</span>
-            </button>
-            <button
-              onClick={() => setEndDayOpen(true)}
-              className="btn-ghost"
-            >
+            </Button>
+            <Button variant="secondary" onClick={() => setEndDayOpen(true)}>
               <CheckCircle2 className="w-4 h-4 shrink-0" strokeWidth={2} />
               <span className="hidden sm:inline">Günü bağla</span>
-            </button>
-            <button onClick={() => setAddOpen(true)} className="btn-primary">
+            </Button>
+            <Button variant="primary" onClick={() => setAddOpen(o => !o)}>
               <Plus className="w-4 h-4 shrink-0" strokeWidth={2.5} />
               <span className="hidden sm:inline">Qeyd əlavə et</span>
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Period tabs */}
         <div className="flex flex-wrap gap-2 mb-4">
-          <div className="flex flex-wrap gap-1 bg-gray-100 rounded-2xl p-1">
+          <div className="flex flex-wrap gap-1 border border-rule rounded p-1 bg-surface-alt">
             {PERIODS.map(p => (
               <button
                 key={p.key}
                 onClick={() => setPeriod(p.key)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
-                  period === p.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                className={`px-4 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+                  period === p.key ? 'bg-surface text-ink border border-rule' : 'text-ink-muted hover:text-ink'
                 }`}
               >
                 {p.key === 'custom' && (
@@ -468,18 +464,18 @@ export default function FinanceClient() {
 
         {/* Custom single date */}
         {period === 'custom' && (
-          <div className="flex items-center gap-3 mb-6 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 w-fit">
-            <svg className="w-5 h-5 text-blue-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <div className="flex items-center gap-3 mb-6 bg-cream border border-rule rounded px-5 py-4 w-fit">
+            <svg className="w-5 h-5 text-ink-muted shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-blue-600 font-medium">Tarix seçin</label>
+              <label className="label">Tarix seçin</label>
               <input
                 type="date"
                 value={customDate}
                 max={getToday()}
                 onChange={e => setCustomDate(e.target.value)}
-                className="text-sm border border-blue-200 bg-white rounded-lg px-3 py-1.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="input-mono"
               />
             </div>
           </div>
@@ -487,146 +483,125 @@ export default function FinanceClient() {
 
         {/* Specific month picker */}
         {period === 'specific_month' && (
-          <div className="flex items-center gap-3 mb-6 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 w-fit">
-            <svg className="w-5 h-5 text-blue-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <div className="flex items-center gap-3 mb-6 bg-cream border border-rule rounded px-5 py-4 w-fit">
+            <svg className="w-5 h-5 text-ink-muted shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-blue-600 font-medium">Ay seçin</label>
+              <label className="label">Ay seçin</label>
               <input
                 type="month"
                 value={selectedMonth}
                 max={getCurrentYearMonth()}
                 onChange={e => setSelectedMonth(e.target.value)}
-                className="text-sm border border-blue-200 bg-white rounded-lg px-3 py-1.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="input-mono"
               />
             </div>
           </div>
         )}
 
-        {/* Summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Gəlir</p>
-              <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
-                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
+        {/* Summary: big net total + income/expense pair */}
+        <Card className="px-6 py-6 mb-8">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <p className="section-label mb-1.5">{periodLabel} üzrə hesabat</p>
+              <p className={`font-serif font-semibold text-[40px] leading-none ${net >= 0 ? 'text-accent' : 'text-danger'}`}>
+                {net >= 0 ? '+' : ''}{formatCurrency(net)}
+              </p>
+              <p className="text-sm text-ink-soft mt-1.5">Xalis · {periodFiltered.length} əməliyyat</p>
+            </div>
+            <div className="flex gap-8">
+              <div className="text-right">
+                <p className="font-mono font-semibold text-xl text-ink">{formatCurrency(income)}</p>
+                <p className="section-label mt-1">Gəlir · {periodFiltered.filter(r => r.type === 'income').length}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-mono font-semibold text-xl text-danger">{formatCurrency(expense)}</p>
+                <p className="section-label mt-1">Xərc · {periodFiltered.filter(r => r.type === 'expense').length}</p>
               </div>
             </div>
-            <p className="text-2xl font-bold text-emerald-600">{formatCurrency(income)}</p>
-            <p className="text-xs text-gray-400 mt-2">{periodFiltered.filter(r => r.type === 'income').length} əməliyyat</p>
           </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Xərc</p>
-              <div className="w-8 h-8 bg-red-50 rounded-xl flex items-center justify-center">
-                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-red-600">{formatCurrency(expense)}</p>
-            <p className="text-xs text-gray-400 mt-2">{periodFiltered.filter(r => r.type === 'expense').length} əməliyyat</p>
-          </div>
-
-          <div className={`rounded-2xl border shadow-sm px-5 py-5 ${net >= 0 ? 'bg-emerald-600 border-emerald-700' : 'bg-red-600 border-red-700'}`}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-white/70 uppercase tracking-widest">Xalis</p>
-              <div className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-white">{net >= 0 ? '+' : ''}{formatCurrency(net)}</p>
-            <p className="text-xs text-white/60 mt-2">{periodFiltered.length} əməliyyat</p>
-          </div>
-        </div>
+        </Card>
 
         {/* Table filter */}
         <div className="flex items-center justify-between mb-3">
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+          <div className="flex gap-1 border border-rule rounded p-1 bg-surface-alt">
             {(['all', 'income', 'expense'] as TypeFilter[]).map(t => (
               <button
                 key={t}
                 onClick={() => setTypeFilter(t)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  typeFilter === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+                  typeFilter === t ? 'bg-surface text-ink border border-rule' : 'text-ink-muted hover:text-ink'
                 }`}
               >
                 {t === 'all' ? 'Hamısı' : t === 'income' ? 'Gəlir' : 'Xərc'}
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-400">{filtered.length} qeyd</p>
+          <p className="section-label">{filtered.length} qeyd</p>
         </div>
+
+        {/* Inline add-record form — expands above the records table */}
+        {addOpen && <AddRecordForm onClose={() => setAddOpen(false)} onAdded={load} />}
 
         {/* Records table */}
         {loading ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-12 flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-          </div>
+          <Card>
+            <Spinner />
+          </Card>
         ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
-            <p className="text-gray-900 font-medium">Qeyd tapılmadı</p>
-            <p className="text-gray-500 text-sm mt-1">Seçilmiş filtr üzrə heç bir əməliyyat yoxdur.</p>
-          </div>
+          <EmptyState title="Qeyd tapılmadı" subtitle="Seçilmiş filtr üzrə heç bir əməliyyat yoxdur." />
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden overflow-x-auto">
-            <table className="w-full min-w-[560px]">
+          <Card className="overflow-hidden overflow-x-auto">
+            <table className="ledger-table min-w-[560px]">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Tarix</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Növ</th>
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Açıqlama</th>
-                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Məbləğ</th>
-                  <th className="px-5 py-3" />
+                <tr>
+                  <th className="ledger-th">Tarix</th>
+                  <th className="ledger-th">Növ</th>
+                  <th className="ledger-th">Açıqlama</th>
+                  <th className="ledger-th text-right">Məbləğ</th>
+                  <th className="ledger-th" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {filtered.map(r => (
                   <tr
                     key={r.id}
-                    className={`hover:bg-gray-50 transition-colors ${r.order ? 'cursor-pointer' : ''}`}
+                    className={`ledger-row ${r.order ? '' : 'cursor-default'}`}
                     onClick={r.order ? () => navigate(`/business/orders/${r.order}`) : undefined}
                     title={r.order ? 'Sifarişə keç' : undefined}
                   >
-                    <td className="px-5 py-4 text-sm text-gray-500 whitespace-nowrap">{formatDate(r.date)}</td>
-                    <td className="px-5 py-4">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${r.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {r.type === 'income' ? 'Gəlir' : 'Xərc'}
-                      </span>
+                    <td className="ledger-td font-mono text-ink-muted">{formatDate(r.date)}</td>
+                    <td className="ledger-td">
+                      <Badge variant={r.type === 'income' ? 'success' : 'danger'}>{r.type === 'income' ? 'Gəlir' : 'Xərc'}</Badge>
                     </td>
-                    <td className="px-5 py-4 text-sm text-gray-700">
+                    <td className="ledger-td whitespace-normal">
                       <span className="flex items-center gap-1.5">
                         {r.description}
                         {r.order && (
-                          <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                           </svg>
                         )}
                       </span>
                     </td>
-                    <td className={`px-5 py-4 text-right text-sm font-semibold whitespace-nowrap ${r.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className={`ledger-td text-right font-mono font-semibold ${r.type === 'income' ? 'text-success' : 'text-danger'}`}>
                       {r.type === 'income' ? '+' : '-'}{formatCurrency(Number(r.amount))}
                     </td>
-                    <td className="px-3 py-4 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                    <td className="ledger-td text-right" onClick={e => e.stopPropagation()}>
                       {confirmDeleteId === r.id ? (
                         <div className="flex items-center justify-end gap-2">
-                          <span className="text-xs text-gray-500">Silinsin?</span>
+                          <span className="text-xs text-ink-muted">Silinsin?</span>
                           <button
                             onClick={() => handleDeleteRecord(r.id)}
                             disabled={deletingId === r.id}
-                            className="text-xs font-medium px-2.5 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                            className="text-xs font-semibold px-2.5 py-1 rounded bg-danger text-cream hover:bg-danger/90 disabled:opacity-50 transition-colors"
                           >
                             {deletingId === r.id ? '...' : 'Bəli'}
                           </button>
                           <button
                             onClick={() => setConfirmDeleteId(null)}
-                            className="text-xs font-medium px-2.5 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors"
+                            className="text-xs font-semibold px-2.5 py-1 rounded border border-rule text-ink-muted hover:bg-surface-alt transition-colors"
                           >
                             Xeyr
                           </button>
@@ -634,7 +609,7 @@ export default function FinanceClient() {
                       ) : (
                         <button
                           onClick={() => setConfirmDeleteId(r.id)}
-                          className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-lg hover:bg-red-50"
+                          className="text-ink-muted hover:text-danger transition-colors p-1.5 rounded hover:bg-danger-bg"
                           title="Ləğv et"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -647,20 +622,19 @@ export default function FinanceClient() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
 
 
         {/* Saved day note */}
         {singleDate && pageNote && (
-          <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
-            <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1">Gün qeydi</p>
-            <p className="text-sm text-gray-800 whitespace-pre-wrap">{pageNote}</p>
+          <div className="card mt-6 px-5 py-4 border-l-2 border-l-warning">
+            <p className="section-label text-warning mb-1">Gün qeydi</p>
+            <p className="text-sm text-ink whitespace-pre-wrap">{pageNote}</p>
           </div>
         )}
       </div>
 
-      <AddRecordDrawer open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} />
       {endDayOpen && <EndDayModal records={records} onClose={() => setEndDayOpen(false)} />}
     </>
   )

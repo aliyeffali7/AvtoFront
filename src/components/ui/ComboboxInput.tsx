@@ -43,12 +43,12 @@ export default function ComboboxInput({ value, onChange, options, placeholder, c
         autoComplete="off"
       />
       {open && filtered.length > 0 && (
-        <ul className="absolute z-[9999] left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-52 overflow-y-auto">
+        <ul className="absolute z-[9999] left-0 right-0 top-full mt-1 bg-surface border border-rule rounded shadow-2xl max-h-52 overflow-y-auto">
           {filtered.map(opt => (
             <li
               key={opt}
               onMouseDown={e => { e.preventDefault(); onChange(opt); setOpen(false) }}
-              className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-blue-50 hover:text-blue-700 ${opt === value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-800'}`}
+              className={`px-3 py-2.5 text-sm cursor-pointer hover:bg-surface-alt hover:text-accent ${opt === value ? 'bg-surface-alt text-accent font-medium' : 'text-ink'}`}
             >
               {opt}
             </li>

@@ -1,8 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Mechanic } from '@/types'
 import { getMechanics, createMechanic, updateMechanic, deactivateMechanic, activateMechanic } from '@/services/mechanics.service'
-import { mapApiError } from '@/lib/utils'
+import { mapApiError, formatCurrency } from '@/lib/utils'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import MasterDetailShell from '@/components/ui/MasterDetailShell'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import EmptyState from '@/components/ui/EmptyState'
+import Spinner from '@/components/ui/Spinner'
 
 function getMechanicImageUrl(image?: string | null) {
   if (!image) return ''
@@ -10,15 +15,19 @@ function getMechanicImageUrl(image?: string | null) {
   return `${import.meta.env.VITE_API_URL ?? ''}${image}`
 }
 
-function AddMechanicDrawer({
-  open,
-  onClose,
-  onAdded,
-}: {
-  open: boolean
-  onClose: () => void
-  onAdded: () => void
-}) {
+function MechanicAvatar({ mechanic, className = 'w-9 h-9 text-sm' }: { mechanic: Pick<Mechanic, 'full_name' | 'phone' | 'image'>; className?: string }) {
+  const url = getMechanicImageUrl(mechanic.image)
+  if (url) {
+    return <img src={url} alt={mechanic.full_name ?? 'Usta'} className={`${className} rounded-full object-cover shrink-0 border border-rule`} />
+  }
+  return (
+    <div className={`${className} rounded-full bg-surface-alt flex items-center justify-center shrink-0 border border-rule`}>
+      <span className="font-mono font-semibold text-ink-muted">{(mechanic.full_name ?? mechanic.phone ?? '?')[0].toUpperCase()}</span>
+    </div>
+  )
+}
+
+function AddMechanicForm({ onAdded, onCancel }: { onAdded: (created: Mechanic) => void; onCancel: () => void }) {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
@@ -43,10 +52,9 @@ function AddMechanicDrawer({
     }
     setLoading(true)
     try {
-      await createMechanic({ full_name: fullName, phone, password, password_confirm: confirmPassword, work_percent: percent, image: imageFile })
+      const res = await createMechanic({ full_name: fullName, phone, password, password_confirm: confirmPassword, work_percent: percent, image: imageFile })
       setFullName(''); setPhone(''); setPassword(''); setConfirmPassword(''); setWorkPercent(''); setImageFile(null); setImagePreview('')
-      onAdded()
-      onClose()
+      onAdded(res.data)
     } catch (err) {
       setError(mapApiError(err))
     } finally {
@@ -54,98 +62,88 @@ function AddMechanicDrawer({
     }
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Yeni usta</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-6 overflow-y-auto">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
-            <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder="Rauf Əliyev" className="input" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
-            <input value={phone} onChange={e => setPhone(e.target.value)} required type="tel" placeholder="+994 50 000 00 00" className="input" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Usta şəkli</label>
-            <input
-              type="file"
-              accept="image/*"
-              className="input"
-              onChange={e => {
-                const file = e.target.files?.[0] ?? null
-                setImageFile(file)
-                setImagePreview(file ? URL.createObjectURL(file) : '')
-              }}
-            />
-            {imagePreview && (
-              <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-200">
-                <img src={imagePreview} alt="Usta şəkli" className="w-full h-full object-cover" />
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">İş faizi (%)</label>
-            <input
-              value={workPercent}
-              onChange={e => setWorkPercent(e.target.value)}
-              required
-              type="number"
-              min={0}
-              max={100}
-              placeholder="Məs: 40"
-              className="input"
-            />
-            <p className="text-xs text-gray-400">Ödəniş qəbul ediləndə ustanın payı avtomatik xərc kimi qeyd ediləcək.</p>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Şifrə</label>
-            <input value={password} onChange={e => setPassword(e.target.value)} required type="password" placeholder="Minimum 8 simvol" minLength={8} className="input" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Şifrəni təsdiqlə</label>
-            <input
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              required
-              type="password"
-              placeholder="Şifrəni təkrar daxil edin"
-              className={`input ${confirmPassword && confirmPassword !== password ? 'border-red-400 focus:ring-red-400' : ''}`}
-            />
-            {confirmPassword && confirmPassword !== password && (
-              <p className="text-xs text-red-500">Şifrələr uyğun gəlmir</p>
-            )}
-          </div>
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-          <button type="submit" disabled={loading} className="btn-primary mt-2">
-            {loading ? 'Əlavə edilir...' : 'Usta əlavə et'}
-          </button>
-          <button type="button" onClick={onClose} className="btn-ghost">Ləğv et</button>
-        </form>
+    <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+      <h2 className="card-title mb-1">Yeni usta</h2>
+      <div>
+        <label className="label">Ad Soyad</label>
+        <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder="Rauf Əliyev" className="input" />
       </div>
-    </div>
+      <div>
+        <label className="label">Əlaqə nömrəsi</label>
+        <input value={phone} onChange={e => setPhone(e.target.value)} required type="tel" placeholder="+994 50 000 00 00" className="input" />
+      </div>
+      <div>
+        <label className="label">Usta şəkli</label>
+        <input
+          type="file"
+          accept="image/*"
+          className="input"
+          onChange={e => {
+            const file = e.target.files?.[0] ?? null
+            setImageFile(file)
+            setImagePreview(file ? URL.createObjectURL(file) : '')
+          }}
+        />
+        {imagePreview && (
+          <div className="w-16 h-16 rounded overflow-hidden border border-rule mt-2">
+            <img src={imagePreview} alt="Usta şəkli" className="w-full h-full object-cover" />
+          </div>
+        )}
+      </div>
+      <div>
+        <label className="label">İş faizi (%)</label>
+        <input
+          value={workPercent}
+          onChange={e => setWorkPercent(e.target.value)}
+          required
+          type="number"
+          min={0}
+          max={100}
+          placeholder="Məs: 40"
+          className="input-mono"
+        />
+        <p className="text-xs text-ink-muted mt-1.5">Ödəniş qəbul ediləndə ustanın payı avtomatik xərc kimi qeyd ediləcək.</p>
+      </div>
+      <div>
+        <label className="label">Şifrə</label>
+        <input value={password} onChange={e => setPassword(e.target.value)} required type="password" placeholder="Minimum 8 simvol" minLength={8} className="input" />
+      </div>
+      <div>
+        <label className="label">Şifrəni təsdiqlə</label>
+        <input
+          value={confirmPassword}
+          onChange={e => setConfirmPassword(e.target.value)}
+          required
+          type="password"
+          placeholder="Şifrəni təkrar daxil edin"
+          className={`input ${confirmPassword && confirmPassword !== password ? 'border-danger focus:ring-danger focus:border-danger' : ''}`}
+        />
+        {confirmPassword && confirmPassword !== password && (
+          <p className="text-xs text-danger mt-1.5">Şifrələr uyğun gəlmir</p>
+        )}
+      </div>
+      {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
+      <div className="flex flex-col gap-2 pt-2">
+        <Button type="submit" loading={loading}>{loading ? 'Əlavə edilir...' : 'Usta əlavə et'}</Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>Ləğv et</Button>
+      </div>
+    </form>
   )
 }
 
-function EditMechanicDrawer({
+function MechanicDetail({
   mechanic,
-  onClose,
   onSaved,
+  onDeactivate,
+  onActivate,
+  actionBusy,
 }: {
-  mechanic: Mechanic | null
-  onClose: () => void
+  mechanic: Mechanic
   onSaved: () => void
+  onDeactivate: () => void
+  onActivate: () => void
+  actionBusy: boolean
 }) {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
@@ -156,14 +154,12 @@ function EditMechanicDrawer({
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (mechanic) {
-      setFullName(mechanic.full_name ?? '')
-      setPhone(mechanic.phone ?? '')
-      setWorkPercent(String(mechanic.work_percent))
-      setImageFile(null)
-      setImagePreview(getMechanicImageUrl(mechanic.image))
-      setError('')
-    }
+    setFullName(mechanic.full_name ?? '')
+    setPhone(mechanic.phone ?? '')
+    setWorkPercent(String(mechanic.work_percent))
+    setImageFile(null)
+    setImagePreview(getMechanicImageUrl(mechanic.image))
+    setError('')
   }, [mechanic])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -176,9 +172,8 @@ function EditMechanicDrawer({
     }
     setLoading(true)
     try {
-      await updateMechanic(mechanic!.id, { full_name: fullName, phone, work_percent: percent, image: imageFile })
+      await updateMechanic(mechanic.id, { full_name: fullName, phone, work_percent: percent, image: imageFile })
       onSaved()
-      onClose()
     } catch (err) {
       setError(mapApiError(err))
     } finally {
@@ -186,67 +181,143 @@ function EditMechanicDrawer({
     }
   }
 
-  if (!mechanic) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Ustanı düzəlt</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+    <div className="p-6">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <MechanicAvatar mechanic={mechanic} className="w-14 h-14 text-lg" />
+          <div className="min-w-0">
+            <h2 className="font-serif font-semibold text-xl text-ink truncate">{mechanic.full_name ?? '—'}</h2>
+            {mechanic.phone && <p className="font-mono text-xs text-ink-muted mt-0.5">{mechanic.phone}</p>}
+          </div>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-6 overflow-y-auto">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
-            <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder="Rauf Əliyev" className="input" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi</label>
-            <input value={phone} onChange={e => setPhone(e.target.value)} required type="tel" placeholder="+994 50 000 00 00" className="input" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Usta şəkli</label>
-            <input
-              type="file"
-              accept="image/*"
-              className="input"
-              onChange={e => {
-                const file = e.target.files?.[0] ?? null
-                setImageFile(file)
-                setImagePreview(file ? URL.createObjectURL(file) : getMechanicImageUrl(mechanic.image))
-              }}
-            />
-            {imagePreview && (
-              <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-200">
-                <img src={imagePreview} alt="Usta şəkli" className="w-full h-full object-cover" />
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">İş faizi (%)</label>
-            <input
-              value={workPercent}
-              onChange={e => setWorkPercent(e.target.value)}
-              required
-              type="number"
-              min={0}
-              max={100}
-              placeholder="Məs: 40"
-              className="input"
-            />
-          </div>
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-          <button type="submit" disabled={loading} className="btn-primary mt-2">
-            {loading ? 'Saxlanılır...' : 'Saxla'}
-          </button>
-          <button type="button" onClick={onClose} className="btn-ghost">Ləğv et</button>
-        </form>
+        <Badge variant={mechanic.is_active ? 'success' : 'neutral'}>{mechanic.is_active ? 'Aktiv' : 'Deaktiv'}</Badge>
       </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-6">
+        <div className="bg-surface border border-rule rounded px-3 py-2.5">
+          <p className="section-label mb-1">İş faizi</p>
+          <p className="font-mono font-semibold text-sm text-ink">{mechanic.work_percent}%</p>
+        </div>
+        <div className="bg-surface border border-rule rounded px-3 py-2.5">
+          <p className="section-label mb-1">Qazanc</p>
+          <p className="font-mono font-semibold text-sm text-ink">{formatCurrency(mechanic.total_earnings)}</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <p className="section-label">Məlumatları düzəlt</p>
+        <div>
+          <label className="label">Ad Soyad</label>
+          <input value={fullName} onChange={e => setFullName(e.target.value)} required placeholder="Rauf Əliyev" className="input" />
+        </div>
+        <div>
+          <label className="label">Əlaqə nömrəsi</label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} required type="tel" placeholder="+994 50 000 00 00" className="input" />
+        </div>
+        <div>
+          <label className="label">Usta şəkli</label>
+          <input
+            type="file"
+            accept="image/*"
+            className="input"
+            onChange={e => {
+              const file = e.target.files?.[0] ?? null
+              setImageFile(file)
+              setImagePreview(file ? URL.createObjectURL(file) : getMechanicImageUrl(mechanic.image))
+            }}
+          />
+          {imagePreview && (
+            <div className="w-16 h-16 rounded overflow-hidden border border-rule mt-2">
+              <img src={imagePreview} alt="Usta şəkli" className="w-full h-full object-cover" />
+            </div>
+          )}
+        </div>
+        <div>
+          <label className="label">İş faizi (%)</label>
+          <input
+            value={workPercent}
+            onChange={e => setWorkPercent(e.target.value)}
+            required
+            type="number"
+            min={0}
+            max={100}
+            placeholder="Məs: 40"
+            className="input-mono"
+          />
+        </div>
+        {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
+        <Button type="submit" loading={loading}>{loading ? 'Saxlanılır...' : 'Saxla'}</Button>
+      </form>
+
+      <div className="border-t border-rule mt-6 pt-4">
+        {mechanic.is_active ? (
+          <Button type="button" variant="danger" onClick={onDeactivate} disabled={actionBusy} className="w-full">
+            {actionBusy ? '...' : 'Deaktiv et'}
+          </Button>
+        ) : (
+          <Button type="button" variant="secondary" onClick={onActivate} disabled={actionBusy} className="w-full">
+            {actionBusy ? '...' : 'Aktiv et'}
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MechanicTable({
+  title,
+  mechanics,
+  selectedId,
+  onSelect,
+}: {
+  title: string
+  mechanics: Mechanic[]
+  selectedId: number | null
+  onSelect: (id: number) => void
+}) {
+  return (
+    <div>
+      <div className="bg-surface-alt px-4 py-2 border-b border-rule">
+        <p className="section-label">{title}</p>
+      </div>
+      {mechanics.length === 0 ? (
+        <p className="px-4 py-4 text-sm text-ink-muted">Bu bölmədə usta yoxdur.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="ledger-table min-w-[560px]">
+            <thead>
+              <tr>
+                <th className="ledger-th">Usta</th>
+                <th className="ledger-th">Telefon</th>
+                <th className="ledger-th text-right">İş faizi</th>
+                <th className="ledger-th text-right">Qazanc</th>
+                <th className="ledger-th">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mechanics.map(m => (
+                <tr
+                  key={m.id}
+                  onClick={() => onSelect(m.id)}
+                  className={`ledger-row ${selectedId === m.id ? 'ledger-row-selected' : ''}`}
+                >
+                  <td className="ledger-td">
+                    <div className="flex items-center gap-2.5">
+                      <MechanicAvatar mechanic={m} className="w-8 h-8 text-xs" />
+                      <span className="font-medium">{m.full_name ?? '—'}</span>
+                    </div>
+                  </td>
+                  <td className="ledger-td font-mono text-ink-muted">{m.phone || '—'}</td>
+                  <td className="ledger-td text-right font-mono">{m.work_percent}%</td>
+                  <td className="ledger-td text-right font-mono font-semibold">{formatCurrency(m.total_earnings)}</td>
+                  <td className="ledger-td"><Badge variant={m.is_active ? 'success' : 'neutral'}>{m.is_active ? 'Aktiv' : 'Deaktiv'}</Badge></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
@@ -254,8 +325,8 @@ function EditMechanicDrawer({
 export default function MechanicsClient() {
   const [mechanics, setMechanics] = useState<Mechanic[]>([])
   const [loading, setLoading] = useState(true)
-  const [addOpen, setAddOpen] = useState(false)
-  const [editMechanic, setEditMechanic] = useState<Mechanic | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [creating, setCreating] = useState(false)
   const [deactivating, setDeactivating] = useState<number | null>(null)
   const [deactivateTarget, setDeactivateTarget] = useState<Mechanic | null>(null)
   const [activateTarget, setActivateTarget] = useState<Mechanic | null>(null)
@@ -295,143 +366,65 @@ export default function MechanicsClient() {
     }
   }
 
+  function openCreate() {
+    setCreating(true)
+    setSelectedId(null)
+  }
+
+  function selectMechanic(id: number) {
+    setCreating(false)
+    setSelectedId(id)
+  }
+
   const active = mechanics.filter(m => m.is_active)
   const inactive = mechanics.filter(m => !m.is_active)
+  const selectedMechanic = selectedId ? mechanics.find(m => m.id === selectedId) ?? null : null
+
+  const listPane = (
+    loading ? (
+      <Spinner />
+    ) : mechanics.length === 0 ? (
+      <div className="p-6">
+        <EmptyState title="Hələ usta yoxdur" subtitle="Usta əlavə etmək üçün yuxarıdakı düyməni basın." />
+      </div>
+    ) : (
+      <div className="flex flex-col">
+        <MechanicTable title="Aktiv ustalar" mechanics={active} selectedId={creating ? null : selectedId} onSelect={selectMechanic} />
+        {inactive.length > 0 && (
+          <MechanicTable title="Deaktiv ustalar" mechanics={inactive} selectedId={creating ? null : selectedId} onSelect={selectMechanic} />
+        )}
+      </div>
+    )
+  )
+
+  const detailPane = creating ? (
+    <AddMechanicForm
+      onAdded={created => { setCreating(false); setSelectedId(created.id); load() }}
+      onCancel={() => setCreating(false)}
+    />
+  ) : selectedMechanic ? (
+    <MechanicDetail
+      mechanic={selectedMechanic}
+      onSaved={load}
+      onDeactivate={() => setDeactivateTarget(selectedMechanic)}
+      onActivate={() => setActivateTarget(selectedMechanic)}
+      actionBusy={deactivating === selectedMechanic.id || activating === selectedMechanic.id}
+    />
+  ) : null
 
   return (
     <>
       <div className="p-6 lg:p-8">
         <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-gray-500 font-medium">{active.length} aktiv usta</p>
-          <button onClick={() => setAddOpen(true)} className="btn-primary">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Usta əlavə et
-          </button>
+          <div>
+            <h1 className="page-title">Ustalar</h1>
+            <p className="text-sm text-ink-muted mt-0.5">{active.length} aktiv usta</p>
+          </div>
+          <Button onClick={openCreate}>+ Usta əlavə et</Button>
         </div>
 
-        {loading ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-12 flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-          </div>
-        ) : mechanics.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
-            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <p className="text-gray-900 font-medium">Hələ usta yoxdur</p>
-            <p className="text-gray-500 text-sm mt-1">Usta əlavə etmək üçün yuxarıdakı düyməni basın.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {/* Active */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-              <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Aktiv ustalar</p>
-              </div>
-              {active.length === 0 ? (
-                <p className="px-5 py-4 text-sm text-gray-400">Aktiv usta yoxdur.</p>
-              ) : (
-                <ul className="divide-y divide-gray-100">
-                  {active.map(m => (
-                    <li key={m.id} className="flex items-center justify-between px-4 py-4 gap-2 flex-wrap sm:flex-nowrap sm:px-5 sm:gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {m.image ? (
-                          <img src={getMechanicImageUrl(m.image)} alt={m.full_name ?? 'Usta'} className="w-9 h-9 rounded-full object-cover shrink-0 border border-blue-100" />
-                        ) : (
-                          <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
-                            <span className="text-blue-600 font-semibold text-sm">{(m.full_name ?? m.phone ?? '?')[0].toUpperCase()}</span>
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{m.full_name ?? '—'}</p>
-                          {m.phone && <p className="text-xs text-gray-400">{m.phone}</p>}
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                            <span className="text-xs text-indigo-600 font-medium">{m.work_percent}% pay</span>
-                            <span className="text-xs text-gray-500">Qazanc: <span className="font-semibold text-gray-700">{Number(m.total_earnings).toFixed(2)} ₼</span></span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">Aktiv</span>
-                        <button
-                          onClick={() => setEditMechanic(m)}
-                          className="p-2.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                          title="Düzəlt"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H7v-3a2 2 0 01.586-1.414z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => setDeactivateTarget(m)}
-                          disabled={deactivating === m.id}
-                          className="text-xs text-gray-400 hover:text-red-500 font-medium transition-colors px-1"
-                        >
-                          {deactivating === m.id ? '...' : 'Deaktiv et'}
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Inactive */}
-            {inactive.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Deaktiv ustalar</p>
-                </div>
-                <ul className="divide-y divide-gray-100">
-                  {inactive.map(m => (
-                    <li key={m.id} className="flex items-center justify-between px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        {m.image ? (
-                          <img src={getMechanicImageUrl(m.image)} alt={m.full_name ?? 'Usta'} className="w-9 h-9 rounded-full object-cover shrink-0 border border-gray-200" />
-                        ) : (
-                          <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
-                            <span className="text-gray-400 font-semibold text-sm">{(m.full_name ?? m.phone ?? '?')[0].toUpperCase()}</span>
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-sm text-gray-500">{m.full_name ?? '—'}</p>
-                          {m.phone && <p className="text-xs text-gray-400">{m.phone}</p>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full font-medium">Deaktiv</span>
-                        <button
-                          onClick={() => setEditMechanic(m)}
-                          className="p-2.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                          title="Düzəlt"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H7v-3a2 2 0 01.586-1.414z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => setActivateTarget(m)}
-                          disabled={activating === m.id}
-                          className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors px-1"
-                        >
-                          {activating === m.id ? '...' : 'Aktiv et'}
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
+        <MasterDetailShell list={listPane} detail={detailPane} onClose={() => { setCreating(false); setSelectedId(null) }} />
       </div>
-
-      <AddMechanicDrawer open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} />
-      <EditMechanicDrawer mechanic={editMechanic} onClose={() => setEditMechanic(null)} onSaved={load} />
 
       <ConfirmDialog
         open={!!deactivateTarget}

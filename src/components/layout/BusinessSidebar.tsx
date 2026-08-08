@@ -20,7 +20,7 @@ const navItems = [
   { href: '/business/orders',       label: 'Sifarişlər',      icon: ClipboardList },
   { href: '/business/customers',    label: 'Müştərilər',      icon: UserCircle },
   { href: '/business/mechanics',    label: 'Ustalar',         icon: Users },
-  { href: '/business/warehouse',    label: 'Stok',            icon: Package },
+  { href: '/business/warehouse',    label: 'Anbar',           icon: Package },
   { href: '/business/finance',      label: 'Maliyyə',         icon: Wallet },
   { href: '/business/debts',        label: 'Borclar',         icon: AlertTriangle },
   { href: '/business/creditors',    label: 'Kreditorlar',     icon: CreditCard },
@@ -45,32 +45,26 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <aside className="w-60 bg-slate-900 min-h-screen flex flex-col shrink-0">
+    <aside className="w-56 bg-sidebar min-h-screen flex flex-col shrink-0">
       {/* Brand */}
-      <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
+      <div className="px-6 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           {business?.logo && !logoError ? (
             <img
               src={business.logo.startsWith('http') ? business.logo : (import.meta.env.VITE_API_URL ?? '') + business.logo}
               alt="logo"
-              className="w-14 rounded-xl object-contain shrink-0"
+              className="w-10 h-10 rounded object-contain shrink-0 bg-cream"
               onError={() => setLogoError(true)}
             />
-          ) : (
-            <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 .001M13 16H9m4 0h2m2 0h1a1 1 0 001-1v-5l-3-4H13" />
-              </svg>
-            </div>
-          )}
+          ) : null}
           <div className="min-w-0">
-            <p className="text-base font-bold text-white leading-tight truncate">{business?.name ?? 'Avtoservis'}</p>
-            <p className="text-xs text-slate-500 mt-0.5">CRM Panel</p>
+            <p className="font-serif font-semibold text-[17px] text-cream leading-tight truncate">
+              {business?.name ?? 'Avtoservis CRM'}
+            </p>
           </div>
         </div>
         {onClose && (
-          <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-800 transition-colors">
+          <button onClick={onClose} className="lg:hidden p-1.5 rounded text-ink-muted hover:bg-sidebar-active transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -79,7 +73,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 pt-2 flex flex-col gap-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href)
           const Icon = item.icon
@@ -88,16 +82,13 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
               key={item.href}
               to={item.href}
               onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[42px] group ${
+              className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors min-h-[42px] border-l-2 ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+                  ? 'bg-sidebar-active text-cream border-sidebar-accent'
+                  : 'text-ink-muted hover:bg-sidebar-active/60 hover:text-cream border-transparent'
               }`}
             >
-              <Icon
-                className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}
-                strokeWidth={isActive ? 2.5 : 2}
-              />
+              <Icon className="w-4 h-4 shrink-0" strokeWidth={isActive ? 2.25 : 1.8} />
               {item.label}
             </Link>
           )
@@ -105,12 +96,12 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
       </nav>
 
       {/* Logout */}
-      <div className="px-3 py-3 border-t border-slate-800">
+      <div className="px-3 py-3 border-t border-white/10">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all min-h-[42px] group"
+          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-ink-muted hover:text-cream transition-colors min-h-[42px]"
         >
-          <LogOut className="w-4 h-4 shrink-0 text-slate-500 group-hover:text-red-400 transition-colors" strokeWidth={2} />
+          <LogOut className="w-4 h-4 shrink-0" strokeWidth={1.8} />
           Çıxış
         </button>
       </div>

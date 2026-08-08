@@ -20,17 +20,6 @@ export function getStatusLabel(status: 'pending' | 'in_progress' | 'done'): stri
   return labels[status]
 }
 
-export function getStatusColor(
-  status: 'pending' | 'in_progress' | 'done'
-): string {
-  const colors = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    in_progress: 'bg-blue-100 text-blue-800',
-    done: 'bg-green-100 text-green-800',
-  }
-  return colors[status]
-}
-
 /**
  * Auto-formats a search string as an Azerbaijan plate number when it starts
  * with a digit and contains at least one letter. Leaves names and phone

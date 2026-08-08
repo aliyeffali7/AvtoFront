@@ -1,5 +1,5 @@
-import CustomerDetailClient from '@/components/customers/CustomerDetailClient'
+import CustomersClient from '@/components/customers/CustomersClient'
 
 export default function CustomerDetailPage() {
-  return <CustomerDetailClient />
+  return <CustomersClient />
 }

@@ -3,7 +3,7 @@ import MechanicBottomNav from '@/components/layout/MechanicBottomNav'
 
 export default function MechanicLayout() {
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-cream pb-20 font-sans">
       <main><Outlet /></main>
       <MechanicBottomNav />
     </div>

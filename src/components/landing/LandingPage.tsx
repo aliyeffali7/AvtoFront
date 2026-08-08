@@ -45,40 +45,42 @@ export default function LandingPage() {
   const [tab, setTab] = useState<'login' | 'register'>('login')
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-bg text-ink font-sans">
       {/* Nav */}
-      <nav className="border-b border-white/10 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 .001M13 16H9m4 0h2m2 0h1a1 1 0 001-1v-5l-3-4H13" />
-            </svg>
+      <nav className="bg-sidebar px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto w-full flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-sidebar-accent rounded flex items-center justify-center">
+              <svg className="w-4 h-4 text-cream" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 .001M13 16H9m4 0h2m2 0h1a1 1 0 001-1v-5l-3-4H13" />
+              </svg>
+            </div>
+            <span className="font-serif font-semibold text-cream text-base tracking-tight">Avtoservis CRM</span>
           </div>
-          <span className="font-bold text-white text-sm tracking-tight">Avtoservis CRM</span>
+          <button
+            onClick={() => setTab('login')}
+            className="text-sm text-cream/80 hover:text-cream font-medium transition-colors"
+          >
+            Daxil ol
+          </button>
         </div>
-        <button
-          onClick={() => setTab('login')}
-          className="text-sm text-gray-300 hover:text-white font-medium transition-colors"
-        >
-          Daxil ol
-        </button>
       </nav>
 
       <div className="max-w-6xl mx-auto px-6 py-16 lg:py-24 grid lg:grid-cols-2 gap-16 items-center">
         {/* Left — hero */}
         <div>
-          <div className="inline-flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 rounded-full px-3 py-1.5 mb-6">
-            <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
-            <span className="text-blue-400 text-xs font-medium">7 günlük pulsuz sınaq</span>
+          <div className="inline-flex items-center gap-2 bg-surface border border-rule rounded-full px-3 py-1.5 mb-6">
+            <span className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
+            <span className="text-accent text-xs font-semibold">7 günlük pulsuz sınaq</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight tracking-tight mb-5">
+          <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight text-ink mb-5">
             Avtoservisinizi<br />
-            <span className="text-blue-400">rəqəmsal idarə</span><br />
+            <span className="text-accent">rəqəmsal idarə</span><br />
             edin
           </h1>
-          <p className="text-gray-400 text-lg leading-relaxed mb-8 max-w-md">
+          <p className="text-ink-soft text-lg leading-relaxed mb-8 max-w-md">
             Sifarişlər, ustalar, anbar, maliyyə — hamısı bir sistemdə. Qeydiyyat 1 dəqiqə çəkir, kart tələb olunmur.
           </p>
 
@@ -86,12 +88,12 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {features.map((f, i) => (
               <div key={i} className="flex items-start gap-3">
-                <div className="w-9 h-9 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center shrink-0 text-blue-400">
+                <div className="w-9 h-9 bg-surface border border-rule rounded flex items-center justify-center shrink-0 text-accent">
                   {f.icon}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">{f.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{f.desc}</p>
+                  <p className="text-sm font-semibold text-ink">{f.title}</p>
+                  <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">{f.desc}</p>
                 </div>
               </div>
             ))}
@@ -100,25 +102,25 @@ export default function LandingPage() {
 
         {/* Right — auth card */}
         <div className="lg:pl-8">
-          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <div className="card overflow-hidden">
             {/* Tabs */}
-            <div className="flex border-b border-gray-100">
+            <div className="flex border-b border-rule">
               <button
                 onClick={() => setTab('login')}
-                className={`flex-1 py-4 text-sm font-semibold transition-colors ${
+                className={`flex-1 py-4 text-sm font-semibold transition-colors border-b-2 -mb-px ${
                   tab === 'login'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'text-ink border-accent'
+                    : 'text-ink-muted border-transparent hover:text-ink-soft'
                 }`}
               >
                 Daxil ol
               </button>
               <button
                 onClick={() => setTab('register')}
-                className={`flex-1 py-4 text-sm font-semibold transition-colors ${
+                className={`flex-1 py-4 text-sm font-semibold transition-colors border-b-2 -mb-px ${
                   tab === 'register'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'text-ink border-accent'
+                    : 'text-ink-muted border-transparent hover:text-ink-soft'
                 }`}
               >
                 Qeydiyyat
@@ -128,23 +130,23 @@ export default function LandingPage() {
             <div className="p-6 sm:p-8">
               {tab === 'login' ? (
                 <>
-                  <p className="text-gray-900 font-semibold text-base mb-5">Hesabınıza daxil olun</p>
+                  <p className="card-title text-base mb-5">Hesabınıza daxil olun</p>
                   <LoginForm />
-                  <p className="text-center text-sm text-gray-500 mt-5">
+                  <p className="text-center text-sm text-ink-muted mt-5">
                     Hesabınız yoxdur?{' '}
-                    <button onClick={() => setTab('register')} className="text-blue-600 font-medium hover:underline">
+                    <button onClick={() => setTab('register')} className="text-accent font-semibold hover:underline">
                       Qeydiyyatdan keçin
                     </button>
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="text-gray-900 font-semibold text-base mb-1">7 günlük pulsuz sınaq</p>
-                  <p className="text-sm text-gray-500 mb-5">Kart tələb olunmur. Dərhal başlayın.</p>
+                  <p className="card-title text-base mb-1">7 günlük pulsuz sınaq</p>
+                  <p className="text-sm text-ink-muted mb-5">Kart tələb olunmur. Dərhal başlayın.</p>
                   <RegisterForm />
-                  <p className="text-center text-sm text-gray-500 mt-5">
+                  <p className="text-center text-sm text-ink-muted mt-5">
                     Artıq hesabınız var?{' '}
-                    <button onClick={() => setTab('login')} className="text-blue-600 font-medium hover:underline">
+                    <button onClick={() => setTab('login')} className="text-accent font-semibold hover:underline">
                       Daxil olun
                     </button>
                   </p>
@@ -156,8 +158,8 @@ export default function LandingPage() {
       </div>
 
       {/* Simple footer */}
-      <div className="border-t border-white/10 py-6 text-center">
-        <p className="text-gray-600 text-xs">© 2024 Avtoservis CRM. Bütün hüquqlar qorunur.</p>
+      <div className="border-t border-rule py-6 text-center">
+        <p className="text-ink-muted text-xs">© 2024 Avtoservis CRM. Bütün hüquqlar qorunur.</p>
       </div>
     </div>
   )

@@ -4,13 +4,11 @@ import { Product } from '@/types'
 import { getProducts, createProduct, adjustStock, deleteProduct, bulkDeleteProducts, importProductsExcel, getSupplierDebts, getProductUsage, ProductUsage } from '@/services/warehouse.service'
 import { formatCurrency, mapApiError } from '@/lib/utils'
 import ComboboxInput from '@/components/ui/ComboboxInput'
-
-const STATUS_LABEL: Record<string, string> = { pending: 'Gözləyir', in_progress: 'İcrada', done: 'Tamamlandı' }
-const STATUS_CLS:   Record<string, string> = {
-  pending:     'bg-amber-100 text-amber-700',
-  in_progress: 'bg-blue-100 text-blue-700',
-  done:        'bg-green-100 text-green-700',
-}
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import Spinner from '@/components/ui/Spinner'
+import EmptyState from '@/components/ui/EmptyState'
+import StatusBadge from '@/components/orders/StatusBadge'
 
 function ProductUsageModal({ product, onClose }: { product: Product; onClose: () => void }) {
   const navigate = useNavigate()
@@ -25,14 +23,14 @@ function ProductUsageModal({ product, onClose }: { product: Product; onClose: ()
   }, [product.id])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh]">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/45">
+      <div className="bg-surface border border-rule rounded w-full max-w-lg flex flex-col max-h-[80vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-rule shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">{product.name}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">İstifadə tarixçəsi</p>
+            <h2 className="font-serif font-semibold text-lg text-ink">{product.name}</h2>
+            <p className="text-xs text-ink-muted mt-0.5">İstifadə tarixçəsi</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+          <button onClick={onClose} className="p-2 rounded hover:bg-surface-alt text-ink-muted">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -41,34 +39,30 @@ function ProductUsageModal({ product, onClose }: { product: Product; onClose: ()
 
         <div className="overflow-y-auto flex-1">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="w-7 h-7 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-            </div>
+            <Spinner className="w-7 h-7" />
           ) : usages.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-gray-500 font-medium">Bu məhsul heç bir sifarişdə istifadə edilməyib.</p>
+              <p className="text-ink-muted font-medium">Bu məhsul heç bir sifarişdə istifadə edilməyib.</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-rule">
               {usages.map((u, i) => (
                 <button
                   key={i}
                   onClick={() => { onClose(); navigate(`/business/orders/${u.order_id}`) }}
-                  className="w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex items-center justify-between gap-4"
+                  className="w-full text-left px-6 py-4 hover:bg-surface-alt transition-colors flex items-center justify-between gap-4"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="font-mono font-bold text-gray-900 text-sm">{u.plate || `#${u.order_id}`}</span>
-                      {u.car && <span className="text-xs text-gray-500">{u.car}</span>}
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLS[u.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {STATUS_LABEL[u.status] ?? u.status}
-                      </span>
+                      <span className="font-mono font-bold text-ink text-sm">{u.plate || `#${u.order_id}`}</span>
+                      {u.car && <span className="text-xs text-ink-muted">{u.car}</span>}
+                      <StatusBadge status={u.status} />
                     </div>
-                    <p className="text-xs text-gray-400">{u.date}</p>
+                    <p className="text-xs text-ink-muted font-mono">{u.date}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold text-gray-900">{u.quantity} ədəd</p>
-                    <p className="text-xs text-gray-400">{formatCurrency(Number(u.sell_price))} / ədəd</p>
+                    <p className="text-sm font-semibold text-ink font-mono">{u.quantity} ədəd</p>
+                    <p className="text-xs text-ink-muted font-mono">{formatCurrency(Number(u.sell_price))} / ədəd</p>
                   </div>
                 </button>
               ))}
@@ -76,16 +70,16 @@ function ProductUsageModal({ product, onClose }: { product: Product; onClose: ()
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 shrink-0 flex items-center justify-between">
-          <p className="text-xs text-gray-400">{usages.length} sifariş</p>
-          <button onClick={onClose} className="btn-ghost text-sm py-2 px-4">Bağla</button>
+        <div className="px-6 py-4 border-t border-rule shrink-0 flex items-center justify-between">
+          <p className="text-xs text-ink-muted">{usages.length} sifariş</p>
+          <button onClick={onClose} className="btn-secondary text-sm py-2 px-4 min-h-0">Bağla</button>
         </div>
       </div>
     </div>
   )
 }
 
-function AddProductDrawer({
+function AddProductPanel({
   open,
   onClose,
   onAdded,
@@ -140,136 +134,71 @@ function AddProductDrawer({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Yeni məhsul</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-4 px-6 py-6 overflow-y-auto">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Məhsul adı <span className="text-red-500">*</span></label>
-            <input value={name} onChange={e => setName(e.target.value)} required placeholder="Məs. Mühərrik yağı" className="input" autoFocus />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Kodu</label>
-              <input value={code} onChange={e => setCode(e.target.value)} placeholder="Məs. 53698" className="input" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Ölçü vahidi</label>
-              <select value={unit} onChange={e => setUnit(e.target.value)} className="input">
-                <option value="ədəd">ədəd</option>
-                <option value="litr">litr</option>
-                <option value="kq">kq</option>
-                <option value="metr">metr</option>
-                <option value="dəst">dəst</option>
-                <option value="paket">paket</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Alış qiyməti (₼) <span className="text-red-500">*</span></label>
-            <input value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} required type="number" step="0.01" min="0" placeholder="0.00" className="input" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Güzəşt (%)</label>
-            <input value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} type="number" step="0.01" min="0" max="100" placeholder="0" className="input" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Satış qiyməti (₼) <span className="text-red-500">*</span></label>
-            <input value={sellPrice} onChange={e => setSellPrice(e.target.value)} required type="number" step="0.01" min="0" placeholder="0.00" className="input" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">İlkin stok <span className="text-red-500">*</span></label>
-            <input value={stock} onChange={e => setStock(e.target.value)} required type="number" min="0" placeholder="0" className="input" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Kreditor adı</label>
-            <ComboboxInput
-              value={supplierName}
-              onChange={setSupplierName}
-              options={supplierNames}
-              placeholder="Məs. Avtoehtiyat MMC"
-            />
-            <p className="text-xs text-gray-400">Bu məbləğ avtomatik olaraq kreditorlara əlavə ediləcək</p>
-          </div>
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-          <div className="mt-auto flex flex-col gap-3 pt-2">
-            <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? 'Saxlanılır...' : 'Saxla'}
-            </button>
-            <button type="button" onClick={onClose} className="btn-ghost">Ləğv et</button>
-          </div>
-        </form>
+    <div className="card px-6 py-6 mb-6">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="font-serif font-semibold text-lg text-ink">Yeni məhsul</h2>
+        <button onClick={onClose} className="p-2 rounded hover:bg-surface-alt text-ink-muted">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
-    </div>
-  )
-}
-
-function AdjustStockDrawer({
-  product,
-  onClose,
-  onUpdated,
-}: {
-  product: Product | null
-  onClose: () => void
-  onUpdated: () => void
-}) {
-  const [qty, setQty] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    if (product) setQty(String(product.stock_quantity))
-  }, [product])
-
-  if (!product) return null
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      await adjustStock(product!.id, parseInt(qty))
-      onUpdated()
-      onClose()
-    } catch (err) {
-      setError(mapApiError(err))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Stok tənzimlə</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-xl">
+        <div className="flex flex-col gap-1.5">
+          <label className="label">Məhsul adı <span className="text-danger">*</span></label>
+          <input value={name} onChange={e => setName(e.target.value)} required placeholder="Məs. Mühərrik yağı" className="input" autoFocus />
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-6 py-6">
-          <p className="text-sm text-gray-600">Məhsul: <span className="font-medium text-gray-900">{product.name}</span></p>
+        <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Yeni stok miqdarı</label>
-            <input value={qty} onChange={e => setQty(e.target.value)} required type="number" min="0" className="input" />
+            <label className="label">Kodu</label>
+            <input value={code} onChange={e => setCode(e.target.value)} placeholder="Məs. 53698" className="input-mono" />
           </div>
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-          <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? 'Saxlanılır...' : 'Yenilə'}
-          </button>
-          <button type="button" onClick={onClose} className="btn-ghost">Ləğv et</button>
-        </form>
-      </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="label">Ölçü vahidi</label>
+            <select value={unit} onChange={e => setUnit(e.target.value)} className="input">
+              <option value="ədəd">ədəd</option>
+              <option value="litr">litr</option>
+              <option value="kq">kq</option>
+              <option value="metr">metr</option>
+              <option value="dəst">dəst</option>
+              <option value="paket">paket</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="label">Alış qiyməti (₼) <span className="text-danger">*</span></label>
+          <input value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} required type="number" step="0.01" min="0" placeholder="0.00" className="input-mono" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="label">Güzəşt (%)</label>
+          <input value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} type="number" step="0.01" min="0" max="100" placeholder="0" className="input-mono" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="label">Satış qiyməti (₼) <span className="text-danger">*</span></label>
+          <input value={sellPrice} onChange={e => setSellPrice(e.target.value)} required type="number" step="0.01" min="0" placeholder="0.00" className="input-mono" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="label">İlkin stok <span className="text-danger">*</span></label>
+          <input value={stock} onChange={e => setStock(e.target.value)} required type="number" min="0" placeholder="0" className="input-mono" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="label">Kreditor adı</label>
+          <ComboboxInput
+            value={supplierName}
+            onChange={setSupplierName}
+            options={supplierNames}
+            placeholder="Məs. Avtoehtiyat MMC"
+          />
+          <p className="text-xs text-ink-muted">Bu məbləğ avtomatik olaraq kreditorlara əlavə ediləcək</p>
+        </div>
+        {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
+        <div className="flex items-center gap-3 pt-2">
+          <Button type="submit" loading={loading}>
+            {loading ? 'Saxlanılır...' : 'Saxla'}
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose}>Ləğv et</Button>
+        </div>
+      </form>
     </div>
   )
 }
@@ -287,7 +216,10 @@ export default function WarehouseClient() {
   const [supplierNames, setSupplierNames] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
-  const [adjustProduct, setAdjustProduct] = useState<Product | null>(null)
+  const [editingStockId, setEditingStockId] = useState<number | null>(null)
+  const [stockDraft, setStockDraft] = useState('')
+  const [stockSaving, setStockSaving] = useState(false)
+  const [stockError, setStockError] = useState('')
   const [usageProduct, setUsageProduct] = useState<Product | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
@@ -325,6 +257,31 @@ export default function WarehouseClient() {
     setConfirmDeleteId(null)
     setDeleteErrorId(null)
     setDeleteErrorMsg('')
+  }
+
+  function startEditStock(p: Product) {
+    setEditingStockId(p.id)
+    setStockDraft(String(p.stock_quantity))
+    setStockError('')
+  }
+
+  function cancelEditStock() {
+    setEditingStockId(null)
+    setStockError('')
+  }
+
+  async function saveStock(id: number) {
+    setStockSaving(true)
+    setStockError('')
+    try {
+      await adjustStock(id, parseInt(stockDraft))
+      load()
+      setEditingStockId(null)
+    } catch (err) {
+      setStockError(mapApiError(err))
+    } finally {
+      setStockSaving(false)
+    }
   }
 
   async function handleDelete(id: number) {
@@ -411,11 +368,11 @@ export default function WarehouseClient() {
       <div className="p-6 lg:p-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
-          <p className="text-sm text-gray-500 font-medium shrink-0">{products.length} məhsul</p>
+          <p className="text-sm text-ink-muted font-medium shrink-0">{products.length} məhsul</p>
           <div className="flex items-center gap-2 flex-1 sm:justify-end">
             {/* Search */}
             <div className="relative flex-1 sm:max-w-sm">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
               </svg>
               <input
@@ -426,7 +383,7 @@ export default function WarehouseClient() {
                 className="input pl-9 pr-8 text-sm w-full"
               />
               {search && (
-                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -437,10 +394,10 @@ export default function WarehouseClient() {
             <button
               onClick={() => setImportModalOpen(true)}
               disabled={importing}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl border-2 border-green-600 text-green-700 text-sm font-semibold hover:bg-green-50 disabled:opacity-60 transition-colors min-h-[44px] shrink-0"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded border border-ink text-ink text-sm font-semibold hover:bg-surface-alt disabled:opacity-60 transition-colors min-h-[44px] shrink-0"
             >
               {importing ? (
-                <div className="w-4 h-4 border-2 border-green-400 border-t-green-700 rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-rule border-t-ink rounded-full animate-spin" />
               ) : (
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -448,8 +405,8 @@ export default function WarehouseClient() {
               )}
               <span className="hidden sm:inline">{importing ? 'Yüklənir...' : 'Excel idxal'}</span>
             </button>
-            <button onClick={() => setAddOpen(true)} className="btn-primary shrink-0">
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <button onClick={() => setAddOpen(o => !o)} className="btn-primary shrink-0">
+              <svg className={`w-4 h-4 shrink-0 transition-transform ${addOpen ? 'rotate-45' : ''}`} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
               <span className="hidden sm:inline">Məhsul əlavə et</span>
@@ -460,24 +417,24 @@ export default function WarehouseClient() {
         {/* Summary cards */}
         {products.length > 0 && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Alış dəyəri</p>
-              <p className="text-xl font-bold text-gray-900">{formatCurrency(totalStockValue)}</p>
+            <div className="card px-4 py-4">
+              <p className="section-label mb-2">Alış dəyəri</p>
+              <p className="text-xl font-bold font-mono text-ink">{formatCurrency(totalStockValue)}</p>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Satış dəyəri</p>
-              <p className="text-xl font-bold text-blue-600">{formatCurrency(totalSellValue)}</p>
+            <div className="card px-4 py-4">
+              <p className="section-label mb-2">Satış dəyəri</p>
+              <p className="text-xl font-bold font-mono text-accent">{formatCurrency(totalSellValue)}</p>
             </div>
             {lowStockCount > 0 && (
-              <div className="bg-amber-50 rounded-2xl border border-amber-100 shadow-sm px-4 py-4">
-                <p className="text-xs font-semibold text-amber-500 uppercase tracking-widest mb-2">Az qalıb</p>
-                <p className="text-xl font-bold text-amber-700">{lowStockCount} məhsul</p>
+              <div className="card bg-warning-bg border-warning px-4 py-4">
+                <p className="section-label text-warning mb-2">Az qalıb</p>
+                <p className="text-xl font-bold font-mono text-warning">{lowStockCount} məhsul</p>
               </div>
             )}
             {outOfStockCount > 0 && (
-              <div className="bg-red-50 rounded-2xl border border-red-100 shadow-sm px-4 py-4">
-                <p className="text-xs font-semibold text-red-400 uppercase tracking-widest mb-2">Stokda yoxdur</p>
-                <p className="text-xl font-bold text-red-700">{outOfStockCount} məhsul</p>
+              <div className="card bg-danger-bg border-danger px-4 py-4">
+                <p className="section-label text-danger mb-2">Stokda yoxdur</p>
+                <p className="text-xl font-bold font-mono text-danger">{outOfStockCount} məhsul</p>
               </div>
             )}
           </div>
@@ -485,24 +442,24 @@ export default function WarehouseClient() {
 
         {/* Bulk action bar */}
         {someSelected && (
-          <div className="mb-4 flex items-center justify-between gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
+          <div className="mb-4 flex items-center justify-between gap-3 bg-surface-alt border border-accent px-4 py-3 rounded">
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
                 checked={allSelected}
                 onChange={toggleSelectAll}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                className="w-4 h-4 rounded border-rule text-accent cursor-pointer"
               />
-              <span className="text-sm font-semibold text-blue-800">{selectedIds.size} məhsul seçilib</span>
-              <button onClick={() => setSelectedIds(new Set())} className="text-xs text-blue-500 hover:text-blue-700 underline">Seçimi sıfırla</button>
+              <span className="text-sm font-semibold text-accent">{selectedIds.size} məhsul seçilib</span>
+              <button onClick={() => setSelectedIds(new Set())} className="text-xs text-accent hover:text-accent-hover underline">Seçimi sıfırla</button>
             </div>
             <button
               onClick={handleBulkDelete}
               disabled={bulkDeleting}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60 transition-colors"
+              className="btn-danger py-2 px-4 min-h-0"
             >
               {bulkDeleting ? (
-                <div className="w-4 h-4 border-2 border-red-300 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-danger/40 border-t-danger rounded-full animate-spin" />
               ) : (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -513,9 +470,9 @@ export default function WarehouseClient() {
           </div>
         )}
         {bulkDeleteError && (
-          <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 flex items-start justify-between gap-3">
-            <p className="text-sm text-red-700">{bulkDeleteError}</p>
-            <button onClick={() => setBulkDeleteError('')} className="text-red-400 hover:text-red-600 shrink-0">
+          <div className="mb-4 px-4 py-3 rounded bg-danger-bg border border-danger flex items-start justify-between gap-3">
+            <p className="text-sm text-danger">{bulkDeleteError}</p>
+            <button onClick={() => setBulkDeleteError('')} className="text-danger/70 hover:text-danger shrink-0">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
@@ -523,14 +480,14 @@ export default function WarehouseClient() {
 
         {/* Import result banner */}
         {importResult && (
-          <div className={`mb-4 px-4 py-3 rounded-xl flex items-start justify-between gap-3 ${importResult.errors.length > 0 ? 'bg-amber-50 border border-amber-200' : 'bg-green-50 border border-green-200'}`}>
+          <div className={`mb-4 px-4 py-3 rounded flex items-start justify-between gap-3 ${importResult.errors.length > 0 ? 'bg-warning-bg border border-warning' : 'bg-success-bg border border-success'}`}>
             <div>
-              <p className={`text-sm font-semibold ${importResult.errors.length > 0 ? 'text-amber-800' : 'text-green-800'}`}>{importResult.detail}</p>
+              <p className={`text-sm font-semibold ${importResult.errors.length > 0 ? 'text-warning' : 'text-success'}`}>{importResult.detail}</p>
               {importResult.errors.map((e, i) => (
-                <p key={i} className="text-xs text-amber-700 mt-0.5">{e}</p>
+                <p key={i} className="text-xs text-warning mt-0.5">{e}</p>
               ))}
             </div>
-            <button onClick={() => setImportResult(null)} className="text-gray-400 hover:text-gray-600 shrink-0">
+            <button onClick={() => setImportResult(null)} className="text-ink-muted hover:text-ink shrink-0">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -538,92 +495,118 @@ export default function WarehouseClient() {
           </div>
         )}
 
+        {/* Inline add-product panel */}
+        <AddProductPanel open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} supplierNames={supplierNames} />
+
         {/* Content */}
         {loading ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-12 flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          <div className="card p-12">
+            <Spinner />
           </div>
         ) : products.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
-            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
-            </div>
-            <p className="text-gray-900 font-medium">Stok boşdur</p>
-            <p className="text-gray-500 text-sm mt-1">Məhsul əlavə etmək üçün yuxarıdakı düyməni basın.</p>
-          </div>
+          <EmptyState title="Stok boşdur" subtitle="Məhsul əlavə etmək üçün yuxarıdakı düyməni basın." />
         ) : (
           <>
             {/* Mobile cards */}
             <div className="flex flex-col gap-3 xl:hidden">
               {products.map((p, i) => {
                 const { discountedPrice, discountedTotal } = computedFields(p)
+                const isOut = p.stock_quantity === 0
+                const isLow = !isOut && p.stock_quantity < 3
                 return (
-                  <div key={p.id} className={`bg-white rounded-2xl border px-4 py-4 ${selectedIds.has(p.id) ? 'border-blue-300 bg-blue-50/30' : p.stock_quantity === 0 ? 'border-red-200 bg-red-50/30' : p.stock_quantity < 3 ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200'}`}>
+                  <div key={p.id} className={`card px-4 py-4 ${selectedIds.has(p.id) ? 'bg-surface-alt border-accent' : isOut ? 'bg-danger-bg border-danger' : isLow ? 'bg-warning-bg border-warning' : ''}`}>
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)} className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer shrink-0" />
+                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)} className="mt-0.5 w-4 h-4 rounded border-rule text-accent cursor-pointer shrink-0" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="text-xs text-gray-400 font-mono">#{i + 1}</span>
-                            {p.code && <span className="text-xs font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{p.code}</span>}
-                            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{p.unit}</span>
+                            <span className="text-xs text-ink-muted font-mono">#{i + 1}</span>
+                            {p.code && <span className="text-xs font-mono bg-surface-alt text-ink-muted px-1.5 py-0.5 rounded">{p.code}</span>}
+                            <Badge variant="neutral">{p.unit}</Badge>
                           </div>
-                          <p className="font-semibold text-gray-900 text-sm">{p.name}</p>
-                          {p.stock_quantity === 0 ? (
-                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium mt-1 inline-block">Stokda yoxdur</span>
-                          ) : p.stock_quantity < 3 && (
-                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium mt-1 inline-block">Az qalıb</span>
-                          )}
+                          <p className="font-semibold text-ink text-sm">{p.name}</p>
+                          {isOut ? (
+                            <div className="mt-1"><Badge variant="danger">Stokda yoxdur</Badge></div>
+                          ) : isLow ? (
+                            <div className="mt-1"><Badge variant="warning">Az qalıb</Badge></div>
+                          ) : null}
                         </div>
                       </div>
-                      <span className={`text-lg font-bold shrink-0 ml-3 ${p.stock_quantity === 0 ? 'text-red-600' : p.stock_quantity < 3 ? 'text-amber-600' : 'text-gray-900'}`}>
-                        {p.stock_quantity} <span className="text-xs font-normal text-gray-400">{p.unit}</span>
-                      </span>
+                      <div className="shrink-0 ml-3 text-right">
+                        {editingStockId === p.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              min="0"
+                              value={stockDraft}
+                              onChange={e => setStockDraft(e.target.value)}
+                              className="input-mono w-16 py-1 px-2 text-center text-sm"
+                              autoFocus
+                            />
+                            <button onClick={() => saveStock(p.id)} disabled={stockSaving} className="text-accent hover:text-accent-hover p-1.5 rounded hover:bg-surface-alt" title="Saxla">
+                              {stockSaving ? (
+                                <span className="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin inline-block" />
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                            <button onClick={cancelEditStock} className="text-ink-muted hover:text-ink p-1.5 rounded hover:bg-surface-alt" title="Ləğv et">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={() => startEditStock(p)} className={`text-lg font-bold font-mono ${isOut ? 'text-danger' : isLow ? 'text-warning' : 'text-ink'}`}>
+                            {p.stock_quantity} <span className="text-xs font-normal text-ink-muted">{p.unit}</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    {editingStockId === p.id && stockError && (
+                      <p className="text-xs text-danger -mt-2 mb-2 text-right">{stockError}</p>
+                    )}
                     <div className="grid grid-cols-3 gap-2 text-sm mb-3">
                       <div>
-                        <p className="text-xs text-gray-400">Alış</p>
-                        <p className="text-gray-600 font-medium">{formatCurrency(p.purchase_price)}</p>
+                        <p className="text-xs text-ink-muted">Alış</p>
+                        <p className="text-ink-soft font-medium font-mono">{formatCurrency(p.purchase_price)}</p>
                       </div>
                       {(p.discount_percent || 0) > 0 && (
                         <div>
-                          <p className="text-xs text-gray-400">Güzəşt</p>
-                          <p className="text-orange-600 font-medium">{p.discount_percent}%</p>
-                          <p className="text-xs text-gray-500">{formatCurrency(discountedPrice)}</p>
+                          <p className="text-xs text-ink-muted">Güzəşt</p>
+                          <p className="text-warning font-medium font-mono">{p.discount_percent}%</p>
+                          <p className="text-xs text-ink-muted font-mono">{formatCurrency(discountedPrice)}</p>
                         </div>
                       )}
                       <div>
-                        <p className="text-xs text-gray-400">Satış</p>
-                        <p className="text-gray-900 font-semibold">{formatCurrency(p.sell_price)}</p>
+                        <p className="text-xs text-ink-muted">Satış</p>
+                        <p className="text-ink font-semibold font-mono">{formatCurrency(p.sell_price)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">Cəmi</p>
-                        <p className="text-blue-600 font-semibold">{formatCurrency(discountedTotal)}</p>
+                        <p className="text-xs text-ink-muted">Cəmi</p>
+                        <p className="text-accent font-semibold font-mono">{formatCurrency(discountedTotal)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
-                      <button onClick={() => setUsageProduct(p)} className="text-xs font-semibold text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-rule">
+                      <button onClick={() => setUsageProduct(p)} className="text-xs font-semibold text-ink-muted border border-rule px-3 py-1.5 rounded hover:bg-surface-alt">
                         Tarixçə
-                      </button>
-                      <button onClick={() => setAdjustProduct(p)} className="text-xs font-semibold text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50">
-                        Stok tənzimlə
                       </button>
                       {confirmDeleteId === p.id ? (
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex gap-1">
-                            <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} className="text-xs font-medium px-2 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                            <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} className="text-xs font-medium px-2 py-1.5 rounded bg-danger text-cream hover:bg-danger/90 disabled:opacity-50">
                               {deletingId === p.id ? '...' : 'Bəli, sil'}
                             </button>
-                            <button onClick={closeConfirmDelete} className="text-xs font-medium px-2 py-1.5 rounded-lg border border-gray-300 text-gray-600">Xeyr</button>
+                            <button onClick={closeConfirmDelete} className="text-xs font-medium px-2 py-1.5 rounded border border-rule text-ink-muted">Xeyr</button>
                           </div>
                           {deleteErrorId === p.id && (
-                            <p className="text-xs text-red-600 text-right max-w-[180px]">{deleteErrorMsg}</p>
+                            <p className="text-xs text-danger text-right max-w-[180px]">{deleteErrorMsg}</p>
                           )}
                         </div>
                       ) : (
-                        <button onClick={() => { setConfirmDeleteId(p.id); setDeleteErrorId(null) }} className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                        <button onClick={() => { setConfirmDeleteId(p.id); setDeleteErrorId(null) }} className="text-ink-muted hover:text-danger p-1.5 rounded hover:bg-danger-bg transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
@@ -636,118 +619,143 @@ export default function WarehouseClient() {
             </div>
 
             {/* Desktop table */}
-            <div className="hidden xl:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="hidden xl:block card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1000px]">
+                <table className="ledger-table min-w-[1000px]">
                   <thead>
-                    <tr className="bg-orange-50 border-b-2 border-orange-200">
-                      <th className="px-3 py-3 w-10">
-                        <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer" />
+                    <tr>
+                      <th className="ledger-th w-10">
+                        <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="w-4 h-4 rounded border-rule text-accent cursor-pointer" />
                       </th>
-                      <th className="text-center text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-10">Sıra</th>
-                      <th className="text-left text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-24">Kodu</th>
-                      <th className="text-left text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3">Adı</th>
-                      <th className="text-center text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-24">Ölçü vahidi</th>
-                      <th className="text-center text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-16">Sayı</th>
-                      <th className="text-right text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-28">Gross qiyməti</th>
-                      <th className="text-right text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-28">Gross məbləği</th>
-                      <th className="text-center text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-20">Güzəşt (%)</th>
-                      <th className="text-right text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-28">Endirimli qiyməт</th>
-                      <th className="text-right text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-28">Endirimli məbləği</th>
-                      <th className="text-right text-xs font-bold text-orange-700 uppercase tracking-wide px-3 py-3 w-28">Satış qiyməti</th>
-                      <th className="px-3 py-3 w-28" />
+                      <th className="ledger-th text-center w-10">Sıra</th>
+                      <th className="ledger-th w-24">Kodu</th>
+                      <th className="ledger-th">Adı</th>
+                      <th className="ledger-th text-center w-24">Ölçü vahidi</th>
+                      <th className="ledger-th text-center w-16">Sayı</th>
+                      <th className="ledger-th text-right w-28">Gross qiyməti</th>
+                      <th className="ledger-th text-right w-28">Gross məbləği</th>
+                      <th className="ledger-th text-center w-20">Güzəşt (%)</th>
+                      <th className="ledger-th text-right w-28">Endirimli qiyməт</th>
+                      <th className="ledger-th text-right w-28">Endirimli məbləği</th>
+                      <th className="ledger-th text-right w-28">Satış qiyməti</th>
+                      <th className="ledger-th w-24" />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {products.map((p, i) => {
                       const { grossTotal, discountedPrice, discountedTotal } = computedFields(p)
                       const isOut = p.stock_quantity === 0
                       const isLow = !isOut && p.stock_quantity < 3
                       return (
-                        <tr key={p.id} className={`hover:bg-gray-50/80 transition-colors ${selectedIds.has(p.id) ? 'bg-blue-50/60' : isOut ? 'bg-red-50/40' : isLow ? 'bg-amber-50/60' : ''}`}>
-                          <td className="px-3 py-3 text-center">
-                            <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)} className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer" />
+                        <tr key={p.id} className={`hover:bg-surface-alt transition-colors ${selectedIds.has(p.id) ? 'bg-surface-alt' : isOut ? 'bg-danger-bg/50' : isLow ? 'bg-warning-bg/50' : ''}`}>
+                          <td className="ledger-td text-center">
+                            <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)} className="w-4 h-4 rounded border-rule text-accent cursor-pointer" />
                           </td>
-                          <td className="px-3 py-3 text-center">
-                            <span className="text-xs text-gray-400 font-mono">{i + 1}</span>
+                          <td className="ledger-td text-center">
+                            <span className="text-xs text-ink-muted font-mono">{i + 1}</span>
                           </td>
-                          <td className="px-3 py-3">
-                            <span className="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                          <td className="ledger-td">
+                            <span className="text-xs font-mono text-ink-muted bg-surface-alt px-2 py-0.5 rounded">
                               {p.code || '—'}
                             </span>
                           </td>
-                          <td className="px-3 py-3">
+                          <td className="ledger-td whitespace-normal">
                             <div className="flex items-center gap-2">
-                              <p className="font-medium text-gray-900 text-sm">{p.name}</p>
+                              <p className="font-medium text-ink text-sm">{p.name}</p>
                               {isOut ? (
-                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Stokda yoxdur</span>
+                                <Badge variant="danger">Stokda yoxdur</Badge>
                               ) : isLow ? (
-                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Az qalıb</span>
+                                <Badge variant="warning">Az qalıb</Badge>
                               ) : null}
                             </div>
                           </td>
-                          <td className="px-3 py-3 text-center">
-                            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">{p.unit}</span>
+                          <td className="ledger-td text-center">
+                            <Badge variant="neutral">{p.unit}</Badge>
                           </td>
-                          <td className="px-3 py-3 text-center">
-                            <span className={`text-sm font-bold ${isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-gray-900'}`}>
-                              {p.stock_quantity}
-                            </span>
+                          <td className="ledger-td text-center font-mono">
+                            {editingStockId === p.id ? (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={stockDraft}
+                                  onChange={e => setStockDraft(e.target.value)}
+                                  className="input-mono w-16 py-1 px-2 text-center"
+                                  autoFocus
+                                />
+                                <button onClick={() => saveStock(p.id)} disabled={stockSaving} className="text-accent hover:text-accent-hover p-1 rounded hover:bg-surface" title="Saxla">
+                                  {stockSaving ? (
+                                    <span className="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin inline-block" />
+                                  ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </button>
+                                <button onClick={cancelEditStock} className="text-ink-muted hover:text-ink p-1 rounded hover:bg-surface" title="Ləğv et">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ) : (
+                              <button onClick={() => startEditStock(p)} className={`text-sm font-bold hover:underline ${isOut ? 'text-danger' : isLow ? 'text-warning' : 'text-ink'}`}>
+                                {p.stock_quantity}
+                              </button>
+                            )}
+                            {editingStockId === p.id && stockError && (
+                              <p className="text-xs text-danger mt-1 whitespace-normal">{stockError}</p>
+                            )}
                           </td>
-                          <td className="px-3 py-3 text-right text-sm text-gray-700">
+                          <td className="ledger-td text-right font-mono text-ink-soft">
                             {formatCurrency(p.purchase_price)}
                           </td>
-                          <td className="px-3 py-3 text-right text-sm font-medium text-gray-700">
+                          <td className="ledger-td text-right font-mono font-medium text-ink-soft">
                             {formatCurrency(grossTotal)}
                           </td>
-                          <td className="px-3 py-3 text-center">
+                          <td className="ledger-td text-center">
                             {(p.discount_percent || 0) > 0 ? (
-                              <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                                {p.discount_percent}%
-                              </span>
+                              <Badge variant="warning">{p.discount_percent}%</Badge>
                             ) : (
-                              <span className="text-xs text-gray-300">—</span>
+                              <span className="text-xs text-ink-muted">—</span>
                             )}
                           </td>
-                          <td className="px-3 py-3 text-right text-sm text-gray-700">
+                          <td className="ledger-td text-right font-mono">
                             {(p.discount_percent || 0) > 0 ? (
-                              <span className="text-orange-700 font-medium">{formatCurrency(discountedPrice)}</span>
+                              <span className="text-warning font-medium">{formatCurrency(discountedPrice)}</span>
                             ) : (
-                              <span className="text-gray-400 text-xs">—</span>
+                              <span className="text-ink-muted text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-3 py-3 text-right text-sm font-medium text-gray-700">
+                          <td className="ledger-td text-right font-mono font-medium">
                             {(p.discount_percent || 0) > 0 ? (
-                              <span className="text-orange-700">{formatCurrency(discountedTotal)}</span>
+                              <span className="text-warning">{formatCurrency(discountedTotal)}</span>
                             ) : (
-                              <span className="text-gray-400 text-xs">—</span>
+                              <span className="text-ink-muted text-xs">—</span>
                             )}
                           </td>
-                          <td className="px-3 py-3 text-right">
-                            <span className="text-sm font-bold text-blue-700">{formatCurrency(p.sell_price)}</span>
+                          <td className="ledger-td text-right">
+                            <span className="text-sm font-bold font-mono text-accent">{formatCurrency(p.sell_price)}</span>
                           </td>
-                          <td className="px-3 py-3 text-right">
+                          <td className="ledger-td text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => setUsageProduct(p)} className="text-xs font-medium text-gray-500 hover:text-gray-800 hover:underline whitespace-nowrap">
+                              <button onClick={() => setUsageProduct(p)} className="text-xs font-medium text-ink-muted hover:text-ink hover:underline whitespace-nowrap">
                                 Tarixçə
-                              </button>
-                              <button onClick={() => setAdjustProduct(p)} className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap">
-                                Stok
                               </button>
                               {confirmDeleteId === p.id ? (
                                 <div className="flex flex-col items-end gap-1">
                                   <div className="flex items-center gap-1">
-                                    <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} className="text-xs font-medium px-2 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                                    <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} className="text-xs font-medium px-2 py-1 rounded bg-danger text-cream hover:bg-danger/90 disabled:opacity-50">
                                       {deletingId === p.id ? '...' : 'Bəli, sil'}
                                     </button>
-                                    <button onClick={closeConfirmDelete} className="text-xs font-medium px-2 py-1 rounded-lg border border-gray-200 text-gray-600">Xeyr</button>
+                                    <button onClick={closeConfirmDelete} className="text-xs font-medium px-2 py-1 rounded border border-rule text-ink-muted">Xeyr</button>
                                   </div>
                                   {deleteErrorId === p.id && (
-                                    <p className="text-xs text-red-600 text-right max-w-[200px] leading-tight">{deleteErrorMsg}</p>
+                                    <p className="text-xs text-danger text-right max-w-[200px] leading-tight whitespace-normal">{deleteErrorMsg}</p>
                                   )}
                                 </div>
                               ) : (
-                                <button onClick={() => { setConfirmDeleteId(p.id); setDeleteErrorId(null) }} className="text-gray-300 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors">
+                                <button onClick={() => { setConfirmDeleteId(p.id); setDeleteErrorId(null) }} className="text-ink-muted/60 hover:text-danger p-1 rounded hover:bg-danger-bg transition-colors">
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                   </svg>
@@ -761,21 +769,21 @@ export default function WarehouseClient() {
                   </tbody>
                   {/* Totals row */}
                   <tfoot>
-                    <tr className="bg-orange-50/60 border-t-2 border-orange-200">
-                      <td colSpan={6} className="px-3 py-3 text-xs font-bold text-orange-700 uppercase tracking-wide">Cəmi</td>
-                      <td className="px-3 py-3 text-right text-sm font-bold text-gray-700">—</td>
-                      <td className="px-3 py-3 text-right text-sm font-bold text-gray-700">
+                    <tr className="border-t-2 border-ink">
+                      <td colSpan={6} className="px-3 py-3 font-mono font-bold text-[10px] uppercase tracking-[.06em] text-ink-muted">Cəmi</td>
+                      <td className="px-3 py-3 text-right text-sm font-mono font-bold text-ink-soft">—</td>
+                      <td className="px-3 py-3 text-right text-sm font-mono font-bold text-ink-soft">
                         {formatCurrency(products.reduce((s, p) => s + p.purchase_price * p.stock_quantity, 0))}
                       </td>
                       <td className="px-3 py-3" />
                       <td className="px-3 py-3" />
-                      <td className="px-3 py-3 text-right text-sm font-bold text-orange-700">
+                      <td className="px-3 py-3 text-right text-sm font-mono font-bold text-warning">
                         {formatCurrency(products.reduce((s, p) => {
                           const dp = p.purchase_price * (1 - (p.discount_percent || 0) / 100)
                           return s + dp * p.stock_quantity
                         }, 0))}
                       </td>
-                      <td className="px-3 py-3 text-right text-sm font-bold text-blue-700">
+                      <td className="px-3 py-3 text-right text-sm font-mono font-bold text-accent">
                         {formatCurrency(products.reduce((s, p) => s + p.sell_price * p.stock_quantity, 0))}
                       </td>
                       <td className="px-3 py-3" />
@@ -788,26 +796,24 @@ export default function WarehouseClient() {
         )}
       </div>
 
-      <AddProductDrawer open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} supplierNames={supplierNames} />
-      <AdjustStockDrawer product={adjustProduct} onClose={() => setAdjustProduct(null)} onUpdated={load} />
       {usageProduct && <ProductUsageModal product={usageProduct} onClose={() => setUsageProduct(null)} />}
 
       {/* Excel import info modal */}
       {importModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setImportModalOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="absolute inset-0 bg-ink/45" onClick={() => setImportModalOpen(false)} />
+          <div className="relative bg-surface border border-rule rounded w-full max-w-md">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-rule">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-green-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <div className="w-9 h-9 bg-success-bg rounded flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <h2 className="text-base font-semibold text-gray-900">Excel ilə idxal</h2>
+                <h2 className="font-serif font-semibold text-lg text-ink">Excel ilə idxal</h2>
               </div>
-              <button onClick={() => setImportModalOpen(false)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+              <button onClick={() => setImportModalOpen(false)} className="p-2 rounded hover:bg-surface-alt text-ink-muted">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -816,21 +822,21 @@ export default function WarehouseClient() {
 
             {/* Body */}
             <div className="px-6 py-5 flex flex-col gap-4">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-ink-muted">
                 Yükləyəcəyiniz Excel faylında aşağıdakı sütun başlıqları olmalıdır:
               </p>
 
               {/* Column table */}
-              <div className="rounded-xl border border-gray-200 overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="rounded border border-rule overflow-hidden">
+                <table className="ledger-table text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Sütun</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Məlumat</th>
-                      <th className="text-center px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Məcburi</th>
+                    <tr>
+                      <th className="ledger-th">Sütun</th>
+                      <th className="ledger-th">Məlumat</th>
+                      <th className="ledger-th text-center">Məcburi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {[
                       { col: 'Adı', desc: 'Məhsulun adı', required: true },
                       { col: 'Kodu', desc: 'Məhsul kodu / artikul', required: false },
@@ -840,15 +846,15 @@ export default function WarehouseClient() {
                       { col: 'Güzəşt (%)', desc: 'Endirim faizi', required: false },
                       { col: 'Endirimli qiymət', desc: 'Alış qiyməti (₼)', required: false },
                     ].map(row => (
-                      <tr key={row.col} className="hover:bg-gray-50">
-                        <td className="px-4 py-2.5">
-                          <code className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono">{row.col}</code>
+                      <tr key={row.col} className="hover:bg-surface-alt">
+                        <td className="ledger-td">
+                          <code className="text-xs bg-surface-alt text-ink-soft px-2 py-0.5 rounded font-mono">{row.col}</code>
                         </td>
-                        <td className="px-4 py-2.5 text-gray-600 text-xs">{row.desc}</td>
-                        <td className="px-4 py-2.5 text-center">
+                        <td className="ledger-td text-ink-muted text-xs whitespace-normal">{row.desc}</td>
+                        <td className="ledger-td text-center">
                           {row.required
-                            ? <span className="text-xs font-semibold text-red-600">✓ Bəli</span>
-                            : <span className="text-xs text-gray-400">Xeyr</span>
+                            ? <span className="text-xs font-semibold text-danger">✓ Bəli</span>
+                            : <span className="text-xs text-ink-muted">Xeyr</span>
                           }
                         </td>
                       </tr>
@@ -861,40 +867,38 @@ export default function WarehouseClient() {
               <a
                 href="/numune-ambar.xlsx"
                 download="Nümunə Ambar.xlsx"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors group"
+                className="flex items-center gap-3 px-4 py-3 rounded border border-dashed border-accent bg-surface-alt hover:bg-rule/30 transition-colors group"
               >
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <div className="w-8 h-8 bg-accent rounded flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-cream" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-blue-700 group-hover:text-blue-800">Nümunə faylı yüklə</p>
-                  <p className="text-xs text-blue-500">Nümunə Ambar.xlsx</p>
+                  <p className="text-sm font-semibold text-accent">Nümunə faylı yüklə</p>
+                  <p className="text-xs text-ink-muted">Nümunə Ambar.xlsx</p>
                 </div>
               </a>
             </div>
 
             {/* Footer */}
             <div className="px-6 pb-5 flex gap-3">
-              <button
-                onClick={() => setImportModalOpen(false)}
-                className="flex-1 btn-ghost"
-              >
+              <Button type="button" variant="secondary" className="flex-1" onClick={() => setImportModalOpen(false)}>
                 Ləğv et
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                className="flex-1"
                 onClick={() => {
                   setImportModalOpen(false)
                   fileInputRef.current?.click()
                 }}
-                className="flex-1 btn-primary flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
                 Fayl seç
-              </button>
+              </Button>
             </div>
           </div>
         </div>

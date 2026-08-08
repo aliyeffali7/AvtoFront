@@ -1,16 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Link } from 'react-router-dom'
-import { Plus, Zap, ChevronRight } from 'lucide-react'
-import { Order, Mechanic, OrderService, Product, Customer } from '@/types'
-import { getOrders, createOrder, uploadOrderImage, addProductToOrder } from '@/services/orders.service'
-import { getSupplierNames, getSupplierDebts } from '@/services/warehouse.service'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Order, Mechanic, Product, Business, Customer } from '@/types'
+import {
+  getOrders, getOrder, createOrder, assignMechanic, changeOrderStatus,
+  addProductToOrder, removeProductFromOrder, updateOrderProductQty,
+  addServiceToOrder, removeServiceFromOrder,
+  recordPayment, updateOrder, deleteOrder,
+  uploadOrderImage, deleteOrderImage,
+} from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
-import { getProducts, createProduct } from '@/services/warehouse.service'
-import { getCustomers } from '@/services/customers.service'
-import { formatDate, formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
-import ComboboxInput from '@/components/ui/ComboboxInput'
+import { getProducts, createProduct, updateProduct, getSupplierDebts } from '@/services/warehouse.service'
+import { getBusinessProfile } from '@/services/auth.service'
+import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
+import { printOrderPDF } from '@/lib/printOrderPDF'
 import StatusBadge from './StatusBadge'
-import PlateInput from '@/components/ui/PlateInput'
+import OrderForm from './OrderForm'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import ComboboxInput from '@/components/ui/ComboboxInput'
+import Badge from '@/components/ui/Badge'
+import Spinner from '@/components/ui/Spinner'
+import EmptyState from '@/components/ui/EmptyState'
+import { Plus, Zap } from 'lucide-react'
 
 type Period = 'day' | 'week' | 'month' | 'all' | 'custom'
 
@@ -37,675 +47,6 @@ function getPeriodRange(period: Period): { start: string | null; end: string | n
     return { start, end: today }
   }
   return { start: null, end: null }
-}
-
-function CreateOrderDrawer({
-  open,
-  onClose,
-  onCreated,
-}: {
-  open: boolean
-  onClose: () => void
-  onCreated: () => void
-}) {
-  const [mechanics, setMechanics] = useState<Mechanic[]>([])
-  const [warehouseItems, setWarehouseItems] = useState<Product[]>([])
-  const [plate, setPlate] = useState('')
-  const [brand, setBrand] = useState('')
-  const [model, setModel] = useState('')
-  const [carYear, setCarYear] = useState('')
-  const [vinCode, setVinCode] = useState('')
-  const [mileage, setMileage] = useState('')
-  const [mileageUnit, setMileageUnit] = useState<'km' | 'mil'>('km')
-  const [fuelType, setFuelType] = useState('')
-  const [description, setDescription] = useState('')
-  const [mechanic, setMechanic] = useState('')
-  const [services, setServices] = useState<{ name: string; price: string; mechanicId: string; mechanicAmount: string }[]>([])
-  const [orderProducts, setOrderProducts] = useState<{ productId: string; qty: string }[]>([])
-  const [newProducts, setNewProducts] = useState<{ name: string; purchasePrice: string; sellPrice: string; qty: string; supplierName: string }[]>([])
-  const [customerName, setCustomerName] = useState('')
-  const [customerPhone, setCustomerPhone] = useState('')
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null)
-  const [customerSearch, setCustomerSearch] = useState('')
-  const [customerResults, setCustomerResults] = useState<Customer[]>([])
-  const [customerSearchLoading, setCustomerSearchLoading] = useState(false)
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
-  const [notes, setNotes] = useState('')
-  const [hasGuarantee, setHasGuarantee] = useState(false)
-  const [supplierNames, setSupplierNames] = useState<string[]>([])
-  const [imageFiles, setImageFiles] = useState<File[]>([])
-  const [imagePreviews, setImagePreviews] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const loadedRef = useRef(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const customerSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const customerAbortRef = useRef<AbortController | null>(null)
-  const skipSearchRef = useRef(false)
-
-  useEffect(() => {
-    getSupplierDebts(true).then(r => {
-      const names = [...new Set(r.data.map(d => d.supplier_name))].sort()
-      setSupplierNames(names)
-    }).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    if (open && !loadedRef.current) {
-      loadedRef.current = true
-      getMechanics().then(r => setMechanics(r.data)).catch(() => {})
-      getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
-    }
-    if (!open) loadedRef.current = false
-  }, [open])
-
-  useEffect(() => {
-    if (skipSearchRef.current) { skipSearchRef.current = false; return }
-    if (!customerSearch.trim()) {
-      setCustomerResults([])
-      setShowCustomerDropdown(false)
-      return
-    }
-    if (customerSearchRef.current) clearTimeout(customerSearchRef.current)
-    customerAbortRef.current?.abort()
-    const controller = new AbortController()
-    customerAbortRef.current = controller
-    customerSearchRef.current = setTimeout(() => {
-      setCustomerSearchLoading(true)
-      getCustomers({ search: customerSearch, page: 1 })
-        .then(r => { if (!controller.signal.aborted) { setCustomerResults(r.data.results); setShowCustomerDropdown(true) } })
-        .catch(() => {})
-        .finally(() => { if (!controller.signal.aborted) setCustomerSearchLoading(false) })
-    }, 300)
-    return () => {
-      clearTimeout(customerSearchRef.current ?? undefined)
-      controller.abort()
-    }
-  }, [customerSearch])
-
-  function selectCustomer(c: Customer) {
-    setSelectedCustomerId(c.id)
-    setCustomerName(c.full_name)
-    setCustomerPhone(c.phone ?? '')
-    if (c.car_plate) setPlate(c.car_plate)
-    if (c.car_brand) setBrand(c.car_brand)
-    if (c.car_model) setModel(c.car_model)
-    if (c.car_year) setCarYear(c.car_year)
-    if (c.vin_code) setVinCode(c.vin_code)
-    skipSearchRef.current = true
-    setCustomerSearch(c.full_name)
-    setShowCustomerDropdown(false)
-    setCustomerResults([])
-  }
-
-  function clearCustomer() {
-    setSelectedCustomerId(null)
-    setCustomerSearch('')
-    setCustomerName('')
-    setCustomerPhone('')
-    setCustomerResults([])
-    setShowCustomerDropdown(false)
-  }
-
-  function reset() {
-    setPlate(''); setBrand(''); setModel(''); setCarYear(''); setVinCode(''); setMileage(''); setMileageUnit('km'); setFuelType(''); setDescription(''); setMechanic('')
-    setServices([])
-    setOrderProducts([])
-    setNewProducts([])
-    setCustomerName(''); setCustomerPhone(''); setSelectedCustomerId(null)
-    setCustomerSearch(''); setCustomerResults([]); setShowCustomerDropdown(false)
-    setNotes('')
-    setHasGuarantee(false)
-    setImageFiles([]); setImagePreviews([]); setError('')
-  }
-
-  function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(e.target.files ?? [])
-    if (!picked.length) return
-    const MAX = 5 * 1024 * 1024
-    const combined = [...imageFiles, ...picked].slice(0, 3)
-    const valid = combined.filter(f => f.size <= MAX)
-    const tooLarge = combined.filter(f => f.size > MAX)
-    if (tooLarge.length) setError(`${tooLarge.length} fayl 5 MB limitini aşır və əlavə edilmədi.`)
-    else setError('')
-    setImageFiles(valid)
-    setImagePreviews(valid.map(f => URL.createObjectURL(f)))
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  function removeImagePreview(i: number) {
-    setImageFiles(prev => prev.filter((_, idx) => idx !== i))
-    setImagePreviews(prev => prev.filter((_, idx) => idx !== i))
-  }
-
-  function addProduct() {
-    setOrderProducts(prev => [...prev, { productId: '', qty: '1' }])
-  }
-
-  function removeProduct(i: number) {
-    setOrderProducts(prev => prev.filter((_, idx) => idx !== i))
-  }
-
-  function updateProduct(i: number, field: 'productId' | 'qty', value: string) {
-    setOrderProducts(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
-  }
-
-  function addService() {
-    setServices(prev => [...prev, { name: '', price: '', mechanicId: '', mechanicAmount: '' }])
-  }
-
-  function removeService(i: number) {
-    setServices(prev => prev.filter((_, idx) => idx !== i))
-  }
-
-  function updateService(i: number, field: 'name' | 'price' | 'mechanicId' | 'mechanicAmount', value: string) {
-    setServices(prev => prev.map((t, idx) => {
-      if (idx !== i) return t
-      const updated = { ...t, [field]: value }
-      // Auto-fill mechanicAmount when mechanic or price changes
-      if (field === 'mechanicId' || field === 'price') {
-        const mech = mechanics.find(m => m.id === parseInt(field === 'mechanicId' ? value : t.mechanicId))
-        const price = parseFloat(field === 'price' ? value : t.price) || 0
-        if (mech && price > 0) {
-          updated.mechanicAmount = (price * mech.work_percent / 100).toFixed(2)
-        } else if (field === 'mechanicId' && !value) {
-          updated.mechanicAmount = ''
-        }
-      }
-      return updated
-    }))
-  }
-
-  function addNewProduct() {
-    setNewProducts(prev => [...prev, { name: '', purchasePrice: '', sellPrice: '', qty: '1', supplierName: '' }])
-  }
-
-  function removeNewProduct(i: number) {
-    setNewProducts(prev => prev.filter((_, idx) => idx !== i))
-  }
-
-  function updateNewProduct(i: number, field: 'name' | 'purchasePrice' | 'sellPrice' | 'qty' | 'supplierName', value: string) {
-    setNewProducts(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    const filledServices: OrderService[] = services
-      .filter(t => t.name.trim())
-      .map(t => ({
-        name: t.name.trim(),
-        price: t.price || '0',
-        mechanic: t.mechanicId ? parseInt(t.mechanicId) : null,
-        mechanic_amount: t.mechanicAmount !== '' ? t.mechanicAmount : null,
-      }))
-    const filledProducts = orderProducts
-      .filter(p => p.productId)
-      .map(p => ({ product: parseInt(p.productId), quantity: parseInt(p.qty) || 1 }))
-    try {
-      const newNonWarehouseProducts: Array<{ productId: number; qty: number; supplierName: string }> = []
-      for (const np of newProducts.filter(p => p.name.trim())) {
-        const qty = parseInt(np.qty) || 1
-        const purchasePrice = parseFloat(np.purchasePrice) || 0
-        const res = await createProduct({
-          name: np.name.trim(),
-          purchase_price: purchasePrice,
-          sell_price: parseFloat(np.sellPrice) || 0,
-          stock_quantity: qty,
-          is_warehouse: false,
-        })
-        newNonWarehouseProducts.push({ productId: res.data.id, qty, supplierName: np.supplierName.trim() })
-      }
-      const orderRes = await createOrder({
-        plate_number: plate,
-        car_brand: brand,
-        car_model: model,
-        car_year: carYear || undefined,
-        vin_code: vinCode || undefined,
-        mileage: mileage ? parseInt(mileage) : undefined,
-        mileage_unit: mileageUnit,
-        fuel_type: fuelType || undefined,
-        description: description || undefined,
-        mechanic: mechanic ? parseInt(mechanic) : null,
-        services: filledServices,
-        products: filledProducts,
-        customer: selectedCustomerId ?? undefined,
-        customer_name: customerName || undefined,
-        customer_phone: customerPhone || undefined,
-        notes: notes || undefined,
-        has_guarantee: hasGuarantee,
-      })
-      // Add non-warehouse products via the dedicated endpoint so backend creates expense or debt
-      for (const { productId, qty, supplierName } of newNonWarehouseProducts) {
-        await addProductToOrder(orderRes.data.id, productId, qty, supplierName || undefined)
-      }
-      // Upload images sequentially
-      for (const file of imageFiles) {
-        try { await uploadOrderImage(orderRes.data.id, file) } catch { /* ignore per-image errors */ }
-      }
-      reset()
-      onCreated()
-      onClose()
-    } catch (err) {
-      setError(mapApiError(err))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (!open) return null
-
-  return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="w-full max-w-3xl bg-white h-full shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="text-base font-semibold text-gray-900">Yeni sifariş</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-5 px-6 py-6 overflow-y-auto">
-
-          {/* Customer info — first so search auto-fills car fields below */}
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Müştəri məlumatları</p>
-            <div className="flex flex-col gap-3">
-              {/* Customer search */}
-              <div className="flex flex-col gap-1.5 relative">
-                <label className="text-sm font-medium text-gray-700">Müştəri axtar <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                <div className="relative">
-                  <input
-                    value={customerSearch}
-                    onChange={e => { setCustomerSearch(autoFormatSearch(e.target.value)); setSelectedCustomerId(null) }}
-                    placeholder="Ad, telefon və ya nişan..."
-                    className="input pr-8"
-                    autoComplete="off"
-                    autoFocus
-                  />
-                  {customerSearchLoading && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
-                  )}
-                  {selectedCustomerId && !customerSearchLoading && (
-                    <button type="button" onClick={clearCustomer} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-                {showCustomerDropdown && customerResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                    {customerResults.map(c => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => selectCustomer(c)}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{c.full_name}</p>
-                            {c.phone && <p className="text-xs text-gray-500">{c.phone}</p>}
-                          </div>
-                          {(c.car_plate || c.plates[0]) && (
-                            <span className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-0.5 rounded-lg">
-                              {c.car_plate || c.plates[0]}
-                            </span>
-                          )}
-                        </div>
-                        {(c.car_brand || c.car_model) && (
-                          <p className="text-xs text-gray-400 mt-0.5">{[c.car_brand, c.car_model, c.car_year].filter(Boolean).join(' ')}</p>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {showCustomerDropdown && customerResults.length === 0 && !customerSearchLoading && (
-                  <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3">
-                    <p className="text-sm text-gray-400">Müştəri tapılmadı</p>
-                  </div>
-                )}
-                {selectedCustomerId && (
-                  <p className="text-xs text-green-600 flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Müştəri seçildi — məlumatlar avtomatik dolduruldu
-                  </p>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Ad Soyad <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Məs. Hüseyn Məmmədov" className="input" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Əlaqə nömrəsi <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Car info */}
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Avtomobil</p>
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Dövlət nişanı <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                <PlateInput value={plate} onChange={setPlate} className="input font-mono tracking-wider" />
-              </div>
-              <div className="flex gap-3">
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Marka <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                  <input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Toyota" className="input" />
-                </div>
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">Model <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                  <input value={model} onChange={e => setModel(e.target.value)} placeholder="Camry" className="input" />
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">İl <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                  <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="2019" maxLength={4} className="input" />
-                </div>
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <label className="text-sm font-medium text-gray-700">VIN kod <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                  <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="WBA3A5C50CF256985" maxLength={17} className="input font-mono text-sm" />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Yürüş <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                <div className="flex">
-                  <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="75000" className="input rounded-r-none flex-1" />
-                  <div className="flex border border-l-0 border-gray-300 rounded-r-xl overflow-hidden">
-                    <button type="button" onClick={() => setMileageUnit('km')} className={`px-3 text-sm font-semibold transition-colors ${mileageUnit === 'km' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>km</button>
-                    <button type="button" onClick={() => setMileageUnit('mil')} className={`px-3 text-sm font-semibold border-l border-gray-300 transition-colors ${mileageUnit === 'mil' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>mil</button>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Yanacaq növü <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                <select value={fuelType} onChange={e => setFuelType(e.target.value)} className="input">
-                  <option value="">Seçilməyib</option>
-                  <option value="benzin">Benzin</option>
-                  <option value="dizel">Dizel</option>
-                  <option value="hybrid">Hibrid</option>
-                  <option value="plug_in_hybrid">Plug-in Hibrid</option>
-                  <option value="lpg">LPG</option>
-                  <option value="electric">Tam elektrik</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Tapşırıq <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></label>
-                <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Görüləcək iş haqqında məlumat..." className="input resize-none" />
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Services */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">İşlər və qiymətlər</p>
-              <button type="button" onClick={addService} className="text-xs text-blue-600 font-medium hover:text-blue-800">
-                + İş əlavə et
-              </button>
-            </div>
-            {/* Header labels - desktop only */}
-            <div className="hidden sm:grid sm:grid-cols-[1fr_90px_130px_28px] gap-2 mb-1 px-0.5">
-              <p className="text-xs text-gray-400">İş adı</p>
-              <p className="text-xs text-gray-400">Qiymət</p>
-              <p className="text-xs text-gray-400">Usta</p>
-              <span />
-            </div>
-            <div className="flex flex-col gap-2">
-              {services.map((svc, i) => (
-                <div key={i} className="flex flex-col gap-1">
-                  <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[1fr_90px_130px_28px] sm:items-center bg-gray-50 sm:bg-transparent border border-gray-100 sm:border-0 rounded-xl sm:rounded-none p-2.5 sm:p-0">
-                    <input
-                      value={svc.name}
-                      onChange={e => updateService(i, 'name', e.target.value)}
-                      placeholder="Məs. Yağ dəyişimi"
-                      className="input text-sm"
-                    />
-                    <div className="flex gap-2 items-center sm:contents">
-                      <div className="relative flex-1 sm:flex-none">
-                        <input
-                          value={svc.price}
-                          onChange={e => updateService(i, 'price', e.target.value)}
-                          type="number" min="0" step="0.01" placeholder="0.00"
-                          className="input text-sm pr-5 w-full"
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
-                      </div>
-                      <select
-                        value={svc.mechanicId}
-                        onChange={e => updateService(i, 'mechanicId', e.target.value)}
-                        className="input text-sm flex-1 sm:flex-none"
-                      >
-                        <option value="">— Yoxdur</option>
-                        {mechanics.map(m => (
-                          <option key={m.id} value={m.id}>{m.full_name || m.id} ({m.work_percent}%)</option>
-                        ))}
-                      </select>
-                      <button type="button" onClick={() => removeService(i)} className="p-1 text-gray-300 hover:text-red-400 transition-colors shrink-0">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  {svc.mechanicId && (
-                    <div className="flex items-center gap-2 pl-2 pb-1">
-                      <span className="text-xs text-gray-500">Usta payı:</span>
-                      <div className="relative w-28">
-                        <input
-                          value={svc.mechanicAmount}
-                          onChange={e => updateService(i, 'mechanicAmount', e.target.value)}
-                          type="number" min="0" step="0.01" placeholder="0.00"
-                          className="input text-sm pr-5 w-full"
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            {services.some(t => t.name && t.price) && (
-              <div className="mt-2 flex justify-end">
-                <span className="text-sm font-semibold text-gray-700">
-                  Cəmi: {formatCurrency(services.reduce((s, t) => s + (parseFloat(t.price) || 0), 0))}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Products */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Məhsullar</p>
-              <div className="flex gap-2">
-                <button type="button" onClick={addProduct} className="text-xs text-blue-600 font-medium hover:text-blue-800">
-                  + Anbarda var
-                </button>
-                <span className="text-gray-300">|</span>
-                <button type="button" onClick={addNewProduct} className="text-xs text-orange-600 font-medium hover:text-orange-800">
-                  + Anbarda yoxdur
-                </button>
-              </div>
-            </div>
-
-            {/* New (non-warehouse) products */}
-            {newProducts.length > 0 && (
-              <div className="flex flex-col gap-3 mb-3">
-                <div className="hidden sm:grid sm:grid-cols-[1fr_80px_80px_52px_28px] gap-2 px-0.5">
-                  <p className="text-xs text-gray-400">Ad</p>
-                  <p className="text-xs text-gray-400">Alış ₼</p>
-                  <p className="text-xs text-gray-400">Satış ₼</p>
-                  <p className="text-xs text-gray-400">Ədəd</p>
-                  <span />
-                </div>
-                {newProducts.map((p, i) => (
-                  <div key={i} className="flex flex-col gap-1.5 bg-orange-50 border border-orange-100 rounded-xl p-2">
-                    <div className="flex flex-col gap-2 sm:grid sm:grid-cols-[1fr_80px_80px_52px_28px] sm:items-center sm:gap-2">
-                      <input value={p.name} onChange={e => updateNewProduct(i, 'name', e.target.value)} placeholder="Məhsul adı" className="input text-sm" />
-                      <div className="flex gap-2 items-center sm:contents">
-                        <input value={p.purchasePrice} onChange={e => updateNewProduct(i, 'purchasePrice', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm flex-1 sm:flex-none" />
-                        <input value={p.sellPrice} onChange={e => updateNewProduct(i, 'sellPrice', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input text-sm flex-1 sm:flex-none" />
-                        <input value={p.qty} onChange={e => updateNewProduct(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" className="input text-sm w-14 shrink-0 sm:w-auto" />
-                        <button type="button" onClick={() => removeNewProduct(i)} className="p-1 text-gray-300 hover:text-red-400 transition-colors shrink-0">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    <ComboboxInput
-                      value={p.supplierName}
-                      onChange={v => updateNewProduct(i, 'supplierName', v)}
-                      options={supplierNames}
-                      placeholder="Kreditor adı (borc varsa — məs. Avtoehtiyat)"
-                      className="text-sm text-orange-800 placeholder-orange-300 bg-white border-orange-200 focus:ring-orange-300"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {orderProducts.length === 0 && newProducts.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">Məhsul seçilməyib</p>
-            ) : orderProducts.length === 0 ? null : (
-              <div className="flex flex-col gap-2">
-                {orderProducts.map((p, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <select
-                      value={p.productId}
-                      onChange={e => updateProduct(i, 'productId', e.target.value)}
-                      className="input flex-1 text-sm"
-                    >
-                      <option value="">Seçin...</option>
-                      {warehouseItems.map(w => (
-                        <option key={w.id} value={w.id} disabled={w.stock_quantity === 0}>{w.name} ({w.stock_quantity} ədəd){w.stock_quantity === 0 ? ' — stok yoxdur' : ''}</option>
-                      ))}
-                    </select>
-                    <input
-                      value={p.qty}
-                      onChange={e => updateProduct(i, 'qty', e.target.value)}
-                      type="number"
-                      min="1"
-                      placeholder="1"
-                      className="input text-sm w-16 shrink-0"
-                    />
-                    <button type="button" onClick={() => removeProduct(i)} className="p-1.5 text-gray-300 hover:text-red-400 transition-colors shrink-0">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Images */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Şəkillər</p>
-              <span className="text-xs text-gray-400">{imageFiles.length}/3</span>
-            </div>
-            {imagePreviews.length > 0 && (
-              <div className="flex gap-2 mb-3 flex-wrap">
-                {imagePreviews.map((src, i) => (
-                  <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 shrink-0">
-                    <img src={src} alt="" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeImagePreview(i)}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {imageFiles.length < 3 && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleImagePick}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-200 rounded-xl py-3 text-sm text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors flex items-center justify-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Şəkil seç (maks. 3, hər biri 5 MB)
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Notes */}
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Əlavə qeydlər <span className="text-xs font-normal text-gray-400 normal-case">(ixtiyari)</span></p>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Məs. Maşına çirkli paltarla oturulmasın..."
-              className="input resize-none"
-            />
-          </div>
-
-          {/* Guarantee */}
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={hasGuarantee}
-              onChange={e => setHasGuarantee(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-            />
-            <span className="text-sm font-medium text-gray-700">Bu sifarişə zəmanət verilib <span className="text-xs font-normal text-gray-400">(ixtiyari)</span></span>
-          </label>
-
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-
-          <div className="mt-auto flex flex-col gap-3 pt-2 shrink-0">
-            <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? 'Yaradılır...' : 'Sifarişi yarat'}
-            </button>
-            <button type="button" onClick={onClose} className="btn-ghost">Ləğv et</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
 }
 
 function nextQuickLabel(): string {
@@ -745,23 +86,13 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
     }
   }, [selectedMechanicId, price, mechanics])
 
-  const filteredProducts = warehouseItems.filter(p =>
-    p.name.toLowerCase().includes(productSearch.toLowerCase())
-  )
+  const filteredProducts = warehouseItems.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
 
   function selectProduct(p: Product) {
     setSelectedProductId(p.id)
     setName(p.name)
     setPrice(String(p.sell_price))
     setProductSearch(p.name)
-    setShowProductDropdown(false)
-  }
-
-  function clearProduct() {
-    setSelectedProductId(null)
-    setProductSearch('')
-    setName('')
-    setPrice('')
     setShowProductDropdown(false)
   }
 
@@ -774,7 +105,6 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
 
   const parsedPrice = parseFloat(price) || 0
   const parsedMechanicAmt = parseFloat(mechanicAmount) || 0
-  const net = parsedPrice - parsedMechanicAmt
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -806,176 +136,56 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Sürətli Sifariş</h2>
-          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/45">
+      <div className="bg-surface rounded shadow-2xl w-full max-w-sm border border-rule">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-rule">
+          <h2 className="font-serif font-semibold text-lg text-ink">Sürətli sifariş</h2>
+          <button onClick={handleClose} className="text-ink-muted hover:text-ink">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
-
-          {/* Warehouse product picker */}
-          <div className="flex flex-col gap-1.5 relative">
-            <label className="text-sm font-medium text-gray-700">Anbarda axtar</label>
-            <div className="relative">
-              <input
-                value={productSearch}
-                onChange={e => { setProductSearch(e.target.value); setShowProductDropdown(true); setSelectedProductId(null) }}
-                onFocus={() => setShowProductDropdown(true)}
-                placeholder="Məhsul adı ilə axtar..."
-                className="input pr-8"
-                autoComplete="off"
-                autoFocus
-              />
-              {selectedProductId ? (
-                <button type="button" onClick={clearProduct} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              ) : (
-                <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                </svg>
-              )}
-            </div>
+        <form onSubmit={handleSubmit} className="px-5 py-4 flex flex-col gap-3">
+          <div className="relative">
+            <input
+              value={productSearch}
+              onChange={e => { setProductSearch(e.target.value); setShowProductDropdown(true); setSelectedProductId(null) }}
+              onFocus={() => setShowProductDropdown(true)}
+              placeholder="Anbarda axtar..."
+              className="input"
+              autoComplete="off"
+              autoFocus
+            />
             {showProductDropdown && productSearch.trim() && (
-              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-surface border border-rule rounded shadow-2xl max-h-48 overflow-y-auto">
                 {filteredProducts.length === 0 ? (
-                  <p className="px-4 py-3 text-sm text-gray-400">Məhsul tapılmadı</p>
+                  <p className="px-3 py-2.5 text-sm text-ink-muted">Məhsul tapılmadı</p>
                 ) : filteredProducts.map(p => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => selectProduct(p)}
-                    className="w-full px-4 py-2.5 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors flex items-center justify-between gap-2"
-                  >
+                  <button key={p.id} type="button" onClick={() => selectProduct(p)} className="w-full px-3 py-2.5 text-left hover:bg-surface-alt border-b border-rule last:border-0 flex items-center justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                      <p className="text-xs text-gray-400">Stok: {p.stock_quantity} ədəd</p>
+                      <p className="text-sm font-medium text-ink">{p.name}</p>
+                      <p className="text-xs text-ink-muted">Stok: {p.stock_quantity}</p>
                     </div>
-                    <span className="text-sm font-semibold text-blue-600 shrink-0">{formatCurrency(p.sell_price)}</span>
+                    <span className="text-sm font-mono font-semibold text-accent shrink-0">{formatCurrency(p.sell_price)}</span>
                   </button>
                 ))}
               </div>
             )}
-            {selectedProductId && (
-              <p className="text-xs text-green-600 flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                Məhsul seçildi — ad və qiymət avtomatik dolduruldu
-              </p>
-            )}
           </div>
-
-          {/* Name + Price */}
-          <div className="flex gap-3">
-            <div className="flex flex-col gap-1.5 flex-1">
-              <label className="text-sm font-medium text-gray-700">Məhsul / Xidmət</label>
-              <input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                required
-                placeholder="Məs. Yağ dəyişimi"
-                className="input"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5 w-28 shrink-0">
-              <label className="text-sm font-medium text-gray-700">Qiymət (₼)</label>
-              <div className="relative">
-                <input
-                  value={price}
-                  onChange={e => setPrice(e.target.value)}
-                  required
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  placeholder="0.00"
-                  className="input pr-6 w-full"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          {/* Mechanic section */}
-          <div className="flex flex-col gap-3">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Usta</p>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Usta seç</label>
-              <select
-                value={selectedMechanicId}
-                onChange={e => setSelectedMechanicId(e.target.value)}
-                className="input"
-              >
-                <option value="">— Usta yoxdur —</option>
-                {mechanics.filter(m => m.is_active).map(m => (
-                  <option key={m.id} value={m.id}>
-                    {m.full_name || '—'}{m.work_percent > 0 ? ` (${m.work_percent}%)` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {selectedMechanicId && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Usta payı (₼)</label>
-                <div className="relative">
-                  <input
-                    value={mechanicAmount}
-                    onChange={e => setMechanicAmount(e.target.value)}
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    className="input pr-6 w-full"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₼</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Finance summary */}
-          {parsedPrice > 0 && (
-            <>
-              <div className="border-t border-gray-100" />
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Maliyyə qeydi</p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Gəlir</span>
-                  <span className="font-semibold text-green-600">+{formatCurrency(parsedPrice)}</span>
-                </div>
-                {selectedMechanicId && parsedMechanicAmt > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Usta payı (xərc)</span>
-                    <span className="font-semibold text-red-500">−{formatCurrency(parsedMechanicAmt)}</span>
-                  </div>
-                )}
-                {selectedMechanicId && parsedMechanicAmt > 0 && (
-                  <div className="flex items-center justify-between text-sm pt-1 border-t border-gray-100">
-                    <span className="font-medium text-gray-700">Xalis</span>
-                    <span className={`font-bold ${net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(net)}</span>
-                  </div>
-                )}
-              </div>
-            </>
+          <input value={name} onChange={e => setName(e.target.value)} required placeholder="Məhsul / Xidmət adı" className="input" />
+          <input value={price} onChange={e => setPrice(e.target.value)} required type="number" min="0.01" step="0.01" placeholder="Qiymət ₼" className="input-mono" />
+          <select value={selectedMechanicId} onChange={e => setSelectedMechanicId(e.target.value)} className="input">
+            <option value="">— Usta yoxdur —</option>
+            {mechanics.filter(m => m.is_active).map(m => (
+              <option key={m.id} value={m.id}>{m.full_name || '—'}{m.work_percent > 0 ? ` (${m.work_percent}%)` : ''}</option>
+            ))}
+          </select>
+          {selectedMechanicId && (
+            <input value={mechanicAmount} onChange={e => setMechanicAmount(e.target.value)} type="number" min="0" step="0.01" placeholder="Usta payı ₼" className="input-mono" />
           )}
-
-          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-
-          <div className="flex gap-3 pt-1">
-            <button type="submit" disabled={loading} className="btn-primary flex-1">
-              {loading ? 'Saxlanılır...' : 'Saxla'}
-            </button>
-            <button type="button" onClick={handleClose} className="btn-ghost px-4">Ləğv et</button>
+          {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={loading} className="btn-primary flex-1">{loading ? 'Saxlanılır...' : 'Saxla'}</button>
+            <button type="button" onClick={handleClose} className="btn-secondary">Ləğv et</button>
           </div>
         </form>
       </div>
@@ -984,9 +194,11 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
 }
 
 export default function OrdersClient() {
+  const navigate = useNavigate()
+  const { id } = useParams<{ id?: string }>()
+
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [createOpen, setCreateOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'done'>('all')
   const [period, setPeriod] = useState<Period>('all')
@@ -995,13 +207,78 @@ export default function OrdersClient() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
 
-  const load = useCallback(async (p = page) => {
+  // Right panel
+  const [panelMode, setPanelMode] = useState<'empty' | 'view' | 'create' | 'edit'>('empty')
+  const [order, setOrder] = useState<Order | null>(null)
+  const [orderLoading, setOrderLoading] = useState(false)
+  const [business, setBusiness] = useState<Business | null>(null)
+  const [mechanics, setMechanics] = useState<Mechanic[]>([])
+  const [mechanicsLoaded, setMechanicsLoaded] = useState(false)
+  const [selectedMechanic, setSelectedMechanic] = useState('')
+  const [assigningMechanic, setAssigningMechanic] = useState(false)
+  const [changingStatus, setChangingStatus] = useState(false)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const [paymentOpen, setPaymentOpen] = useState(false)
+  const [paymentTotal, setPaymentTotal] = useState(0)
+  const [paidInput, setPaidInput] = useState('')
+  const [recordingPayment, setRecordingPayment] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
+  const [discountEnabled, setDiscountEnabled] = useState(false)
+  const [discountPrice, setDiscountPrice] = useState('')
+
+  const [addProductOpen, setAddProductOpen] = useState(false)
+  const [productTab, setProductTab] = useState<'warehouse' | 'new'>('warehouse')
+  const [warehouseProducts, setWarehouseProducts] = useState<Product[]>([])
+  const warehouseLoadedRef = useRef(false)
+  const [selectedProduct, setSelectedProduct] = useState('')
+  const [qty, setQty] = useState('1')
+  const [addingProduct, setAddingProduct] = useState(false)
+  const [productError, setProductError] = useState('')
+  const [removingProductId, setRemovingProductId] = useState<number | null>(null)
+  const [editingProductId, setEditingProductId] = useState<number | null>(null)
+  const [editProductName, setEditProductName] = useState('')
+  const [editProductPurchase, setEditProductPurchase] = useState('')
+  const [editProductSell, setEditProductSell] = useState('')
+  const [editProductQty, setEditProductQty] = useState('')
+  const [savingProductEdit, setSavingProductEdit] = useState(false)
+  const [editProductError, setEditProductError] = useState('')
+  const [newProdName, setNewProdName] = useState('')
+  const [newProdPurchase, setNewProdPurchase] = useState('')
+  const [newProdSell, setNewProdSell] = useState('')
+  const [newProdQty, setNewProdQty] = useState('1')
+  const [newProdSupplier, setNewProdSupplier] = useState('')
+  const [supplierNames, setSupplierNames] = useState<string[]>([])
+
+  const [addServiceOpen, setAddServiceOpen] = useState(false)
+  const [newServiceName, setNewServiceName] = useState('')
+  const [newServicePrice, setNewServicePrice] = useState('')
+  const [newServiceMechanicId, setNewServiceMechanicId] = useState('')
+  const [newServiceMechanicAmount, setNewServiceMechanicAmount] = useState('')
+  const [addingService, setAddingService] = useState(false)
+  const [serviceError, setServiceError] = useState('')
+  const [removingServiceId, setRemovingServiceId] = useState<number | null>(null)
+
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [removingImageId, setRemovingImageId] = useState<number | null>(null)
+  const [imageError, setImageError] = useState('')
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean; title: string; message: string; confirmLabel: string; danger: boolean; onConfirm: () => void
+  }>({ open: false, title: '', message: '', confirmLabel: 'Bəli', danger: false, onConfirm: () => {} })
+
+  function showConfirm(opts: { title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void }) {
+    setConfirmDialog({ open: true, confirmLabel: 'Bəli', danger: false, ...opts })
+  }
+  function closeConfirm() { setConfirmDialog(prev => ({ ...prev, open: false })) }
+
+  // List loading
+  const loadList = useCallback(async (p = page) => {
     setLoading(true)
     try {
-      const { start, end } = period === 'custom'
-        ? { start: customDate, end: customDate }
-        : getPeriodRange(period)
-
+      const { start, end } = period === 'custom' ? { start: customDate, end: customDate } : getPeriodRange(period)
       const res = await getOrders({
         page: p,
         status: statusFilter !== 'all' ? statusFilter : undefined,
@@ -1016,209 +293,767 @@ export default function OrdersClient() {
     }
   }, [page, statusFilter, period, customDate])
 
-  useEffect(() => {
-    setPage(1)
-  }, [statusFilter, period, customDate])
+  useEffect(() => { setPage(1) }, [statusFilter, period, customDate])
+  useEffect(() => { loadList(page) }, [page, statusFilter, period, customDate]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { getBusinessProfile().then(res => setBusiness(res.data)).catch(() => {}) }, [])
+
+  // Selected-order loading, driven by URL
+  const loadOrder = useCallback(async () => {
+    if (!id) return
+    setOrderLoading(true)
+    try {
+      const [orderRes, mechanicsRes] = await Promise.all([
+        getOrder(parseInt(id)),
+        mechanicsLoaded ? Promise.resolve(null) : getMechanics().catch(() => null),
+      ])
+      setOrder(orderRes.data)
+      setSelectedMechanic(String(orderRes.data.mechanic ?? ''))
+      if (mechanicsRes) { setMechanics(mechanicsRes.data); setMechanicsLoaded(true) }
+    } finally {
+      setOrderLoading(false)
+    }
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    load(page)
-  }, [page, statusFilter, period, customDate]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (id) { setPanelMode('view'); loadOrder() }
+    else if (panelMode === 'view') { setPanelMode('empty'); setOrder(null) }
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handlePeriodChange(p: Period) {
-    setPeriod(p)
-    setPage(1)
+  useEffect(() => {
+    getSupplierDebts(true).then(r => setSupplierNames([...new Set(r.data.map(d => d.supplier_name))].sort())).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (addProductOpen && !warehouseLoadedRef.current) {
+      warehouseLoadedRef.current = true
+      getProducts().then(r => setWarehouseProducts(r.data)).catch(() => {})
+    }
+  }, [addProductOpen])
+
+  async function ensureMechanics() {
+    if (mechanicsLoaded) return
+    setMechanicsLoaded(true)
+    try { setMechanics((await getMechanics()).data) } catch { /* ignore */ }
   }
 
-  function handleStatusChange(s: typeof statusFilter) {
-    setStatusFilter(s)
-    setPage(1)
+  function selectRow(o: Order) { navigate(`/business/orders/${o.id}`) }
+  function startCreate() { navigate('/business/orders'); setOrder(null); setPanelMode('create') }
+  function closePanel() { navigate('/business/orders'); setOrder(null); setPanelMode('empty') }
+
+  useEffect(() => {
+    if (panelMode === 'empty') return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') closePanel()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [panelMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function onFormDone(orderId: number) {
+    loadList(1); setPage(1)
+    navigate(`/business/orders/${orderId}`)
   }
+
+  async function handleAssign() {
+    if (!selectedMechanic || !order) return
+    setAssigningMechanic(true)
+    try { await assignMechanic(order.id, parseInt(selectedMechanic)); loadOrder() } finally { setAssigningMechanic(false) }
+  }
+
+  async function handleStatus(newStatus: 'pending' | 'in_progress' | 'done') {
+    if (!order) return
+    if (newStatus === 'done') {
+      const svcTotal = order.services?.reduce((s, t) => s + parseFloat(String(t.price)), 0) ?? 0
+      const prdTotal = (order.products ?? []).reduce((s, p) => s + p.sell_price * p.quantity, 0)
+      const total = svcTotal + prdTotal
+      setChangingStatus(true)
+      try {
+        await changeOrderStatus(order.id, 'done')
+        await loadOrder()
+        setPaymentTotal(total); setPaidInput(total.toFixed(2)); setPaymentError('')
+        setDiscountEnabled(false); setDiscountPrice(total.toFixed(2))
+        setPaymentOpen(true)
+      } finally { setChangingStatus(false) }
+      return
+    }
+    setChangingStatus(true)
+    try { await changeOrderStatus(order.id, newStatus); loadOrder() } finally { setChangingStatus(false) }
+  }
+
+  async function handleRecordPayment(e: React.FormEvent) {
+    e.preventDefault()
+    if (!order) return
+    setPaymentError('')
+    const effectiveTotal = discountEnabled ? (parseFloat(discountPrice) || 0) : paymentTotal
+    const discountAmt = paymentTotal - effectiveTotal
+    setRecordingPayment(true)
+    try {
+      await recordPayment(order.id, parseFloat(paidInput) || 0, discountAmt > 0 ? discountAmt : undefined)
+      setPaymentOpen(false)
+      loadOrder()
+      loadList(page)
+    } catch (err) {
+      setPaymentError(mapApiError(err))
+    } finally {
+      setRecordingPayment(false)
+    }
+  }
+
+  function openPaymentPanel() {
+    if (!order) return
+    const grand = (order.services?.reduce((s, t) => s + parseFloat(String(t.price)), 0) ?? 0)
+      + (order.products ?? []).reduce((s, p) => s + p.sell_price * p.quantity, 0)
+    const effective = grand - Number(order.discount_amount ?? 0)
+    const debt = effective - Number(order.paid_amount ?? 0)
+    setPaymentTotal(debt); setPaidInput(debt.toFixed(2)); setPaymentError('')
+    setDiscountEnabled(false); setDiscountPrice(debt.toFixed(2))
+    setPaymentOpen(true)
+  }
+
+  async function handleAddProduct(e: React.FormEvent) {
+    e.preventDefault()
+    if (!order) return
+    setProductError('')
+    setAddingProduct(true)
+    try {
+      await addProductToOrder(order.id, parseInt(selectedProduct), parseInt(qty))
+      setSelectedProduct(''); setQty('1'); setAddProductOpen(false); loadOrder()
+    } catch (err) {
+      setProductError(mapApiError(err))
+    } finally {
+      setAddingProduct(false)
+    }
+  }
+
+  async function handleAddNewProduct(e: React.FormEvent) {
+    e.preventDefault()
+    if (!order) return
+    setProductError('')
+    const qty2 = parseInt(newProdQty) || 1
+    setAddingProduct(true)
+    try {
+      const res = await createProduct({
+        name: newProdName.trim(),
+        purchase_price: parseFloat(newProdPurchase) || 0,
+        sell_price: parseFloat(newProdSell) || 0,
+        stock_quantity: qty2,
+        order_id: order.id,
+        is_warehouse: false,
+      })
+      await addProductToOrder(order.id, res.data.id, qty2, newProdSupplier.trim() || undefined)
+      setNewProdName(''); setNewProdPurchase(''); setNewProdSell(''); setNewProdQty('1'); setNewProdSupplier('')
+      setAddProductOpen(false); loadOrder()
+    } catch (err) {
+      setProductError(mapApiError(err))
+    } finally {
+      setAddingProduct(false)
+    }
+  }
+
+  function handleRemoveProduct(orderProductId: number) {
+    if (!order) return
+    showConfirm({
+      title: 'Məhsulu sil', message: 'Bu məhsulu sifarişdən çıxarmaq istəyirsiniz? Stoka qaytarılacaq.', confirmLabel: 'Sil', danger: true,
+      onConfirm: async () => {
+        closeConfirm(); setRemovingProductId(orderProductId)
+        try { await removeProductFromOrder(order.id, orderProductId); loadOrder() } finally { setRemovingProductId(null) }
+      },
+    })
+  }
+
+  async function handleSaveProductEdit(productId: number) {
+    if (!order) return
+    setEditProductError('')
+    const newQty = parseInt(editProductQty)
+    if (!newQty || newQty < 1) { setEditProductError('Miqdar müsbət tam ədəd olmalıdır.'); return }
+    setSavingProductEdit(true)
+    try {
+      await Promise.all([
+        updateProduct(productId, {
+          name: editProductName.trim() || undefined,
+          purchase_price: editProductPurchase !== '' ? parseFloat(editProductPurchase) : undefined,
+          sell_price: editProductSell !== '' ? parseFloat(editProductSell) : undefined,
+        }),
+        updateOrderProductQty(order.id, editingProductId!, newQty),
+      ])
+      setEditingProductId(null); loadOrder()
+    } catch (err) {
+      setEditProductError(mapApiError(err))
+    } finally {
+      setSavingProductEdit(false)
+    }
+  }
+
+  async function handleAddService(e: React.FormEvent) {
+    e.preventDefault()
+    if (!order) return
+    setServiceError('')
+    const price = parseFloat(newServicePrice) || 0
+    const mechanicId = newServiceMechanicId ? parseInt(newServiceMechanicId) : null
+    const mechanicAmt = newServiceMechanicAmount !== '' ? parseFloat(newServiceMechanicAmount) || 0 : null
+    if (mechanicAmt !== null && mechanicAmt > price) { setServiceError('Usta payı işin qiymətindən çox ola bilməz.'); return }
+    setAddingService(true)
+    try {
+      await addServiceToOrder(order.id, newServiceName.trim(), price, mechanicId, mechanicAmt)
+      setNewServiceName(''); setNewServicePrice(''); setNewServiceMechanicId(''); setNewServiceMechanicAmount('')
+      setAddServiceOpen(false); loadOrder()
+    } catch (err) {
+      setServiceError(mapApiError(err))
+    } finally {
+      setAddingService(false)
+    }
+  }
+
+  function handleRemoveService(serviceId: number) {
+    if (!order) return
+    showConfirm({
+      title: 'İşi sil', message: 'Bu işi sifarişdən silmək istəyirsiniz?', confirmLabel: 'Sil', danger: true,
+      onConfirm: async () => {
+        closeConfirm(); setRemovingServiceId(serviceId)
+        try { await removeServiceFromOrder(order.id, serviceId); loadOrder() } finally { setRemovingServiceId(null) }
+      },
+    })
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!order) return
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (imageInputRef.current) imageInputRef.current.value = ''
+    setImageError('')
+    if (file.size > 5 * 1024 * 1024) { setImageError('Fayl ölçüsü 5 MB-dan çox ola bilməz.'); return }
+    setUploadingImage(true)
+    try { await uploadOrderImage(order.id, file); loadOrder() } catch (err) { setImageError(mapApiError(err)) } finally { setUploadingImage(false) }
+  }
+
+  function handleRemoveImage(imageId: number) {
+    if (!order) return
+    showConfirm({
+      title: 'Şəkli sil', message: 'Bu şəkli silmək istəyirsiniz?', confirmLabel: 'Sil', danger: true,
+      onConfirm: async () => {
+        closeConfirm(); setRemovingImageId(imageId)
+        try { await deleteOrderImage(order.id, imageId); loadOrder() } finally { setRemovingImageId(null) }
+      },
+    })
+  }
+
+  function handleDeleteOrder() {
+    if (!order) return
+    showConfirm({
+      title: 'Sifarişi ləğv et',
+      message: 'Bu sifarişi ləğv etmək istəyirsiniz? Bütün ödəniş qeydləri maliyyədən silinəcək, anbar stoku bərpa ediləcək. Bu əməliyyat geri alına bilməz.',
+      confirmLabel: 'Ləğv et', danger: true,
+      onConfirm: async () => {
+        closeConfirm(); setDeleting(true)
+        try { await deleteOrder(order.id); loadList(1); setPage(1); closePanel() } finally { setDeleting(false) }
+      },
+    })
+  }
+
+  function handlePeriodChange(p: Period) { setPeriod(p); setPage(1) }
+  function handleStatusFilterChange(s: typeof statusFilter) { setStatusFilter(s); setPage(1) }
+
+  // Derived
+  const servicesTotal = order?.services?.reduce((s, t) => s + parseFloat(String(t.price)), 0) ?? 0
+  const orderProductsList = order?.products ?? []
+  const productsTotal = orderProductsList.reduce((s, p) => s + p.sell_price * p.quantity, 0)
+  const grandTotal = servicesTotal + productsTotal
+  const effectiveOrderTotal = order ? grandTotal - Number(order.discount_amount ?? 0) : 0
+  const debt = effectiveOrderTotal - Number(order?.paid_amount ?? 0)
+
+  const paymentBadgeVariant = { unpaid: 'danger', partial: 'warning', paid: 'paid' } as const
+  const paymentBadgeLabel = order ? {
+    unpaid: 'Ödənilməyib',
+    partial: `Borc: ${formatCurrency(debt)}`,
+    paid: 'Ödənilib',
+  }[order.payment_status ?? 'unpaid'] : ''
 
   return (
     <>
-      <div className="p-6 lg:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-gray-500 font-medium">{totalCount} sifariş</p>
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => setQuickOpen(true)} className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-colors min-h-[44px]">
-              <Zap className="w-4 h-4 shrink-0" strokeWidth={2.5} />
-              <span className="hidden sm:inline">Sürətli</span>
-            </button>
-            <button onClick={() => setCreateOpen(true)} className="btn-primary">
-              <Plus className="w-4 h-4" strokeWidth={2.5} />
-              <span className="hidden sm:inline">Yeni Sifariş</span>
-            </button>
-          </div>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <h1 className="page-title">Sifarişlər</h1>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={() => setQuickOpen(true)} className="btn-secondary">
+            <Zap className="w-4 h-4" strokeWidth={2.5} />
+            <span className="hidden sm:inline">Sürətli</span>
+          </button>
+          <button onClick={startCreate} className="btn-primary">
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            <span className="hidden sm:inline">Yeni Sifariş</span>
+          </button>
         </div>
+      </div>
 
-        {/* Status filters */}
-        <div className="flex gap-2 mb-3 flex-wrap">
-          {([
-            { key: 'all',         label: 'Hamısı' },
-            { key: 'pending',     label: 'Gözləyir' },
-            { key: 'in_progress', label: 'İcrada' },
-            { key: 'done',        label: 'Tamamlandı' },
-          ] as const).map(f => (
-            <button
-              key={f.key}
-              onClick={() => handleStatusChange(f.key)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors border ${
-                statusFilter === f.key
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      {/* Status filters */}
+      <div className="flex gap-2 mb-2 flex-wrap">
+        {([
+          { key: 'all',         label: `Hamısı · ${totalCount}` },
+          { key: 'pending',     label: 'Gözləyir' },
+          { key: 'in_progress', label: 'İcrada' },
+          { key: 'done',        label: 'Tamamlandı' },
+        ] as const).map(f => (
+          <button
+            key={f.key}
+            onClick={() => handleStatusFilterChange(f.key)}
+            className={`px-3 py-1.5 rounded text-xs font-mono font-semibold uppercase tracking-wide border transition-colors ${
+              statusFilter === f.key ? 'bg-accent text-cream border-accent' : 'bg-surface text-ink-muted border-rule hover:border-ink'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Period tabs */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <div className="flex flex-wrap gap-1 bg-gray-100 rounded-2xl p-1">
-            {PERIODS.map(p => (
-              <button
-                key={p.key}
-                onClick={() => handlePeriodChange(p.key)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
-                  period === p.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {p.key === 'custom' && (
-                  <svg className="w-4 h-4 inline mr-1.5 -mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                )}
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Custom single date */}
+      {/* Period tabs */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {PERIODS.map(p => (
+          <button
+            key={p.key}
+            onClick={() => handlePeriodChange(p.key)}
+            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+              period === p.key ? 'bg-ink text-cream' : 'bg-surface text-ink-muted border border-rule hover:border-ink'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
         {period === 'custom' && (
-          <div className="flex items-center gap-3 mb-5 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 w-fit">
-            <svg className="w-5 h-5 text-blue-500 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-blue-600 font-medium">Tarix seçin</label>
-              <input
-                type="date"
-                value={customDate}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={e => setCustomDate(e.target.value)}
-                className="text-sm border border-blue-200 bg-white rounded-lg px-3 py-1.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-300"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* List */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
-            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-            <p className="text-gray-900 font-medium">Hələ sifariş yoxdur</p>
-            <p className="text-gray-500 text-sm mt-1">Yeni sifariş yaratmaq üçün + düyməsini basın.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {orders.map(order => (
-              <Link
-                key={order.id}
-                to={`/business/orders/${order.id}`}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all flex items-center gap-4 overflow-hidden group"
-              >
-                <div className={`self-stretch w-1 shrink-0 ${order.status === 'pending' ? 'bg-amber-400' : order.status === 'in_progress' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-                <div className="flex-1 min-w-0 py-4 pr-0">
-                  <div className="flex items-center gap-3 mb-1.5">
-                    <span className="font-bold text-gray-900 text-base font-mono tracking-wider">{order.plate_number}</span>
-                    <StatusBadge status={order.status} />
-                  </div>
-                  <p className="text-sm text-gray-600">{order.car_brand} {order.car_model}</p>
-                  {(order.customer_name || order.customer_surname) && (
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {[order.customer_name, order.customer_surname].filter(Boolean).join(' ')}
-                      {order.customer_phone && ` · ${order.customer_phone}`}
-                    </p>
-                  )}
-                </div>
-                <div className="text-right shrink-0 pr-4 py-4">
-                  <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
-                  {order.total != null && order.total > 0 && (
-                    <p className="text-sm font-bold text-gray-900 mt-1">
-                      {formatCurrency(order.total)}
-                    </p>
-                  )}
-                  {order.mechanic_name ? (
-                    <p className="text-xs text-gray-500 mt-0.5">{order.mechanic_name}</p>
-                  ) : order.mechanic_email ? (
-                    <p className="text-xs text-gray-500 mt-0.5">{order.mechanic_email}</p>
-                  ) : (
-                    <p className="text-xs text-amber-500 mt-0.5 font-medium">Təyin edilməyib</p>
-                  )}
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 shrink-0 mr-4 group-hover:text-gray-400 transition-colors" strokeWidth={2} />
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-              <button
-                key={n}
-                onClick={() => setPage(n)}
-                className={`w-9 h-9 rounded-xl text-sm font-medium transition-colors ${
-                  n === page
-                    ? 'bg-blue-600 text-white'
-                    : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {n}
-              </button>
-            ))}
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
+          <input
+            type="date"
+            value={customDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={e => setCustomDate(e.target.value)}
+            className="input-mono text-sm py-1.5 px-2 w-auto"
+          />
         )}
       </div>
 
-      <CreateOrderDrawer
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={() => { setPage(1); load(1) }}
-      />
-      <QuickOrderModal
-        open={quickOpen}
-        onClose={() => setQuickOpen(false)}
-        onCreated={() => { setPage(1); load(1) }}
+      {loading && orders.length === 0 ? <Spinner /> : orders.length === 0 ? (
+        <EmptyState title="Hələ sifariş yoxdur" subtitle="Yeni sifariş yaratmaq üçün + düyməsini basın." />
+      ) : (
+        <div className="w-full bg-surface border border-rule rounded overflow-hidden flex flex-col lg:flex-row" style={{ maxHeight: 'calc(100vh - 230px)' }}>
+          <div className={`overflow-auto ${panelMode === 'empty' ? 'w-full' : 'lg:w-[62%] lg:border-r border-rule'}`}>
+            <table className="ledger-table">
+              <thead>
+                <tr>
+                  <th className="ledger-th">Nişan</th>
+                  <th className="ledger-th">Müştəri</th>
+                  <th className="ledger-th">Status</th>
+                  <th className="ledger-th text-right">Məbləğ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map(o => (
+                  <tr
+                    key={o.id}
+                    onClick={() => selectRow(o)}
+                    className={`ledger-row ${order?.id === o.id ? 'ledger-row-selected' : ''}`}
+                  >
+                    <td className="ledger-td font-mono font-semibold">{o.plate_number}</td>
+                    <td className="ledger-td">
+                      {[o.customer_name, o.customer_surname].filter(Boolean).join(' ') || <span className="text-ink-muted">—</span>}
+                    </td>
+                    <td className="ledger-td"><StatusBadge status={o.status} /></td>
+                    <td className="ledger-td text-right font-mono font-semibold">
+                      {o.total != null && o.total > 0 ? formatCurrency(o.total) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-1.5 py-3 border-t border-rule">
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40">‹</button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                  <button key={n} onClick={() => setPage(n)} className={`w-8 h-8 rounded text-sm font-mono ${n === page ? 'bg-accent text-cream' : 'border border-rule text-ink-muted hover:bg-surface-alt'}`}>{n}</button>
+                ))}
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40">›</button>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT PANEL — only rendered once an order is selected or being created */}
+          {panelMode !== 'empty' && (
+          <div className="lg:w-[38%] overflow-auto bg-cream">
+            <div className="sticky top-0 z-10 flex justify-end p-2 pointer-events-none">
+              <button
+                onClick={closePanel}
+                title="Bağla (Esc)"
+                className="pointer-events-auto w-8 h-8 rounded border border-rule bg-surface text-ink-muted hover:text-ink hover:border-ink flex items-center justify-center shrink-0"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            {panelMode === 'create' && (
+              <OrderForm onDone={onFormDone} onCancel={closePanel} />
+            )}
+
+            {panelMode === 'edit' && order && (
+              <OrderForm order={order} onDone={onFormDone} onCancel={() => setPanelMode('view')} />
+            )}
+
+            {panelMode === 'view' && orderLoading && <Spinner />}
+
+            {panelMode === 'view' && !orderLoading && order && (
+              <div className="p-5 flex flex-col gap-4">
+                {/* Header */}
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <h2 className="font-mono font-bold text-2xl text-ink tracking-wider">{order.plate_number}</h2>
+                    <StatusBadge status={order.status} />
+                    {order.status === 'done' && <Badge variant={paymentBadgeVariant[order.payment_status ?? 'unpaid']}>{paymentBadgeLabel}</Badge>}
+                  </div>
+                  <p className="text-sm text-ink-soft">{order.car_brand} {order.car_model}</p>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    {formatDate(order.created_at)}
+                    {order.mileage != null && <> · {order.mileage.toLocaleString()} {order.mileage_unit ?? 'km'}</>}
+                    {(order.mechanic_name || order.mechanic_email) ? <> · Usta: {order.mechanic_name ?? order.mechanic_email}</> : <> · <span className="text-warning">usta təyin edilməyib</span></>}
+                  </p>
+                  <button
+                    onClick={async () => { try { await updateOrder(order.id, { has_guarantee: !order.has_guarantee }); loadOrder() } catch { /* ignore */ } }}
+                    className={`mt-2 text-xs font-mono font-semibold px-2 py-1 rounded border ${order.has_guarantee ? 'border-accent text-accent bg-success-bg' : 'border-rule text-ink-muted'}`}
+                  >
+                    {order.has_guarantee ? 'ZƏMANƏTLİ' : 'ZƏMANƏTSİZ'}
+                  </button>
+                </div>
+
+                <div className="card px-3.5 py-3">
+                  <p className="section-label mb-1">Problem</p>
+                  <p className="text-sm text-ink leading-relaxed">{order.description || '—'}</p>
+                </div>
+
+                {/* Services */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="section-label">Xidmətlər</p>
+                    {order.payment_status !== 'paid' && (
+                      <button onClick={() => { setAddServiceOpen(v => !v); setServiceError(''); ensureMechanics() }} className="text-xs font-semibold text-accent hover:text-accent-hover">+ Əlavə et</button>
+                    )}
+                  </div>
+                  {addServiceOpen && order.payment_status !== 'paid' && (
+                    <form onSubmit={handleAddService} className="mb-2 border border-rule rounded p-2.5 flex flex-col gap-2">
+                      <input value={newServiceName} onChange={e => setNewServiceName(e.target.value)} required placeholder="İş adı" className="input text-sm" autoFocus />
+                      <div className="flex gap-2">
+                        <input
+                          value={newServicePrice}
+                          onChange={e => {
+                            setNewServicePrice(e.target.value)
+                            const mech = mechanics.find(m => m.id === parseInt(newServiceMechanicId))
+                            if (mech) setNewServiceMechanicAmount(((parseFloat(e.target.value) || 0) * mech.work_percent / 100).toFixed(2))
+                          }}
+                          type="number" min="0" step="0.01" placeholder="Qiymət ₼" className="input-mono text-sm flex-1"
+                        />
+                        <select
+                          value={newServiceMechanicId}
+                          onChange={e => {
+                            setNewServiceMechanicId(e.target.value)
+                            const mech = mechanics.find(m => m.id === parseInt(e.target.value))
+                            if (mech && newServicePrice) setNewServiceMechanicAmount(((parseFloat(newServicePrice) || 0) * mech.work_percent / 100).toFixed(2))
+                            else if (!e.target.value) setNewServiceMechanicAmount('')
+                          }}
+                          className="input text-sm flex-1"
+                        >
+                          <option value="">— Usta yoxdur</option>
+                          {mechanics.map(m => <option key={m.id} value={m.id}>{m.full_name || m.id} ({m.work_percent}%)</option>)}
+                        </select>
+                      </div>
+                      {serviceError && <p className="text-xs text-danger">{serviceError}</p>}
+                      <div className="flex gap-2">
+                        <button type="submit" disabled={addingService} className="btn-primary flex-1 text-sm py-1.5">{addingService ? '...' : 'Əlavə et'}</button>
+                        <button type="button" onClick={() => setAddServiceOpen(false)} className="btn-secondary text-sm py-1.5 px-3">Ləğv</button>
+                      </div>
+                    </form>
+                  )}
+                  {!order.services || order.services.length === 0 ? (
+                    <p className="text-sm text-ink-muted">İş qeyd edilməyib.</p>
+                  ) : (
+                    <div className="border border-rule rounded overflow-hidden">
+                      {order.services.map((svc, i) => (
+                        <div key={svc.id ?? i} className="flex items-center justify-between px-3 py-2 gap-2 border-b border-rule last:border-0 group">
+                          <span className="text-sm text-ink flex-1 min-w-0 truncate">{svc.name}</span>
+                          <span className="text-sm font-mono font-semibold text-ink shrink-0">{formatCurrency(parseFloat(String(svc.price)))}</span>
+                          {order.payment_status !== 'paid' && (
+                            <button onClick={() => svc.id && handleRemoveService(svc.id)} disabled={removingServiceId === svc.id} className="text-ink-muted hover:text-danger shrink-0">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between px-3 py-2 bg-surface-alt">
+                        <span className="section-label">Cəmi</span>
+                        <span className="text-sm font-mono font-bold text-accent">{formatCurrency(servicesTotal)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Products */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="section-label">Məhsullar</p>
+                    {order.payment_status !== 'paid' && (
+                      <div className="flex gap-2">
+                        <button onClick={() => { setAddProductOpen(v => !v); setProductTab('warehouse'); setProductError('') }} className="text-xs font-semibold text-accent hover:text-accent-hover">Anbarda var</button>
+                        <button onClick={() => { setAddProductOpen(true); setProductTab('new'); setProductError('') }} className="text-xs font-semibold text-warning">Yoxdur</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {addProductOpen && order.payment_status !== 'paid' && (
+                    <div className="mb-2 border border-rule rounded p-2.5">
+                      {productTab === 'warehouse' ? (
+                        <form onSubmit={handleAddProduct} className="flex flex-col gap-2">
+                          <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)} required className="input text-sm">
+                            <option value="">Seçin...</option>
+                            {warehouseProducts.map(p => (
+                              <option key={p.id} value={p.id} disabled={p.stock_quantity === 0}>{p.name} ({p.stock_quantity} ədəd)</option>
+                            ))}
+                          </select>
+                          <input value={qty} onChange={e => setQty(e.target.value)} type="number" min="1" required placeholder="Miqdar" className="input-mono text-sm" />
+                          {productError && <p className="text-xs text-danger">{productError}</p>}
+                          <div className="flex gap-2">
+                            <button type="submit" disabled={addingProduct} className="btn-primary flex-1 text-sm py-1.5">{addingProduct ? '...' : 'Əlavə et'}</button>
+                            <button type="button" onClick={() => setAddProductOpen(false)} className="btn-secondary text-sm py-1.5 px-3">Ləğv</button>
+                          </div>
+                        </form>
+                      ) : (
+                        <form onSubmit={handleAddNewProduct} className="flex flex-col gap-2">
+                          <input value={newProdName} onChange={e => setNewProdName(e.target.value)} required placeholder="Məhsul adı" className="input text-sm" autoFocus />
+                          <div className="flex gap-2">
+                            <input value={newProdPurchase} onChange={e => setNewProdPurchase(e.target.value)} type="number" min="0" step="0.01" placeholder="Alış ₼" className="input-mono text-sm flex-1" />
+                            <input value={newProdSell} onChange={e => setNewProdSell(e.target.value)} type="number" min="0" step="0.01" placeholder="Satış ₼" className="input-mono text-sm flex-1" />
+                            <input value={newProdQty} onChange={e => setNewProdQty(e.target.value)} type="number" min="1" placeholder="Ədəd" className="input-mono text-sm w-16" />
+                          </div>
+                          <ComboboxInput value={newProdSupplier} onChange={setNewProdSupplier} options={supplierNames} placeholder="Kreditor adı (borc varsa)" className="text-sm" />
+                          {productError && <p className="text-xs text-danger">{productError}</p>}
+                          <div className="flex gap-2">
+                            <button type="submit" disabled={addingProduct} className="btn-primary flex-1 text-sm py-1.5">{addingProduct ? '...' : 'Əlavə et'}</button>
+                            <button type="button" onClick={() => setAddProductOpen(false)} className="btn-secondary text-sm py-1.5 px-3">Ləğv</button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+                  )}
+
+                  {orderProductsList.length === 0 ? (
+                    <p className="text-sm text-ink-muted">Məhsul əlavə edilməyib.</p>
+                  ) : (
+                    <div className="border border-rule rounded overflow-hidden">
+                      {orderProductsList.map(p => (
+                        <div key={p.id} className="border-b border-rule last:border-0">
+                          {editingProductId === p.id ? (
+                            <div className="px-3 py-2.5 bg-surface-alt flex flex-col gap-2">
+                              <input value={editProductName} onChange={e => setEditProductName(e.target.value)} placeholder="Ad" className="input text-sm" autoFocus />
+                              <div className="flex gap-2">
+                                <input value={editProductPurchase} onChange={e => setEditProductPurchase(e.target.value)} type="number" min="0" step="0.01" placeholder="Alış" className="input-mono text-sm flex-1" />
+                                <input value={editProductSell} onChange={e => setEditProductSell(e.target.value)} type="number" min="0" step="0.01" placeholder="Satış" className="input-mono text-sm flex-1" />
+                                <input value={editProductQty} onChange={e => setEditProductQty(e.target.value)} type="number" min="1" placeholder="Ədəd" className="input-mono text-sm w-16" />
+                              </div>
+                              {editProductError && <p className="text-xs text-danger">{editProductError}</p>}
+                              <div className="flex gap-2">
+                                <button onClick={() => handleSaveProductEdit(p.product)} disabled={savingProductEdit} className="btn-primary text-xs py-1.5 flex-1">{savingProductEdit ? '...' : 'Saxla'}</button>
+                                <button onClick={() => setEditingProductId(null)} className="btn-secondary text-xs py-1.5 px-3">Ləğv</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between px-3 py-2 gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm text-ink truncate">{p.product_name}</p>
+                                <p className="text-xs text-ink-muted font-mono">{p.quantity} ədəd</p>
+                              </div>
+                              <span className="text-sm font-mono font-semibold text-ink shrink-0">{formatCurrency(p.sell_price * p.quantity)}</span>
+                              {order.payment_status !== 'paid' && (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    onClick={() => {
+                                      setEditingProductId(p.id); setEditProductName(p.product_name)
+                                      setEditProductPurchase(p.purchase_price != null ? String(p.purchase_price) : '')
+                                      setEditProductSell(String(p.sell_price)); setEditProductQty(String(p.quantity)); setEditProductError('')
+                                    }}
+                                    className="text-ink-muted hover:text-accent"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                  </button>
+                                  <button onClick={() => handleRemoveProduct(p.id)} disabled={removingProductId === p.id} className="text-ink-muted hover:text-danger">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between px-3 py-2 bg-surface-alt">
+                        <span className="section-label">Cəmi</span>
+                        <span className="text-sm font-mono font-bold text-accent">{formatCurrency(productsTotal)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Images */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="section-label">Şəkillər {order.images && order.images.length > 0 ? `(${order.images.length}/3)` : ''}</p>
+                    {order.payment_status !== 'paid' && (order.images?.length ?? 0) < 3 && (
+                      <>
+                        <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                        <button onClick={() => { setImageError(''); imageInputRef.current?.click() }} disabled={uploadingImage} className="text-xs font-semibold text-accent hover:text-accent-hover disabled:opacity-50">
+                          {uploadingImage ? 'Yüklənir...' : '+ Şəkil'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {imageError && <p className="text-xs text-danger mb-2">{imageError}</p>}
+                  {!order.images || order.images.length === 0 ? (
+                    <p className="text-sm text-ink-muted">Şəkil əlavə edilməyib.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {order.images.map(img => (
+                        <div key={img.id} className="relative w-16 h-16 rounded overflow-hidden border border-rule group shrink-0">
+                          <a href={`${import.meta.env.VITE_API_URL}${img.image}`} target="_blank" rel="noreferrer">
+                            <img src={`${import.meta.env.VITE_API_URL}${img.image}`} alt="Şəkil" className="w-full h-full object-cover" />
+                          </a>
+                          {order.payment_status !== 'paid' && (
+                            <button onClick={() => handleRemoveImage(img.id)} disabled={removingImageId === img.id} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-ink/70 text-cream flex items-center justify-center opacity-0 group-hover:opacity-100">
+                              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Notes */}
+                {order.notes && (
+                  <div className="bg-warning-bg border border-warning/30 rounded px-3.5 py-3">
+                    <p className="section-label text-warning mb-1">Əlavə qeydlər</p>
+                    <p className="text-sm text-ink leading-relaxed">{order.notes}</p>
+                  </div>
+                )}
+
+                {/* Grand total */}
+                <div className="bg-accent rounded px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-mono uppercase tracking-wide text-cream/70">Ümumi məbləğ</p>
+                    {Number(order.discount_amount ?? 0) > 0 && <p className="text-xs text-cream/70 line-through">{formatCurrency(grandTotal)}</p>}
+                    {order.payment_status === 'partial' && <p className="text-xs text-cream/70">Ödənilən: {formatCurrency(Number(order.paid_amount))} · Borc: {formatCurrency(debt)}</p>}
+                  </div>
+                  <span className="text-xl font-mono font-bold text-cream">{formatCurrency(effectiveOrderTotal)}</span>
+                </div>
+
+                {/* Payment action */}
+                {order.status === 'done' && order.payment_status !== 'paid' && !paymentOpen && (
+                  <button onClick={openPaymentPanel} className="btn-primary">Ödəniş qeyd et</button>
+                )}
+
+                {paymentOpen && (() => {
+                  const effectiveTotal = discountEnabled ? Math.max(0, parseFloat(discountPrice) || 0) : paymentTotal
+                  const discountAmt = paymentTotal - effectiveTotal
+                  const paid = parseFloat(paidInput) || 0
+                  return (
+                    <form onSubmit={handleRecordPayment} className="card p-3.5 flex flex-col gap-3">
+                      <p className="section-label">Ödəniş qeydi</p>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-ink-muted">Ümumi məbləğ</span>
+                        <span className={`font-mono font-semibold ${discountEnabled && discountAmt > 0 ? 'line-through text-ink-muted' : 'text-ink'}`}>{formatCurrency(paymentTotal)}</span>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm text-ink cursor-pointer select-none">
+                        <input type="checkbox" checked={discountEnabled} onChange={e => { setDiscountEnabled(e.target.checked); setPaidInput(e.target.checked ? discountPrice : paymentTotal.toFixed(2)) }} className="w-4 h-4 accent-accent" />
+                        Endirimli qiymət
+                      </label>
+                      {discountEnabled && (
+                        <input type="number" min="0.01" max={paymentTotal - 0.01} step="0.01" value={discountPrice} onChange={e => { setDiscountPrice(e.target.value); setPaidInput(e.target.value) }} className="input-mono" placeholder="Endirimli qiymət" />
+                      )}
+                      <input type="number" min="0" max={effectiveTotal} step="0.01" value={paidInput} onChange={e => setPaidInput(e.target.value)} className="input-mono" placeholder="Ödənilən məbləğ" />
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setPaidInput('0')} className="text-xs px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt">Borc</button>
+                        <button type="button" onClick={() => setPaidInput((effectiveTotal / 2).toFixed(2))} className="text-xs px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt">Yarısı</button>
+                        <button type="button" onClick={() => setPaidInput(effectiveTotal.toFixed(2))} className="text-xs px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt">Tam</button>
+                      </div>
+                      {paid < effectiveTotal && paid >= 0 && (
+                        <div className="flex items-center justify-between bg-warning-bg rounded px-3 py-2">
+                          <span className="text-sm text-warning font-medium">Borc qalır</span>
+                          <span className="text-sm font-mono font-bold text-warning">{formatCurrency(effectiveTotal - paid)}</span>
+                        </div>
+                      )}
+                      {paymentError && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{paymentError}</p>}
+                      <div className="flex gap-2">
+                        <button type="submit" disabled={recordingPayment} className="btn-primary flex-1">{recordingPayment ? 'Saxlanılır...' : 'Qeyd et'}</button>
+                        <button type="button" onClick={() => setPaymentOpen(false)} className="btn-secondary">Sonra</button>
+                      </div>
+                    </form>
+                  )
+                })()}
+
+                {order.payment_status === 'paid' && (
+                  <div className="bg-success-bg border border-accent/30 rounded px-3.5 py-3">
+                    <p className="text-sm font-semibold text-accent">Bu sifariş tam ödənilib və bağlanıb.</p>
+                  </div>
+                )}
+
+                {/* Mechanic assign & status */}
+                {order.payment_status !== 'paid' && (
+                  <>
+                    <div className="card p-3.5">
+                      <p className="section-label mb-2">Usta təyin et</p>
+                      <select value={selectedMechanic} onChange={e => setSelectedMechanic(e.target.value)} onFocus={ensureMechanics} className="input text-sm mb-2">
+                        <option value="">Seçilməyib</option>
+                        {mechanics.filter(m => m.is_active).map(m => <option key={m.id} value={m.id}>{m.full_name ?? m.phone}</option>)}
+                      </select>
+                      <button onClick={handleAssign} disabled={assigningMechanic || !selectedMechanic} className="btn-primary w-full text-sm">{assigningMechanic ? 'Saxlanılır...' : 'Təyin et'}</button>
+                    </div>
+                    <div className="card p-3.5">
+                      <p className="section-label mb-2">Status dəyiş</p>
+                      <div className="flex flex-col gap-1.5">
+                        {([{ value: 'pending', label: 'Gözləyir' }, { value: 'in_progress', label: 'İcrada' }, { value: 'done', label: 'Tamamlandı' }] as const).map(s => (
+                          <button
+                            key={s.value}
+                            onClick={() => handleStatus(s.value)}
+                            disabled={changingStatus || order.status === s.value}
+                            className={`py-2 px-3 rounded text-sm text-left border ${order.status === s.value ? 'bg-surface-alt border-accent text-accent' : 'border-rule text-ink-muted hover:border-ink'}`}
+                          >
+                            {s.label}{order.status === s.value && ' ✓'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2 flex-wrap pt-1">
+                  <button
+                    disabled={generatingPdf}
+                    onClick={async () => { setGeneratingPdf(true); try { await printOrderPDF(order, business) } finally { setGeneratingPdf(false) } }}
+                    className="btn-secondary text-sm flex-1"
+                  >
+                    {generatingPdf ? 'Hazırlanır...' : 'PDF'}
+                  </button>
+                  {order.payment_status !== 'paid' && (
+                    <button onClick={() => setPanelMode('edit')} className="btn-secondary text-sm flex-1">Düzəlt</button>
+                  )}
+                  <button onClick={handleDeleteOrder} disabled={deleting} className="btn-danger text-sm flex-1">{deleting ? '...' : 'Ləğv et'}</button>
+                </div>
+              </div>
+            )}
+          </div>
+          )}
+        </div>
+      )}
+
+      <QuickOrderModal open={quickOpen} onClose={() => setQuickOpen(false)} onCreated={() => { setPage(1); loadList(1) }} />
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmLabel={confirmDialog.confirmLabel}
+        danger={confirmDialog.danger}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={closeConfirm}
       />
     </>
   )

@@ -58,23 +58,23 @@ async function toDataUrl(url: string): Promise<string> {
   }
 }
 
-const BLUE     = '#2563eb'
-const BLUE_BG  = '#eff6ff'
-const BLUE_MID = '#dbeafe'
-const BLUE_TEXT = '#1e40af'
-const GRAY     = '#6b7280'
-const DARK     = '#111827'
-const GREEN    = '#16a34a'
-const GREEN_BG = '#f0fdf4'
-const AMBER    = '#d97706'
-const AMBER_BG = '#fffbeb'
-const RED      = '#dc2626'
-const RED_BG   = '#fef2f2'
-const LIGHT    = '#f8faff'
-const BORDER   = '#bfdbfe'
-const MUTED    = '#9ca3af'
+const BLUE     = '#1F4D36'
+const BLUE_BG  = '#F7F5EF'
+const BLUE_MID = '#DCE8DF'
+const BLUE_TEXT = '#1F4D36'
+const GRAY     = '#6b7264'
+const DARK     = '#1F2A24'
+const GREEN    = '#1F4D36'
+const GREEN_BG = '#DCE8DF'
+const AMBER    = '#8a5a12'
+const AMBER_BG = '#FCEFD1'
+const RED      = '#A13D2B'
+const RED_BG   = '#F3DCD3'
+const LIGHT    = '#F7F5EF'
+const BORDER   = '#CBD3C7'
+const MUTED    = '#6b7264'
 const WHITE    = '#ffffff'
-const HEADER_BG = '#2563eb'
+const HEADER_BG = '#1F4D36'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function tableHeader(cells: { text: string; width?: any; align?: string }[]) {
@@ -123,8 +123,8 @@ function sectionTitle(text: string) {
   }
 }
 
-const GREEN_DARK = '#15803d'
-const GREEN_MID  = '#bbf7d0'
+const GREEN_DARK = '#1F4D36'
+const GREEN_MID  = '#DCE8DF'
 
 export async function printOrderPDF(order: Order, business?: Business | null) {
   const titleFont = (await ensurePlayfair()) ? 'PlayfairDisplay' : 'Roboto'

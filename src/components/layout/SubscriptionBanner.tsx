@@ -19,7 +19,7 @@ export default function SubscriptionBanner() {
   // Expired
   if (!status.is_active) {
     return (
-      <div className="bg-red-600 text-white px-5 py-3 flex items-center gap-3">
+      <div className="bg-danger text-cream px-5 py-3 flex items-center gap-3">
         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
         </svg>
@@ -38,7 +38,7 @@ export default function SubscriptionBanner() {
 
   if (endsAt && daysLeft !== null && daysLeft <= 3 && daysLeft >= 0) {
     return (
-      <div className="bg-amber-500 text-white px-5 py-3 flex items-center gap-3">
+      <div className="bg-warning text-cream px-5 py-3 flex items-center gap-3">
         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>

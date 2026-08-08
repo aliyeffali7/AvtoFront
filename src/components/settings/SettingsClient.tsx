@@ -70,29 +70,29 @@ export default function SettingsClient() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-rule border-t-accent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
     <div className="max-w-xl mx-auto px-4 py-8">
-      <h1 className="text-xl font-bold text-gray-900 mb-6">Biznes Tənzimləmələri</h1>
+      <h1 className="page-title mb-6">Biznes Tənzimləmələri</h1>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col gap-5">
+      <form onSubmit={handleSubmit} className="card p-6 flex flex-col gap-5">
 
         {/* Logo */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-gray-700">Logo</label>
+          <label className="label">Logo</label>
           <div className="flex items-center gap-4">
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors overflow-hidden shrink-0"
+              className="w-20 h-20 rounded border-2 border-dashed border-rule flex items-center justify-center cursor-pointer hover:border-accent hover:bg-surface-alt transition-colors overflow-hidden shrink-0"
             >
               {logoPreview ? (
                 <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
               ) : (
-                <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <svg className="w-7 h-7 text-ink-muted" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 8.25V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18V8.25M3 8.25A2.25 2.25 0 015.25 6h13.5A2.25 2.25 0 0121 8.25M3 8.25h18" />
                 </svg>
               )}
@@ -101,11 +101,11 @@ export default function SettingsClient() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="text-sm font-medium text-blue-600 hover:text-blue-800 text-left"
+                className="text-sm font-medium text-accent hover:text-accent-hover text-left"
               >
                 {logoPreview ? 'Logoyu dəyiş' : 'Logo yüklə'}
               </button>
-              <p className="text-xs text-gray-400">PNG, JPG — maks 2 MB</p>
+              <p className="text-xs text-ink-muted">PNG, JPG — maks 2 MB</p>
             </div>
           </div>
           <input
@@ -118,8 +118,8 @@ export default function SettingsClient() {
         </div>
 
         {/* Name */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-gray-700">Biznes adı</label>
+        <div>
+          <label className="label">Biznes adı</label>
           <input
             value={name}
             onChange={e => setName(e.target.value)}
@@ -130,19 +130,19 @@ export default function SettingsClient() {
         </div>
 
         {/* Phone */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-gray-700">Telefon nömrəsi</label>
+        <div>
+          <label className="label">Telefon nömrəsi</label>
           <input
             value={phone}
             onChange={e => setPhone(e.target.value)}
             placeholder="Məs: 010 123 45 67"
-            className="input"
+            className="input-mono"
           />
         </div>
 
         {/* Address */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-gray-700">Ünvan</label>
+        <div>
+          <label className="label">Ünvan</label>
           <input
             value={address}
             onChange={e => setAddress(e.target.value)}
@@ -152,9 +152,9 @@ export default function SettingsClient() {
         </div>
 
         {/* Guarantee text */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-gray-700">Zəmanət mətni</label>
-          <p className="text-xs text-gray-400">Sifarişdə "Zəmanət var" işarələndikdə bu mətn PDF-ə əlavə ediləcək.</p>
+        <div>
+          <label className="label">Zəmanət mətni</label>
+          <p className="text-xs text-ink-muted mb-1.5">Sifarişdə "Zəmanət var" işarələndikdə bu mətn PDF-ə əlavə ediləcək.</p>
           <textarea
             value={guaranteeText}
             onChange={e => setGuaranteeText(e.target.value)}
@@ -166,26 +166,26 @@ export default function SettingsClient() {
 
         {/* Signature image */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-gray-700">İmza şəkli</label>
-          <p className="text-xs text-gray-400">PDF-ə ixrac zamanı servis imzası yerinə bu şəkil göstəriləcək.</p>
+          <label className="label">İmza şəkli</label>
+          <p className="text-xs text-ink-muted -mt-1">PDF-ə ixrac zamanı servis imzası yerinə bu şəkil göstəriləcək.</p>
           <div className="flex items-center gap-4">
             <div
               onClick={() => signatureInputRef.current?.click()}
-              className="w-32 h-16 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors overflow-hidden shrink-0"
+              className="w-32 h-16 rounded border-2 border-dashed border-rule flex items-center justify-center cursor-pointer hover:border-accent hover:bg-surface-alt transition-colors overflow-hidden shrink-0"
             >
               {signaturePreview ? (
                 <img src={signaturePreview} alt="İmza" className="w-full h-full object-contain p-1" />
               ) : (
-                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-ink-muted" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
               )}
             </div>
             <div className="flex flex-col gap-1">
-              <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-sm font-medium text-blue-600 hover:text-blue-800 text-left">
+              <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-sm font-medium text-accent hover:text-accent-hover text-left">
                 {signaturePreview ? 'İmzanı dəyiş' : 'İmza yüklə'}
               </button>
-              <p className="text-xs text-gray-400">PNG, JPG — ağ fon tövsiyə edilir</p>
+              <p className="text-xs text-ink-muted">PNG, JPG — ağ fon tövsiyə edilir</p>
             </div>
           </div>
           <input ref={signatureInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
@@ -197,10 +197,10 @@ export default function SettingsClient() {
         </div>
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>
+          <p className="text-sm text-danger bg-danger-bg rounded px-4 py-3">{error}</p>
         )}
         {success && (
-          <p className="text-sm text-green-700 bg-green-50 rounded-xl px-4 py-3">Məlumatlar yadda saxlanıldı.</p>
+          <p className="text-sm text-success bg-success-bg rounded px-4 py-3">Məlumatlar yadda saxlanıldı.</p>
         )}
 
         <button
