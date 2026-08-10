@@ -945,48 +945,9 @@ export default function OrdersClient() {
                 </div>
 
                 {/* Payment action */}
-                {order.status === 'done' && order.payment_status !== 'paid' && !paymentOpen && (
+                {order.status === 'done' && order.payment_status !== 'paid' && (
                   <button onClick={openPaymentPanel} className="btn-primary">Ödəniş qeyd et</button>
                 )}
-
-                {paymentOpen && (() => {
-                  const effectiveTotal = discountEnabled ? Math.max(0, parseFloat(discountPrice) || 0) : paymentTotal
-                  const discountAmt = paymentTotal - effectiveTotal
-                  const paid = parseFloat(paidInput) || 0
-                  return (
-                    <form onSubmit={handleRecordPayment} className="card p-3.5 flex flex-col gap-3">
-                      <p className="section-label">Ödəniş qeydi</p>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-ink-muted">Ümumi məbləğ</span>
-                        <span className={`font-mono font-semibold ${discountEnabled && discountAmt > 0 ? 'line-through text-ink-muted' : 'text-ink'}`}>{formatCurrency(paymentTotal)}</span>
-                      </div>
-                      <label className="flex items-center gap-2 text-sm text-ink cursor-pointer select-none">
-                        <input type="checkbox" checked={discountEnabled} onChange={e => { setDiscountEnabled(e.target.checked); setPaidInput(e.target.checked ? discountPrice : paymentTotal.toFixed(2)) }} className="w-4 h-4 accent-accent" />
-                        Endirimli qiymət
-                      </label>
-                      {discountEnabled && (
-                        <input type="number" min="0.01" max={paymentTotal - 0.01} step="0.01" value={discountPrice} onChange={e => { setDiscountPrice(e.target.value); setPaidInput(e.target.value) }} className="input-mono" placeholder="Endirimli qiymət" />
-                      )}
-                      <input type="number" min="0" max={effectiveTotal} step="0.01" value={paidInput} onChange={e => setPaidInput(e.target.value)} className="input-mono" placeholder="Ödənilən məbləğ" />
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => setPaidInput('0')} className="text-xs px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt">Borc</button>
-                        <button type="button" onClick={() => setPaidInput((effectiveTotal / 2).toFixed(2))} className="text-xs px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt">Yarısı</button>
-                        <button type="button" onClick={() => setPaidInput(effectiveTotal.toFixed(2))} className="text-xs px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt">Tam</button>
-                      </div>
-                      {paid < effectiveTotal && paid >= 0 && (
-                        <div className="flex items-center justify-between bg-warning-bg rounded px-3 py-2">
-                          <span className="text-sm text-warning font-medium">Borc qalır</span>
-                          <span className="text-sm font-mono font-bold text-warning">{formatCurrency(effectiveTotal - paid)}</span>
-                        </div>
-                      )}
-                      {paymentError && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{paymentError}</p>}
-                      <div className="flex gap-2">
-                        <button type="submit" disabled={recordingPayment} className="btn-primary flex-1">{recordingPayment ? 'Saxlanılır...' : 'Qeyd et'}</button>
-                        <button type="button" onClick={() => setPaymentOpen(false)} className="btn-secondary">Sonra</button>
-                      </div>
-                    </form>
-                  )
-                })()}
 
                 {order.payment_status === 'paid' && (
                   <div className="bg-success-bg border border-accent/30 rounded px-3.5 py-3">
@@ -1045,6 +1006,70 @@ export default function OrdersClient() {
       )}
 
       <QuickOrderModal open={quickOpen} onClose={() => setQuickOpen(false)} onCreated={() => { setPage(1); loadList(1) }} />
+
+      {/* Payment popup — shown automatically when an order is marked Tamamlandı, or via "Ödəniş qeyd et" */}
+      {paymentOpen && order && (() => {
+        const effectiveTotal = discountEnabled ? Math.max(0, parseFloat(discountPrice) || 0) : paymentTotal
+        const discountAmt = paymentTotal - effectiveTotal
+        const paid = parseFloat(paidInput) || 0
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/45">
+            <div className="bg-surface rounded shadow-2xl w-full max-w-sm border border-rule">
+              <div className="px-5 py-4 border-b border-rule">
+                <h2 className="font-serif font-semibold text-lg text-ink">Ödəniş qeydi</h2>
+                <p className="text-sm text-ink-muted mt-0.5">Sifariş tamamlandı. Ödəniş vəziyyətini qeyd edin.</p>
+              </div>
+              <form onSubmit={handleRecordPayment} className="px-5 py-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between text-sm bg-surface-alt rounded px-3 py-2.5">
+                  <span className="text-ink-muted">Ümumi məbləğ</span>
+                  <span className={`font-mono font-semibold ${discountEnabled && discountAmt > 0 ? 'line-through text-ink-muted' : 'text-ink'}`}>{formatCurrency(paymentTotal)}</span>
+                </div>
+                <label className="flex items-center gap-2 text-sm text-ink cursor-pointer select-none">
+                  <input type="checkbox" checked={discountEnabled} onChange={e => { setDiscountEnabled(e.target.checked); setPaidInput(e.target.checked ? discountPrice : paymentTotal.toFixed(2)) }} className="w-4 h-4 accent-accent" />
+                  Endirimli qiymət
+                </label>
+                {discountEnabled && (
+                  <div>
+                    <p className="label">Yeni qiymət (endirimli)</p>
+                    <input type="number" min="0.01" max={paymentTotal - 0.01} step="0.01" value={discountPrice} onChange={e => { setDiscountPrice(e.target.value); setPaidInput(e.target.value) }} className="input-mono text-lg" autoFocus />
+                    {discountAmt > 0 && (
+                      <div className="flex items-center justify-between bg-surface-alt rounded px-3 py-2 mt-2">
+                        <span className="text-sm text-ink-muted font-medium">Endirim məbləği</span>
+                        <span className="text-sm font-mono font-bold text-accent">-{formatCurrency(discountAmt)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div>
+                  <p className="label">Ödənilən məbləğ</p>
+                  <input type="number" min="0" max={effectiveTotal} step="0.01" value={paidInput} onChange={e => setPaidInput(e.target.value)} className="input-mono text-lg" autoFocus={!discountEnabled} />
+                  <div className="flex gap-2 mt-2">
+                    <button type="button" onClick={() => setPaidInput('0')} className="text-xs px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt">Borc</button>
+                    <button type="button" onClick={() => setPaidInput((effectiveTotal / 2).toFixed(2))} className="text-xs px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt">Yarısı</button>
+                    <button type="button" onClick={() => setPaidInput(effectiveTotal.toFixed(2))} className="text-xs px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt">Tam</button>
+                  </div>
+                </div>
+                {paid < effectiveTotal && paid >= 0 && (
+                  <div className="flex items-center justify-between bg-warning-bg rounded px-3 py-2">
+                    <span className="text-sm text-warning font-medium">Borc qalır</span>
+                    <span className="text-sm font-mono font-bold text-warning">{formatCurrency(effectiveTotal - paid)}</span>
+                  </div>
+                )}
+                {paid >= effectiveTotal && (
+                  <div className="flex items-center gap-2 bg-success-bg rounded px-3 py-2">
+                    <span className="text-sm text-accent font-medium">Tam ödənilib</span>
+                  </div>
+                )}
+                {paymentError && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{paymentError}</p>}
+                <div className="flex gap-2 pt-1">
+                  <button type="submit" disabled={recordingPayment} className="btn-primary flex-1">{recordingPayment ? 'Saxlanılır...' : 'Qeyd et'}</button>
+                  <button type="button" onClick={() => setPaymentOpen(false)} className="btn-secondary">Sonra</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      })()}
 
       <ConfirmDialog
         open={confirmDialog.open}

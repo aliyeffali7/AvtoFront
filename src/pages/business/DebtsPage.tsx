@@ -42,8 +42,10 @@ export default function DebtsPage() {
         getManualDebts(),
       ])
       const all: Order[] = Array.isArray(ordersRes.data) ? ordersRes.data : (ordersRes.data as { results: Order[] }).results ?? []
-      setOrders(all)
-      setManualDebts(debtsRes.data.filter(d => !d.is_paid))
+      const byNewest = (a: { created_at: string }, b: { created_at: string }) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      setOrders([...all].sort(byNewest))
+      setManualDebts(debtsRes.data.filter(d => !d.is_paid).sort(byNewest))
     } finally {
       setLoading(false)
     }

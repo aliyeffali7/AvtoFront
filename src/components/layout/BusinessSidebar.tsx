@@ -45,7 +45,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <aside className="w-56 bg-sidebar min-h-screen flex flex-col shrink-0">
+    <aside className="w-72 bg-sidebar min-h-screen flex flex-col shrink-0">
       {/* Brand */}
       <div className="px-6 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
@@ -53,7 +53,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
             <img
               src={business.logo.startsWith('http') ? business.logo : (import.meta.env.VITE_API_URL ?? '') + business.logo}
               alt="logo"
-              className="w-10 h-10 rounded object-contain shrink-0 bg-cream"
+              className="w-24 h-24 rounded object-contain shrink-0 bg-cream"
               onError={() => setLogoError(true)}
             />
           ) : null}

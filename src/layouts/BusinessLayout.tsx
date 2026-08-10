@@ -45,7 +45,7 @@ export default function BusinessLayout() {
       </div>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-56">
+      <div className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-72">
 
         {/* Mobile top bar */}
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-surface border-b border-rule sticky top-0 z-10">
