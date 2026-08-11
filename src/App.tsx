@@ -34,7 +34,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const refresh = getRefreshToken()
     if (!refresh) { setStatus('fail'); return }
 
-    api.post('/api/auth/token/refresh/', { refresh })
+    api.post('/api/auth/token/refresh', { refresh })
       .then(res => {
         if (res.data.refresh) {
           setTokens(res.data.access, res.data.refresh)
@@ -44,9 +44,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         setStatus('ok')
       })
       .catch((err) => {
-        // Only log out on explicit token rejection (401/400). Network/server
-        // errors should not kick the user out — they are still logged in.
-        if (err.response && (err.response.status === 401 || err.response.status === 400)) {
+        // Only stay logged in on a true network failure (no response at all).
+        // Any actual HTTP response means refresh reached the server and
+        // failed, so log out rather than showing the app with a dead token.
+        if (err.response) {
           clearTokens()
           setStatus('fail')
         } else {

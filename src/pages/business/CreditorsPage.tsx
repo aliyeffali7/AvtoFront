@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { SupplierDebt } from '@/types'
-import { getSupplierDebts, createSupplierDebt, paySupplierDebt, deleteSupplierDebt } from '@/services/warehouse.service'
+import { SupplierDebt, SupplierDebtItem } from '@/types'
+import { getSupplierDebts, createSupplierDebt, paySupplierDebt, paySupplierDebtItems, deleteSupplierDebt } from '@/services/warehouse.service'
 import { formatCurrency } from '@/lib/utils'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import MasterDetailShell from '@/components/ui/MasterDetailShell'
@@ -70,6 +70,9 @@ export default function CreditorsPage() {
   const [payInputs, setPayInputs]   = useState<Record<number, string>>({})
   const [payErrors, setPayErrors]   = useState<Record<number, string>>({})
 
+  // Per-product pay selection: item id -> quantity to pay now
+  const [selectedItems, setSelectedItems] = useState<Record<number, number>>({})
+
   // Delete state
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [deletingId, setDeletingId]           = useState<number | null>(null)
@@ -111,6 +114,61 @@ export default function CreditorsPage() {
   function selectSupplier(name: string) {
     setCreating(false)
     setSelectedSupplier(name)
+    setSelectedItems({})
+  }
+
+  function toggleItemSelect(item: SupplierDebtItem, checked: boolean) {
+    setSelectedItems(prev => {
+      const next = { ...prev }
+      if (checked) next[item.id] = item.remaining_quantity
+      else delete next[item.id]
+      return next
+    })
+  }
+
+  function updateItemQty(item: SupplierDebtItem, raw: string) {
+    const qty = Math.min(Math.max(parseInt(raw) || 1, 1), item.remaining_quantity)
+    setSelectedItems(prev => ({ ...prev, [item.id]: qty }))
+  }
+
+  function selectAllUnpaid(debt: SupplierDebt) {
+    setSelectedItems(prev => {
+      const next = { ...prev }
+      for (const item of debt.items) {
+        if (!item.is_paid) next[item.id] = item.remaining_quantity
+      }
+      return next
+    })
+  }
+
+  function debtSelectedEntries(debt: SupplierDebt) {
+    return debt.items
+      .filter(item => selectedItems[item.id] > 0)
+      .map(item => ({ item, qty: selectedItems[item.id] }))
+  }
+
+  function debtSelectedTotal(debt: SupplierDebt) {
+    return debtSelectedEntries(debt).reduce((s, { item, qty }) => s + qty * Number(item.purchase_price), 0)
+  }
+
+  async function handlePayItems(debt: SupplierDebt) {
+    const entries = debtSelectedEntries(debt)
+    if (entries.length === 0) return
+    setPayErrors(prev => ({ ...prev, [debt.id]: '' }))
+    setPayingId(debt.id)
+    try {
+      await paySupplierDebtItems(debt.id, entries.map(({ item, qty }) => ({ item_id: item.id, quantity: qty })))
+      setSelectedItems(prev => {
+        const next = { ...prev }
+        for (const { item } of entries) delete next[item.id]
+        return next
+      })
+      load()
+    } catch {
+      setPayErrors(prev => ({ ...prev, [debt.id]: 'Xəta baş verdi.' }))
+    } finally {
+      setPayingId(null)
+    }
   }
 
   async function handlePay(debt: SupplierDebt) {
@@ -298,8 +356,83 @@ export default function CreditorsPage() {
               </div>
             </div>
 
+            {/* Product line items */}
+            {debt.items && debt.items.length > 0 && (
+              <div className="mb-2 rounded border border-rule/70 bg-surface-alt/50 divide-y divide-rule/70">
+                {debt.items.map(item => {
+                  const checked = selectedItems[item.id] > 0
+                  const qty = selectedItems[item.id] ?? item.remaining_quantity
+                  return (
+                    <div key={item.id} className={`flex items-center gap-2 px-3 py-1.5 ${item.is_paid ? 'opacity-50' : ''}`}>
+                      {item.is_paid ? (
+                        <span className="text-success text-xs shrink-0" title="Ödənilib">✓</span>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={e => toggleItemSelect(item, e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-rule text-accent cursor-pointer shrink-0"
+                        />
+                      )}
+                      <p className="text-xs text-ink-soft truncate flex-1 min-w-0">
+                        {item.product_name} × {item.quantity}
+                        {!item.is_paid && item.paid_quantity > 0 && (
+                          <span className="text-ink-muted"> ({item.remaining_quantity} qalıb)</span>
+                        )}
+                      </p>
+                      {checked && item.remaining_quantity > 1 && (
+                        <input
+                          type="number"
+                          min={1}
+                          max={item.remaining_quantity}
+                          value={qty}
+                          onChange={e => updateItemQty(item, e.target.value)}
+                          className="input-mono w-12 py-0.5 px-1 text-xs text-center shrink-0"
+                        />
+                      )}
+                      <p className="text-xs font-mono text-ink-muted shrink-0 text-right">
+                        {item.is_paid ? 'Ödənilib' : formatCurrency(checked ? qty * Number(item.purchase_price) : item.remaining_amount)}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
             {/* Pay row */}
-            {!debt.is_paid && (
+            {!debt.is_paid && debt.items && debt.items.length > 0 ? (
+              <div className="mt-2">
+                <div className="flex items-center justify-between mb-1.5 gap-2">
+                  <button onClick={() => selectAllUnpaid(debt)} className="text-xs font-mono font-semibold text-accent hover:text-accent-hover shrink-0">
+                    Hamısını seç
+                  </button>
+                  <p className="text-xs font-mono text-ink-muted text-right truncate">
+                    {debtSelectedEntries(debt).length} məhsul — {formatCurrency(debtSelectedTotal(debt))}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePayItems(debt)}
+                    disabled={payingId === debt.id || debtSelectedEntries(debt).length === 0}
+                    className="flex-1 bg-accent hover:bg-accent-hover disabled:opacity-40 text-cream text-xs font-semibold px-4 py-2 rounded"
+                  >
+                    {payingId === debt.id ? '...' : 'Seçilənləri ödə'}
+                  </button>
+                  {confirmDeleteId === debt.id ? (
+                    <div className="flex gap-1 items-center shrink-0">
+                      <button onClick={() => handleDelete(debt.id)} disabled={deletingId === debt.id} className="text-xs font-semibold bg-danger text-cream px-2.5 py-2 rounded hover:opacity-90 disabled:opacity-60">Bəli</button>
+                      <button onClick={() => setConfirmDeleteId(null)} className="text-xs font-semibold bg-surface-alt text-ink px-2.5 py-2 rounded">Xeyr</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDeleteId(debt.id)} className="p-2 text-ink-muted hover:text-danger shrink-0">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : !debt.is_paid && (
               <div className="flex gap-2 mt-2">
                 <div className="relative flex-1">
                   <input

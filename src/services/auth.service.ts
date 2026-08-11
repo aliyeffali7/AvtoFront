@@ -29,11 +29,5 @@ export const updateBusinessProfile = (data: FormData) =>
   })
 
 export async function logout(): Promise<void> {
-  try {
-    await api.post('/api/auth/logout')
-  } catch {
-    // ignore
-  } finally {
-    clearTokens()
-  }
+  clearTokens()
 }

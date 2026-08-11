@@ -48,7 +48,7 @@ api.interceptors.response.use(
         if (!refreshToken) throw new Error('no refresh token')
 
         const response = await axios.post(
-          `${BASE_URL}/api/auth/token/refresh/`,
+          `${BASE_URL}/api/auth/token/refresh`,
           { refresh: refreshToken },
           { headers: { 'Content-Type': 'application/json' } }
         )
@@ -64,9 +64,11 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch (refreshErr) {
         const e = refreshErr as AxiosError
-        // Only log out if the backend explicitly rejected the refresh token (401 or 400).
-        // Network errors, timeouts, or server errors should NOT log the user out.
-        if (e.response && (e.response.status === 401 || e.response.status === 400)) {
+        // Only stay logged in on a true network failure (no response at all —
+        // offline, timeout, server unreachable). Any actual HTTP response means
+        // the refresh attempt reached the server and failed, so log out rather
+        // than silently leaving a dead access token in place.
+        if (e.response) {
           clearTokens()
           window.location.replace('/')
         }

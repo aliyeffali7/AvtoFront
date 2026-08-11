@@ -156,6 +156,20 @@ export interface ManualDebt {
   created_at: string
 }
 
+export interface SupplierDebtItem {
+  id: number
+  product: number | null
+  product_name: string
+  quantity: number
+  purchase_price: number
+  line_total: number
+  paid_quantity: number
+  remaining_quantity: number
+  paid_amount: number
+  remaining_amount: number
+  is_paid: boolean
+}
+
 export interface SupplierDebt {
   id: number
   supplier_name: string
@@ -165,6 +179,7 @@ export interface SupplierDebt {
   paid_amount: number
   remaining: number
   is_paid: boolean
+  items: SupplierDebtItem[]
   date: string
   created_at: string
 }
