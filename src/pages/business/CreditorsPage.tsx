@@ -73,6 +73,11 @@ export default function CreditorsPage() {
   // Per-product pay selection: item id -> quantity to pay now
   const [selectedItems, setSelectedItems] = useState<Record<number, number>>({})
 
+  // Multi-debt selection: pay several debt records for this supplier in one go
+  const [selectedDebtIds, setSelectedDebtIds] = useState<Set<number>>(new Set())
+  const [bulkPaying, setBulkPaying] = useState(false)
+  const [bulkPayError, setBulkPayError] = useState('')
+
   // Delete state
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [deletingId, setDeletingId]           = useState<number | null>(null)
@@ -115,6 +120,17 @@ export default function CreditorsPage() {
     setCreating(false)
     setSelectedSupplier(name)
     setSelectedItems({})
+    setSelectedDebtIds(new Set())
+    setBulkPayError('')
+  }
+
+  function toggleDebtSelect(debtId: number, checked: boolean) {
+    setSelectedDebtIds(prev => {
+      const next = new Set(prev)
+      if (checked) next.add(debtId)
+      else next.delete(debtId)
+      return next
+    })
   }
 
   function toggleItemSelect(item: SupplierDebtItem, checked: boolean) {
@@ -192,6 +208,29 @@ export default function CreditorsPage() {
       setPayErrors(prev => ({ ...prev, [debt.id]: 'Xəta baş verdi.' }))
     } finally {
       setPayingId(null)
+    }
+  }
+
+  async function handlePayMultipleDebts(group: SupplierGroup) {
+    const debtsToPay = group.debts.filter(d => !d.is_paid && selectedDebtIds.has(d.id))
+    if (debtsToPay.length === 0) return
+    setBulkPayError('')
+    setBulkPaying(true)
+    try {
+      for (const debt of debtsToPay) {
+        const unpaidItems = debt.items?.filter(item => !item.is_paid) ?? []
+        if (unpaidItems.length > 0) {
+          await paySupplierDebtItems(debt.id, unpaidItems.map(item => ({ item_id: item.id, quantity: item.remaining_quantity })))
+        } else {
+          await paySupplierDebt(debt.id, debt.remaining)
+        }
+      }
+      setSelectedDebtIds(new Set())
+      load()
+    } catch {
+      setBulkPayError('Xəta baş verdi. Yenidən cəhd edin.')
+    } finally {
+      setBulkPaying(false)
     }
   }
 
@@ -335,15 +374,56 @@ export default function CreditorsPage() {
       </div>
 
       <p className="section-label mb-2">Borc qeydləri ({selectedGroup.debts.length})</p>
+
+      {selectedGroup.debts.filter(d => !d.is_paid).length > 1 && (
+        <div className="bg-surface-alt border border-rule rounded px-3 py-2.5 mb-3 flex items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-xs font-mono font-semibold text-ink cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={selectedGroup.debts.filter(d => !d.is_paid).every(d => selectedDebtIds.has(d.id))}
+              onChange={e => {
+                const unpaidIds = selectedGroup.debts.filter(d => !d.is_paid).map(d => d.id)
+                setSelectedDebtIds(e.target.checked ? new Set(unpaidIds) : new Set())
+              }}
+              className="w-3.5 h-3.5 rounded border-rule text-accent cursor-pointer"
+            />
+            Hamısını seç
+          </label>
+          <p className="text-xs font-mono text-ink-muted text-right truncate">
+            {selectedDebtIds.size} borc seçilib — {formatCurrency(
+              selectedGroup.debts.filter(d => !d.is_paid && selectedDebtIds.has(d.id)).reduce((s, d) => s + d.remaining, 0)
+            )}
+          </p>
+          <button
+            onClick={() => handlePayMultipleDebts(selectedGroup)}
+            disabled={bulkPaying || selectedDebtIds.size === 0}
+            className="bg-accent hover:bg-accent-hover disabled:opacity-40 text-cream text-xs font-semibold px-4 py-2 rounded shrink-0"
+          >
+            {bulkPaying ? '...' : 'Seçilənləri tam ödə'}
+          </button>
+        </div>
+      )}
+      {bulkPayError && <p className="text-xs text-danger mb-3">{bulkPayError}</p>}
+
       <div className="flex flex-col gap-3">
         {selectedGroup.debts.map(debt => (
           <div key={debt.id} className={`bg-surface border border-rule rounded px-4 py-3 ${debt.is_paid ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="min-w-0 flex-1">
-                {debt.description && (
-                  <p className="text-sm font-medium text-ink">{debt.description}</p>
+              <div className="min-w-0 flex-1 flex items-start gap-2">
+                {!debt.is_paid && (
+                  <input
+                    type="checkbox"
+                    checked={selectedDebtIds.has(debt.id)}
+                    onChange={e => toggleDebtSelect(debt.id, e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-rule text-accent cursor-pointer mt-0.5 shrink-0"
+                  />
                 )}
-                <p className="text-xs text-ink-muted mt-0.5">{debt.date}</p>
+                <div className="min-w-0">
+                  {debt.description && (
+                    <p className="text-sm font-medium text-ink">{debt.description}</p>
+                  )}
+                  <p className="text-xs text-ink-muted mt-0.5">{debt.date}</p>
+                </div>
               </div>
               <div className="text-right shrink-0">
                 <p className="text-sm font-mono font-semibold text-ink">{formatCurrency(debt.total_amount)}</p>
