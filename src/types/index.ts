@@ -9,10 +9,54 @@ export interface Business {
   signature?: string | null
   guarantee_text?: string
   owner_email?: string | null
+  login_code?: string | null
   is_subscription_active?: boolean
   trial_ends_at?: string | null
   subscription_ends_at?: string | null
   created_at?: string
+}
+
+export interface BusinessAdmin {
+  id: number
+  name: string
+  phone?: string
+  address?: string
+  owner_email: string | null
+  owner_active: boolean | null
+  login_code: string | null
+  member_count: number
+  mechanic_count: number
+  order_count: number
+  is_subscription_active: boolean
+  trial_ends_at: string | null
+  subscription_ends_at: string | null
+  created_at: string
+}
+
+export interface BusinessExpiringSoon extends BusinessAdmin {
+  expires_at: string
+  days_left: number
+}
+
+export interface PlatformPayment {
+  id: number
+  business: number
+  business_name: string
+  amount: number
+  days_extended: number
+  note: string
+  recorded_by_email: string | null
+  date: string
+  created_at: string
+}
+
+export interface AdminDashboardStats {
+  total_businesses: number
+  active_businesses: number
+  total_revenue: number
+  revenue_this_month: number
+  expiring_soon: BusinessExpiringSoon[]
+  recent_payments: PlatformPayment[]
 }
 
 export interface User {
@@ -20,6 +64,7 @@ export interface User {
   email: string
   role: Role
   business?: Business
+  impersonating?: boolean
 }
 
 export interface OrderService {
@@ -75,7 +120,8 @@ export interface OrderProduct {
   product_name: string
   quantity: number
   sell_price: number
-  purchase_price: number
+  // null for a MECHANIC-role response — cost data isn't theirs to see.
+  purchase_price: number | null
 }
 
 export interface Product {
@@ -83,20 +129,75 @@ export interface Product {
   name: string
   code: string
   unit: string
-  purchase_price: number
+  // Omitted by the API for MECHANIC-role requests (cost data isn't theirs to see).
+  purchase_price?: number
   sell_price: number
   discount_percent: number
   stock_quantity: number
   is_warehouse?: boolean
 }
 
+export type FinanceCategory = 'parts' | 'salary' | 'rent' | 'utilities' | 'other'
+
 export interface FinanceRecord {
   id: number
   type: 'income' | 'expense'
+  category?: FinanceCategory
   amount: number
   description: string
   date: string
   order?: number | null
+}
+
+export interface FinanceReport {
+  from: string
+  to: string
+  total_income: number
+  total_expense: number
+  net: number
+  expense_by_category: { category: FinanceCategory; amount: number }[]
+  daily: { date: string; income: number; expense: number }[]
+}
+
+export interface DebtorOrder {
+  id: number
+  plate_number: string
+  car: string
+  status: 'pending' | 'in_progress' | 'done'
+  payment_status: 'unpaid' | 'partial' | 'paid'
+  total: number
+  paid_amount: number
+  remaining: number
+  date: string
+}
+
+export interface DebtorGroup {
+  customer_id: number | null
+  customer_name: string
+  phone: string
+  total_charged: number
+  paid_amount: number
+  remaining: number
+  is_paid: boolean
+  orders: DebtorOrder[]
+}
+
+export interface LowStockData {
+  low_stock_count: number
+  out_of_stock_count: number
+  low_stock: Product[]
+  out_of_stock: Product[]
+}
+
+export interface DashboardStats {
+  today: { income: number; expense: number; net: number }
+  low_stock_count: number
+  out_of_stock_count: number
+  reservations: { total: number; converted: number; no_show: number; conversion_rate: number | null }
+  top_customers: { id: number; full_name: string; total_paid: number }[]
+  new_customers_this_month: number
+  creditors_remaining: number
+  debtors_remaining: number
 }
 
 export interface Mechanic {
@@ -143,7 +244,35 @@ export interface Store {
   name: string
   phone?: string
   contact_person?: string
+  total_purchased?: number
   created_at: string
+}
+
+export interface StorePurchase {
+  id: number
+  product: number | null
+  product_name: string
+  quantity: number
+  purchase_price: number
+  line_total: number
+  on_credit: boolean
+  debt: number | null
+  date: string
+}
+
+export interface StorePurchases {
+  store: Store
+  total_purchased: number
+  credit_total: number
+  cash_total: number
+  purchases: StorePurchase[]
+}
+
+export interface MechanicEarnings {
+  from: string
+  to: string
+  total: number
+  daily: { date: string; amount: number }[]
 }
 
 export interface ManualDebt {
@@ -215,17 +344,5 @@ export interface ReservationStats {
 export interface LoginCredentials {
   email: string
   password: string
-}
-
-export interface AuthTokens {
-  access: string
-  refresh: string
-}
-
-export interface JWTPayload {
-  user_id: number
-  email: string
-  role: Role
-  exp: number
-  iat: number
+  business_code?: string
 }
