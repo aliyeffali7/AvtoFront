@@ -1,7 +1,10 @@
 import api from '@/lib/axios'
-import { Store } from '@/types'
+import { Store, StorePurchases } from '@/types'
 
 export const getStores = () => api.get<Store[]>('/api/stores')
+
+export const getStorePurchases = (id: number) =>
+  api.get<StorePurchases>(`/api/stores/${id}/purchases/`)
 
 export const createStore = (data: { name: string; phone?: string; contact_person?: string }) =>
   api.post<Store>('/api/stores', data)

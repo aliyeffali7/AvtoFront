@@ -1,7 +1,13 @@
 import api from '@/lib/axios'
-import { Mechanic } from '@/types'
+import { Mechanic, Order, MechanicEarnings } from '@/types'
 
 export const getMechanics = () => api.get<Mechanic[]>('/api/mechanics')
+
+export const getMechanicOrders = (id: number) =>
+  api.get<Order[]>(`/api/mechanics/${id}/orders/`)
+
+export const getMechanicEarnings = (id: number, from: string, to: string) =>
+  api.get<MechanicEarnings>(`/api/mechanics/${id}/earnings/`, { params: { from, to } })
 
 type MechanicCreateData = {
   full_name: string

@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Product } from '@/types'
-import { getProducts, createProduct, adjustStock, deleteProduct, bulkDeleteProducts, importProductsExcel, getSupplierDebts, getProductUsage, ProductUsage } from '@/services/warehouse.service'
+import { Product, Store } from '@/types'
+import { getProducts, createProduct, adjustStock, deleteProduct, bulkDeleteProducts, importProductsExcel, getProductUsage, getProductBatches, ProductUsage, ProductBatch } from '@/services/warehouse.service'
+import { getStores } from '@/services/stores.service'
+import { resolveStoreId } from '@/lib/resolveStore'
 import { formatCurrency, mapApiError } from '@/lib/utils'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import Badge from '@/components/ui/Badge'
@@ -13,12 +15,18 @@ import StatusBadge from '@/components/orders/StatusBadge'
 function ProductUsageModal({ product, onClose }: { product: Product; onClose: () => void }) {
   const navigate = useNavigate()
   const [usages, setUsages] = useState<ProductUsage[]>([])
+  const [batches, setBatches] = useState<ProductBatch[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getProductUsage(product.id)
-      .then(r => setUsages(r.data))
-      .catch(() => {})
+    Promise.all([
+      getProductUsage(product.id).catch(() => ({ data: [] as ProductUsage[] })),
+      getProductBatches(product.id).catch(() => ({ data: [] as ProductBatch[] })),
+    ])
+      .then(([usageRes, batchRes]) => {
+        setUsages(usageRes.data)
+        setBatches(batchRes.data)
+      })
       .finally(() => setLoading(false))
   }, [product.id])
 
@@ -38,6 +46,19 @@ function ProductUsageModal({ product, onClose }: { product: Product; onClose: ()
         </div>
 
         <div className="overflow-y-auto flex-1">
+          {!loading && batches.length > 0 && (
+            <div className="px-6 py-4 border-b border-rule bg-surface-alt/50">
+              <p className="section-label mb-2">Qalan partiyalar (FIFO)</p>
+              <div className="flex flex-col gap-1.5">
+                {batches.map(b => (
+                  <div key={b.id} className="flex items-center justify-between text-sm">
+                    <span className="text-ink-muted font-mono text-xs">{b.date}</span>
+                    <span className="font-mono text-ink">{b.remaining_quantity} ədəd × {formatCurrency(Number(b.purchase_price))}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {loading ? (
             <Spinner className="w-7 h-7" />
           ) : usages.length === 0 ? (
@@ -83,12 +104,12 @@ function AddProductPanel({
   open,
   onClose,
   onAdded,
-  supplierNames = [],
+  stores = [],
 }: {
   open: boolean
   onClose: () => void
   onAdded: () => void
-  supplierNames?: string[]
+  stores?: Store[]
 }) {
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
@@ -113,12 +134,13 @@ function AddProductPanel({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (stockQty > 0 && onCredit && !supplierName.trim()) {
-      setError('Kreditor adını daxil edin, ya da "Nağd ödənilib" seçin.')
+    if (stockQty > 0 && !supplierName.trim()) {
+      setError('Mağaza seçin, ya da adını yazıb yenisini yaradın.')
       return
     }
     setLoading(true)
     try {
+      const storeId = stockQty > 0 ? await resolveStoreId(stores, supplierName) : undefined
       await createProduct({
         name,
         code,
@@ -128,7 +150,7 @@ function AddProductPanel({
         discount_percent: parseFloat(discountPercent) || 0,
         stock_quantity: stockQty,
         on_credit: onCredit,
-        supplier_name: onCredit ? (supplierName.trim() || undefined) : undefined,
+        store_id: storeId,
       } as Parameters<typeof createProduct>[0])
       reset()
       onAdded()
@@ -190,40 +212,40 @@ function AddProductPanel({
           <label className="label">İlkin stok <span className="text-danger">*</span></label>
           <input value={stock} onChange={e => setStock(e.target.value)} required type="number" min="0" placeholder="0" className="input-mono" />
         </div>
-        {stockQty > 0 && (
-          <div className="flex flex-col gap-1.5">
-            <label className="label">Ödəniş</label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setOnCredit(true)}
-                className={`flex-1 text-sm font-medium py-2 rounded border transition-colors ${onCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted hover:bg-surface-alt'}`}
-              >
-                Kreditlə
-              </button>
-              <button
-                type="button"
-                onClick={() => setOnCredit(false)}
-                className={`flex-1 text-sm font-medium py-2 rounded border transition-colors ${!onCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted hover:bg-surface-alt'}`}
-              >
-                Nağd ödənilib
-              </button>
-            </div>
-            {onCredit ? (
-              <>
-                <ComboboxInput
-                  value={supplierName}
-                  onChange={setSupplierName}
-                  options={supplierNames}
-                  placeholder="Məs. Avtoehtiyat MMC"
-                />
-                <p className="text-xs text-ink-muted">Bu məbləğ avtomatik olaraq kreditorlara əlavə ediləcək</p>
-              </>
+        <div className="flex flex-col gap-1.5">
+          <label className="label">Ödəniş</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setOnCredit(true)}
+              className={`flex-1 text-sm font-medium py-2 rounded border transition-colors ${onCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted hover:bg-surface-alt'}`}
+            >
+              Kreditlə
+            </button>
+            <button
+              type="button"
+              onClick={() => setOnCredit(false)}
+              className={`flex-1 text-sm font-medium py-2 rounded border transition-colors ${!onCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted hover:bg-surface-alt'}`}
+            >
+              Nağd ödənilib
+            </button>
+          </div>
+          <ComboboxInput
+            value={supplierName}
+            onChange={setSupplierName}
+            options={stores.map(s => s.name)}
+            placeholder="Məs. Avtoehtiyat MMC"
+          />
+          {stockQty > 0 ? (
+            onCredit ? (
+              <p className="text-xs text-ink-muted">Bu məbləğ avtomatik olaraq kreditorlara əlavə ediləcək</p>
             ) : (
               <p className="text-xs text-ink-muted">Bu məbləğ dərhal xərc kimi qeyd ediləcək</p>
-            )}
-          </div>
-        )}
+            )
+          ) : (
+            <p className="text-xs text-ink-muted">İlkin stok daxil etsəniz məcburi olacaq</p>
+          )}
+        </div>
         {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
         <div className="flex items-center gap-3 pt-2">
           <Button type="submit" loading={loading}>
@@ -237,8 +259,8 @@ function AddProductPanel({
 }
 
 function computedFields(p: Product) {
-  const grossTotal = p.purchase_price * p.stock_quantity
-  const discountedPrice = p.purchase_price * (1 - (p.discount_percent || 0) / 100)
+  const grossTotal = (p.purchase_price ?? 0) * p.stock_quantity
+  const discountedPrice = (p.purchase_price ?? 0) * (1 - (p.discount_percent || 0) / 100)
   const discountedTotal = discountedPrice * p.stock_quantity
   const sellTotal = p.sell_price * p.stock_quantity
   return { grossTotal, discountedPrice, discountedTotal, sellTotal }
@@ -246,7 +268,7 @@ function computedFields(p: Product) {
 
 export default function WarehouseClient() {
   const [products, setProducts] = useState<Product[]>([])
-  const [supplierNames, setSupplierNames] = useState<string[]>([])
+  const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [editingStockId, setEditingStockId] = useState<number | null>(null)
@@ -266,6 +288,7 @@ export default function WarehouseClient() {
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [importOnCredit, setImportOnCredit] = useState(true)
   const [importSupplier, setImportSupplier] = useState('')
+  const [importStoreId, setImportStoreId] = useState<number | undefined>(undefined)
   const [importChoiceError, setImportChoiceError] = useState('')
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -328,17 +351,18 @@ export default function WarehouseClient() {
   }
 
   async function saveStock(id: number, newQty: number) {
-    if (stockCreditStep && stockOnCredit && !stockSupplier.trim()) {
-      setStockError('Kreditor adını daxil edin, ya da "Nağd" seçin.')
+    if (stockCreditStep && !stockSupplier.trim()) {
+      setStockError('Mağaza seçin, ya da adını yazıb yenisini yaradın.')
       return
     }
     setStockSaving(true)
     setStockError('')
     try {
+      const storeId = stockCreditStep ? await resolveStoreId(stores, stockSupplier) : undefined
       await adjustStock(
         id,
         newQty,
-        stockCreditStep ? { on_credit: stockOnCredit, supplier_name: stockOnCredit ? stockSupplier.trim() : undefined } : undefined
+        stockCreditStep ? { on_credit: stockOnCredit, store_id: storeId } : undefined
       )
       load()
       setEditingStockId(null)
@@ -388,13 +412,12 @@ export default function WarehouseClient() {
   const load = useCallback(async (q?: string) => {
     setLoading(true)
     try {
-      const [productsRes, debtsRes] = await Promise.all([
+      const [productsRes, storesRes] = await Promise.all([
         getProducts(q),
-        getSupplierDebts(true).catch(() => ({ data: [] })),
+        getStores().catch(() => ({ data: [] as Store[] })),
       ])
       setProducts(productsRes.data)
-      const names = [...new Set(debtsRes.data.map((d: { supplier_name: string }) => d.supplier_name))].sort() as string[]
-      setSupplierNames(names)
+      setStores(storesRes.data)
     } finally {
       setLoading(false)
     }
@@ -409,7 +432,7 @@ export default function WarehouseClient() {
     try {
       const res = await importProductsExcel(file, {
         on_credit: importOnCredit,
-        supplier_name: importOnCredit ? importSupplier.trim() : undefined,
+        store_id: importStoreId,
       })
       setImportResult({ detail: res.data.detail, errors: res.data.errors })
       load()
@@ -423,15 +446,18 @@ export default function WarehouseClient() {
   function openImportModal() {
     setImportOnCredit(true)
     setImportSupplier('')
+    setImportStoreId(undefined)
     setImportChoiceError('')
     setImportModalOpen(true)
   }
 
-  function handleImportFileSelectClick() {
-    if (importOnCredit && !importSupplier.trim()) {
-      setImportChoiceError('Kreditor adını daxil edin, ya da "Nağd ödənilib" seçin.')
+  async function handleImportFileSelectClick() {
+    if (!importSupplier.trim()) {
+      setImportChoiceError('Mağaza seçin, ya da adını yazıb yenisini yaradın.')
       return
     }
+    const storeId = await resolveStoreId(stores, importSupplier)
+    setImportStoreId(storeId)
     setImportModalOpen(false)
     fileInputRef.current?.click()
   }
@@ -443,7 +469,7 @@ export default function WarehouseClient() {
     return () => clearTimeout(timer)
   }, [search, load])
 
-  const totalStockValue = products.reduce((s, p) => s + p.purchase_price * p.stock_quantity, 0)
+  const totalStockValue = products.reduce((s, p) => s + (p.purchase_price ?? 0) * p.stock_quantity, 0)
   const totalSellValue = products.reduce((s, p) => s + p.sell_price * p.stock_quantity, 0)
   const lowStockCount = products.filter(p => p.stock_quantity > 0 && p.stock_quantity < 3).length
   const outOfStockCount = products.filter(p => p.stock_quantity === 0).length
@@ -581,7 +607,7 @@ export default function WarehouseClient() {
         )}
 
         {/* Inline add-product panel */}
-        <AddProductPanel open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} supplierNames={supplierNames} />
+        <AddProductPanel open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} stores={stores} />
 
         {/* Content */}
         {loading ? (
@@ -656,9 +682,7 @@ export default function WarehouseClient() {
                           <button type="button" onClick={() => setStockOnCredit(true)} className={`flex-1 text-xs font-medium py-1.5 rounded border transition-colors ${stockOnCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted'}`}>Kreditlə</button>
                           <button type="button" onClick={() => setStockOnCredit(false)} className={`flex-1 text-xs font-medium py-1.5 rounded border transition-colors ${!stockOnCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted'}`}>Nağd</button>
                         </div>
-                        {stockOnCredit && (
-                          <ComboboxInput value={stockSupplier} onChange={setStockSupplier} options={supplierNames} placeholder="Kreditor adı" className="text-xs" />
-                        )}
+                        <ComboboxInput value={stockSupplier} onChange={setStockSupplier} options={stores.map(s => s.name)} placeholder="Mağaza adı" className="text-xs" />
                       </div>
                     )}
                     {editingStockId === p.id && stockError && (
@@ -667,7 +691,7 @@ export default function WarehouseClient() {
                     <div className="grid grid-cols-3 gap-2 text-sm mb-3">
                       <div>
                         <p className="text-xs text-ink-muted">Alış</p>
-                        <p className="text-ink-soft font-medium font-mono">{formatCurrency(p.purchase_price)}</p>
+                        <p className="text-ink-soft font-medium font-mono">{formatCurrency(p.purchase_price ?? 0)}</p>
                       </div>
                       {(p.discount_percent || 0) > 0 && (
                         <div>
@@ -805,9 +829,7 @@ export default function WarehouseClient() {
                                   <button type="button" onClick={() => setStockOnCredit(true)} className={`flex-1 text-xs font-medium py-1 rounded border transition-colors ${stockOnCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted'}`}>Kreditlə</button>
                                   <button type="button" onClick={() => setStockOnCredit(false)} className={`flex-1 text-xs font-medium py-1 rounded border transition-colors ${!stockOnCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted'}`}>Nağd</button>
                                 </div>
-                                {stockOnCredit && (
-                                  <ComboboxInput value={stockSupplier} onChange={setStockSupplier} options={supplierNames} placeholder="Kreditor adı" className="text-xs" />
-                                )}
+                                <ComboboxInput value={stockSupplier} onChange={setStockSupplier} options={stores.map(s => s.name)} placeholder="Mağaza adı" className="text-xs" />
                               </div>
                             )}
                             {editingStockId === p.id && stockError && (
@@ -815,7 +837,7 @@ export default function WarehouseClient() {
                             )}
                           </td>
                           <td className="ledger-td text-right font-mono text-ink-soft">
-                            {formatCurrency(p.purchase_price)}
+                            {formatCurrency(p.purchase_price ?? 0)}
                           </td>
                           <td className="ledger-td text-right font-mono font-medium text-ink-soft">
                             {formatCurrency(grossTotal)}
@@ -880,13 +902,13 @@ export default function WarehouseClient() {
                       <td colSpan={6} className="px-3 py-3 font-mono font-bold text-[10px] uppercase tracking-[.06em] text-ink-muted">Cəmi</td>
                       <td className="px-3 py-3 text-right text-sm font-mono font-bold text-ink-soft">—</td>
                       <td className="px-3 py-3 text-right text-sm font-mono font-bold text-ink-soft">
-                        {formatCurrency(products.reduce((s, p) => s + p.purchase_price * p.stock_quantity, 0))}
+                        {formatCurrency(products.reduce((s, p) => s + (p.purchase_price ?? 0) * p.stock_quantity, 0))}
                       </td>
                       <td className="px-3 py-3" />
                       <td className="px-3 py-3" />
                       <td className="px-3 py-3 text-right text-sm font-mono font-bold text-warning">
                         {formatCurrency(products.reduce((s, p) => {
-                          const dp = p.purchase_price * (1 - (p.discount_percent || 0) / 100)
+                          const dp = (p.purchase_price ?? 0) * (1 - (p.discount_percent || 0) / 100)
                           return s + dp * p.stock_quantity
                         }, 0))}
                       </td>
@@ -947,16 +969,14 @@ export default function WarehouseClient() {
                     Nağd ödənilib
                   </button>
                 </div>
+                <ComboboxInput
+                  value={importSupplier}
+                  onChange={setImportSupplier}
+                  options={stores.map(s => s.name)}
+                  placeholder="Mağaza adı (Məs. Avtoehtiyat MMC)"
+                />
                 {importOnCredit ? (
-                  <>
-                    <ComboboxInput
-                      value={importSupplier}
-                      onChange={setImportSupplier}
-                      options={supplierNames}
-                      placeholder="Kreditor adı (Məs. Avtoehtiyat MMC)"
-                    />
-                    <p className="text-xs text-ink-muted">Bütün idxal edilən məhsullar bu kreditora əlavə ediləcək</p>
-                  </>
+                  <p className="text-xs text-ink-muted">Bütün idxal edilən məhsullar bu kreditora əlavə ediləcək</p>
                 ) : (
                   <p className="text-xs text-ink-muted">Ümumi məbləğ dərhal xərc kimi qeyd ediləcək</p>
                 )}

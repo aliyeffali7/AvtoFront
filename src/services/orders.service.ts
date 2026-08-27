@@ -36,8 +36,8 @@ export const recordPayment = (orderId: number, paid_amount: number, discount_amo
     ...(discount_amount !== undefined && discount_amount > 0 ? { discount_amount } : {}),
   })
 
-export const addProductToOrder = (orderId: number, productId: number, quantity: number, supplier_name?: string) =>
-  api.post<Order>(`/api/orders/${orderId}/products`, { product: productId, quantity, ...(supplier_name ? { supplier_name } : {}) })
+export const addProductToOrder = (orderId: number, productId: number, quantity: number, store_id?: number) =>
+  api.post<Order>(`/api/orders/${orderId}/products`, { product: productId, quantity, ...(store_id ? { store_id } : {}) })
 
 export const removeProductFromOrder = (orderId: number, orderProductId: number) =>
   api.delete<Order>(`/api/orders/${orderId}/products/${orderProductId}`)

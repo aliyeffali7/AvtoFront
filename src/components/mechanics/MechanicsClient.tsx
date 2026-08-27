@@ -1,13 +1,51 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Mechanic } from '@/types'
-import { getMechanics, createMechanic, updateMechanic, deactivateMechanic, activateMechanic } from '@/services/mechanics.service'
-import { mapApiError, formatCurrency } from '@/lib/utils'
+import { Link } from 'react-router-dom'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { Mechanic, Order, MechanicEarnings } from '@/types'
+import { getMechanics, createMechanic, updateMechanic, deactivateMechanic, activateMechanic, getMechanicOrders, getMechanicEarnings } from '@/services/mechanics.service'
+import { mapApiError, formatCurrency, formatDate } from '@/lib/utils'
+import { CHART_SEQUENTIAL } from '@/lib/chartColors'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import MasterDetailShell from '@/components/ui/MasterDetailShell'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
+
+const ORDER_STATUS_LABELS: Record<Order['status'], string> = {
+  pending: 'Gözləyir',
+  in_progress: 'İcrada',
+  done: 'Tamamlandı',
+}
+
+const ORDER_STATUS_BADGE: Record<Order['status'], 'neutral' | 'warning' | 'success'> = {
+  pending: 'neutral',
+  in_progress: 'warning',
+  done: 'success',
+}
+
+type EarningsPreset = '7' | '30' | '90' | 'month'
+
+const EARNINGS_PRESETS: { key: EarningsPreset; label: string }[] = [
+  { key: '7', label: 'Son 7 gün' },
+  { key: '30', label: 'Son 30 gün' },
+  { key: '90', label: 'Son 90 gün' },
+  { key: 'month', label: 'Bu ay' },
+]
+
+function earningsRangeFor(preset: EarningsPreset) {
+  const today = new Date()
+  const to = today.toISOString().slice(0, 10)
+  let from: string
+  if (preset === 'month') {
+    from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10)
+  } else {
+    const d = new Date(today)
+    d.setDate(d.getDate() - parseInt(preset, 10))
+    from = d.toISOString().slice(0, 10)
+  }
+  return { from, to }
+}
 
 function getMechanicImageUrl(image?: string | null) {
   if (!image) return ''
@@ -153,6 +191,12 @@ function MechanicDetail({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const [orders, setOrders] = useState<Order[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(true)
+  const [earningsPreset, setEarningsPreset] = useState<EarningsPreset>('30')
+  const [earnings, setEarnings] = useState<MechanicEarnings | null>(null)
+  const [earningsLoading, setEarningsLoading] = useState(true)
+
   useEffect(() => {
     setFullName(mechanic.full_name ?? '')
     setPhone(mechanic.phone ?? '')
@@ -161,6 +205,17 @@ function MechanicDetail({
     setImagePreview(getMechanicImageUrl(mechanic.image))
     setError('')
   }, [mechanic])
+
+  useEffect(() => {
+    setOrdersLoading(true)
+    getMechanicOrders(mechanic.id).then(r => setOrders(r.data)).finally(() => setOrdersLoading(false))
+  }, [mechanic.id])
+
+  useEffect(() => {
+    setEarningsLoading(true)
+    const { from, to } = earningsRangeFor(earningsPreset)
+    getMechanicEarnings(mechanic.id, from, to).then(r => setEarnings(r.data)).finally(() => setEarningsLoading(false))
+  }, [mechanic.id, earningsPreset])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -200,9 +255,86 @@ function MechanicDetail({
           <p className="font-mono font-semibold text-sm text-ink">{mechanic.work_percent}%</p>
         </div>
         <div className="bg-surface border border-rule rounded px-3 py-2.5">
-          <p className="section-label mb-1">Qazanc</p>
+          <p className="section-label mb-1">Qazanc (cəmi)</p>
           <p className="font-mono font-semibold text-sm text-ink">{formatCurrency(mechanic.total_earnings)}</p>
         </div>
+      </div>
+
+      <div className="mb-8">
+        <p className="section-label mb-2">Dövr üzrə qazanc</p>
+        <div className="flex flex-wrap gap-1 border border-rule rounded p-1 bg-surface-alt w-fit mb-4">
+          {EARNINGS_PRESETS.map(p => (
+            <button
+              key={p.key}
+              onClick={() => setEarningsPreset(p.key)}
+              className={`text-xs font-mono font-semibold uppercase tracking-wide px-3 py-2 rounded transition-colors ${earningsPreset === p.key ? 'bg-ink text-cream' : 'text-ink-muted hover:bg-surface'}`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {earningsLoading || !earnings ? (
+          <Spinner />
+        ) : (
+          <>
+            <div className="bg-surface border border-rule rounded px-3 py-2.5 mb-3 w-fit">
+              <p className="section-label mb-1">Seçilmiş dövrdə qazanc</p>
+              <p className="font-mono font-semibold text-sm text-ink">{formatCurrency(earnings.total)}</p>
+            </div>
+            {earnings.daily.length === 0 ? (
+              <p className="text-sm text-ink-muted">Bu dövrdə qazanc qeydi yoxdur.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={earnings.daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="#CBD3C7" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={{ stroke: '#CBD3C7' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={false} width={56} />
+                  <Tooltip formatter={(v: any) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 4, fontSize: 12 }} />
+                  <Bar dataKey="amount" name="Qazanc" fill={CHART_SEQUENTIAL} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="mb-8">
+        <p className="section-label mb-2">Təyin edilmiş sifarişlər ({orders.length})</p>
+        {ordersLoading ? (
+          <Spinner />
+        ) : orders.length === 0 ? (
+          <p className="text-sm text-ink-muted">Bu ustaya hələ sifariş təyin edilməyib.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="ledger-table">
+              <thead>
+                <tr>
+                  <th className="ledger-th">Nömrə</th>
+                  <th className="ledger-th">Avtomobil</th>
+                  <th className="ledger-th">Status</th>
+                  <th className="ledger-th text-right">Məbləğ</th>
+                  <th className="ledger-th">Tarix</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map(o => (
+                  <tr key={o.id}>
+                    <td className="ledger-td">
+                      <Link to={`/business/orders/${o.id}`} className="font-mono font-semibold text-ink hover:text-accent transition-colors">
+                        {o.plate_number}
+                      </Link>
+                    </td>
+                    <td className="ledger-td">{o.car_brand} {o.car_model}</td>
+                    <td className="ledger-td"><Badge variant={ORDER_STATUS_BADGE[o.status]}>{ORDER_STATUS_LABELS[o.status]}</Badge></td>
+                    <td className="ledger-td text-right font-mono font-semibold">{formatCurrency(o.total ?? 0)}</td>
+                    <td className="ledger-td font-mono text-xs text-ink-muted">{formatDate(o.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">

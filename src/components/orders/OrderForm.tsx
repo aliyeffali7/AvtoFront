@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Order, Mechanic, OrderService, Product, Customer } from '@/types'
+import { Order, Mechanic, OrderService, Product, Customer, Store } from '@/types'
 import { createOrder, updateOrder, uploadOrderImage, addProductToOrder } from '@/services/orders.service'
-import { getSupplierDebts } from '@/services/warehouse.service'
+import { getStores } from '@/services/stores.service'
+import { resolveStoreId } from '@/lib/resolveStore'
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts, createProduct } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
@@ -58,7 +59,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [notes, setNotes] = useState(order?.notes ?? '')
   const [hasGuarantee, setHasGuarantee] = useState(order?.has_guarantee ?? false)
-  const [supplierNames, setSupplierNames] = useState<string[]>([])
+  const [stores, setStores] = useState<Store[]>([])
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -71,9 +72,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
   useEffect(() => {
     getMechanics().then(r => setMechanics(r.data)).catch(() => {})
     getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
-    getSupplierDebts(true).then(r => {
-      setSupplierNames([...new Set(r.data.map(d => d.supplier_name))].sort())
-    }).catch(() => {})
+    getStores().then(r => setStores(r.data)).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -217,7 +216,8 @@ export default function OrderForm({ order, onDone, onCancel }: {
         : (await createOrder(payload)).data.id
 
       for (const { productId, qty, supplierName } of newNonWarehouseProducts) {
-        await addProductToOrder(orderId, productId, qty, supplierName || undefined)
+        const storeId = supplierName ? await resolveStoreId(stores, supplierName) : undefined
+        await addProductToOrder(orderId, productId, qty, storeId)
       }
       for (const file of imageFiles) {
         try { await uploadOrderImage(orderId, file) } catch { /* ignore per-image errors */ }
@@ -372,7 +372,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
                   <input value={p.sellPrice} onChange={e => updateNewProductRow(i, 'sellPrice', e.target.value)} type="number" min="0" step="0.01" placeholder="Satış ₼" className="input-mono text-sm flex-1" />
                   <input value={p.qty} onChange={e => updateNewProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="Ədəd" className="input-mono text-sm w-16 shrink-0" />
                 </div>
-                <ComboboxInput value={p.supplierName} onChange={v => updateNewProductRow(i, 'supplierName', v)} options={supplierNames} placeholder="Kreditor adı (borc varsa)" className="text-sm" />
+                <ComboboxInput value={p.supplierName} onChange={v => updateNewProductRow(i, 'supplierName', v)} options={stores.map(s => s.name)} placeholder="Mağaza adı (borc varsa)" className="text-sm" />
               </div>
             ))}
           </div>

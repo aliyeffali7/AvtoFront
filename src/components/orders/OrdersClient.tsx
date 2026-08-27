@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Order, Mechanic, Product, Business, Customer } from '@/types'
+import { Order, Mechanic, Product, Business, Customer, Store } from '@/types'
 import {
   getOrders, getOrder, createOrder, assignMechanic, changeOrderStatus,
   addProductToOrder, removeProductFromOrder, updateOrderProductQty,
@@ -9,7 +9,9 @@ import {
   uploadOrderImage, deleteOrderImage,
 } from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
-import { getProducts, createProduct, updateProduct, getSupplierDebts } from '@/services/warehouse.service'
+import { getProducts, createProduct, updateProduct } from '@/services/warehouse.service'
+import { getStores } from '@/services/stores.service'
+import { resolveStoreId } from '@/lib/resolveStore'
 import { getBusinessProfile } from '@/services/auth.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import { printOrderPDF } from '@/lib/printOrderPDF'
@@ -249,7 +251,7 @@ export default function OrdersClient() {
   const [newProdSell, setNewProdSell] = useState('')
   const [newProdQty, setNewProdQty] = useState('1')
   const [newProdSupplier, setNewProdSupplier] = useState('')
-  const [supplierNames, setSupplierNames] = useState<string[]>([])
+  const [stores, setStores] = useState<Store[]>([])
 
   const [addServiceOpen, setAddServiceOpen] = useState(false)
   const [newServiceName, setNewServiceName] = useState('')
@@ -320,7 +322,7 @@ export default function OrdersClient() {
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    getSupplierDebts(true).then(r => setSupplierNames([...new Set(r.data.map(d => d.supplier_name))].sort())).catch(() => {})
+    getStores().then(r => setStores(r.data)).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -440,7 +442,8 @@ export default function OrdersClient() {
         order_id: order.id,
         is_warehouse: false,
       })
-      await addProductToOrder(order.id, res.data.id, qty2, newProdSupplier.trim() || undefined)
+      const storeId = newProdSupplier.trim() ? await resolveStoreId(stores, newProdSupplier) : undefined
+      await addProductToOrder(order.id, res.data.id, qty2, storeId)
       setNewProdName(''); setNewProdPurchase(''); setNewProdSell(''); setNewProdQty('1'); setNewProdSupplier('')
       setAddProductOpen(false); loadOrder()
     } catch (err) {
@@ -825,7 +828,7 @@ export default function OrdersClient() {
                             <input value={newProdSell} onChange={e => setNewProdSell(e.target.value)} type="number" min="0" step="0.01" placeholder="Satış ₼" className="input-mono text-sm flex-1" />
                             <input value={newProdQty} onChange={e => setNewProdQty(e.target.value)} type="number" min="1" placeholder="Ədəd" className="input-mono text-sm w-16" />
                           </div>
-                          <ComboboxInput value={newProdSupplier} onChange={setNewProdSupplier} options={supplierNames} placeholder="Kreditor adı (borc varsa)" className="text-sm" />
+                          <ComboboxInput value={newProdSupplier} onChange={setNewProdSupplier} options={stores.map(s => s.name)} placeholder="Mağaza adı (borc varsa)" className="text-sm" />
                           {productError && <p className="text-xs text-danger">{productError}</p>}
                           <div className="flex gap-2">
                             <button type="submit" disabled={addingProduct} className="btn-primary flex-1 text-sm py-1.5">{addingProduct ? '...' : 'Əlavə et'}</button>
