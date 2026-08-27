@@ -3,14 +3,18 @@ import { useEffect, useRef, useState } from 'react'
 import { getBusinessProfile, updateBusinessProfile } from '@/services/auth.service'
 import { Business } from '@/types'
 import { mapApiError } from '@/lib/utils'
+import { useCurrentUser } from '@/App'
+import ChangePasswordSection from '@/components/settings/ChangePasswordSection'
 
 export default function SettingsClient() {
+  const currentUser = useCurrentUser()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
   const [name, setName] = useState('')
+  const [loginCode, setLoginCode] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [guaranteeText, setGuaranteeText] = useState('')
@@ -26,6 +30,7 @@ export default function SettingsClient() {
       .then(res => {
         const b: Business = res.data
         setName(b.name ?? '')
+        setLoginCode(b.login_code ?? '')
         setPhone(b.phone ?? '')
         setAddress(b.address ?? '')
         setGuaranteeText(b.guarantee_text ?? '')
@@ -129,6 +134,15 @@ export default function SettingsClient() {
           />
         </div>
 
+        {/* Login code (read-only) — mechanics need this to log in */}
+        <div>
+          <label className="label">Biznes kodu</label>
+          <p className="text-xs text-ink-muted mb-1.5">
+            Ustalarınız daxil olarkən telefon nömrəsi ilə yanaşı bu kodu daxil etməlidir.
+          </p>
+          <input value={loginCode} readOnly className="input-mono bg-surface-alt" />
+        </div>
+
         {/* Phone */}
         <div>
           <label className="label">Telefon nömrəsi</label>
@@ -211,6 +225,12 @@ export default function SettingsClient() {
           {saving ? 'Saxlanılır...' : 'Saxla'}
         </button>
       </form>
+
+      {currentUser?.email && (
+        <div className="mt-6">
+          <ChangePasswordSection email={currentUser.email} />
+        </div>
+      )}
     </div>
   )
 }
