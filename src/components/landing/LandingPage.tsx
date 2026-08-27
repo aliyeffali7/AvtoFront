@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import LoginForm from '@/components/auth/LoginForm'
 import RegisterForm from '@/components/auth/RegisterForm'
+import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm'
 
 const features = [
   {
@@ -42,7 +43,7 @@ const features = [
 ]
 
 export default function LandingPage() {
-  const [tab, setTab] = useState<'login' | 'register'>('login')
+  const [tab, setTab] = useState<'login' | 'register' | 'forgot'>('login')
 
   return (
     <div className="min-h-screen bg-bg text-ink font-sans">
@@ -132,14 +133,19 @@ export default function LandingPage() {
                 <>
                   <p className="card-title text-base mb-5">Hesabınıza daxil olun</p>
                   <LoginForm />
-                  <p className="text-center text-sm text-ink-muted mt-5">
+                  <p className="text-center text-sm text-ink-muted mt-4">
+                    <button onClick={() => setTab('forgot')} className="text-accent font-semibold hover:underline">
+                      Şifrəni unutmusunuz?
+                    </button>
+                  </p>
+                  <p className="text-center text-sm text-ink-muted mt-2">
                     Hesabınız yoxdur?{' '}
                     <button onClick={() => setTab('register')} className="text-accent font-semibold hover:underline">
                       Qeydiyyatdan keçin
                     </button>
                   </p>
                 </>
-              ) : (
+              ) : tab === 'register' ? (
                 <>
                   <p className="card-title text-base mb-1">7 günlük pulsuz sınaq</p>
                   <p className="text-sm text-ink-muted mb-5">Kart tələb olunmur. Dərhal başlayın.</p>
@@ -150,6 +156,11 @@ export default function LandingPage() {
                       Daxil olun
                     </button>
                   </p>
+                </>
+              ) : (
+                <>
+                  <p className="card-title text-base mb-5">Şifrəni bərpa et</p>
+                  <ForgotPasswordForm onDone={() => setTab('login')} />
                 </>
               )}
             </div>

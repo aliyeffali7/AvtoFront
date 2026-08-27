@@ -1,28 +1,32 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login } from '@/services/auth.service'
-import { decodeJWT } from '@/lib/auth'
 import { mapApiError } from '@/lib/utils'
+import { dashboardPathFor } from '@/App'
 
 export default function LoginForm() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
+  const [businessCode, setBusinessCode] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const isMechanicLogin = email.trim() !== '' && !email.includes('@')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      const tokens = await login({ email, password })
-      const payload = decodeJWT(tokens.access)
-      if (!payload) { setError('Daxil olmaq mümkün olmadı.'); return }
-      if (payload.role === 'BUSINESS_OWNER') navigate('/business/orders')
-      else if (payload.role === 'MECHANIC') navigate('/mechanic/orders')
-      else if (payload.role === 'SUPER_ADMIN') navigate('/admin')
-      else setError('Naməlum istifadəçi rolu.')
+      const user = await login({
+        email,
+        password,
+        ...(isMechanicLogin ? { business_code: businessCode } : {}),
+      })
+      const path = dashboardPathFor(user.role)
+      if (path === '/') setError('Naməlum istifadəçi rolu.')
+      else navigate(path)
     } catch (err) {
       setError(mapApiError(err))
     } finally {
@@ -47,6 +51,23 @@ export default function LoginForm() {
           className="input"
         />
       </div>
+
+      {isMechanicLogin && (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="business_code" className="label mb-0">
+            Biznes kodu
+          </label>
+          <input
+            id="business_code"
+            type="text"
+            value={businessCode}
+            onChange={(e) => setBusinessCode(e.target.value)}
+            placeholder="Servis sahibindən aldığınız kod"
+            required
+            className="input"
+          />
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="password" className="label mb-0">

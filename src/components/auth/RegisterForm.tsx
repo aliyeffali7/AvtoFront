@@ -26,7 +26,7 @@ export default function RegisterForm() {
     try {
       const result = await register({ email, password, password_confirm: confirmPassword, business_name: businessName })
       setSuccessMessage(result.message)
-      setTimeout(() => navigate('/business/orders'), 1800)
+      setTimeout(() => navigate('/business/dashboard'), 1800)
     } catch (err) {
       setError(mapApiError(err))
     } finally {
