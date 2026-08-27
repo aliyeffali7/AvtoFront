@@ -1,5 +1,5 @@
 import api from '@/lib/axios'
-import { FinanceRecord, ManualDebt } from '@/types'
+import { FinanceRecord, ManualDebt, FinanceReport, DebtorGroup, DashboardStats } from '@/types'
 
 export const getFinanceRecords = () =>
   api.get<FinanceRecord[]>('/api/finance')
@@ -27,3 +27,12 @@ export const payManualDebt = (id: number, amount: number) =>
 
 export const deleteManualDebt = (id: number) =>
   api.delete(`/api/finance/manual-debts/${id}/`)
+
+export const getFinanceReport = (from: string, to: string) =>
+  api.get<FinanceReport>('/api/finance/report/', { params: { from, to } })
+
+export const getDebtors = () =>
+  api.get<DebtorGroup[]>('/api/finance/debtors/')
+
+export const getDashboardStats = () =>
+  api.get<DashboardStats>('/api/finance/dashboard/')

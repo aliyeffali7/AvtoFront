@@ -420,10 +420,9 @@ export default function FinanceClient() {
 
   return (
     <>
-      <div className="p-6 lg:p-8">
+      <div>
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <h1 className="page-title">Maliyyə</h1>
+        <div className="flex flex-wrap items-center justify-end gap-4 mb-6">
           <div className="flex items-center gap-2 shrink-0">
             <Button variant="secondary" onClick={exportPDF}>
               <FileDown className="w-4 h-4 shrink-0" strokeWidth={2} />

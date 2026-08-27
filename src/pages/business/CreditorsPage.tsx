@@ -577,13 +577,10 @@ export default function CreditorsPage() {
   ) : null
 
   return (
-    <div className="p-6 lg:p-8">
+    <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="page-title">Kreditorlar</h1>
-          <p className="text-sm text-ink-muted mt-0.5">Məhsul alışından yaranan borclar</p>
-        </div>
+        <p className="text-sm text-ink-muted">Məhsul alışından yaranan borclar</p>
         <Button onClick={openCreate}>+ Borc yarat</Button>
       </div>
 

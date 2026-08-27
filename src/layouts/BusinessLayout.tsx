@@ -3,15 +3,15 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import BusinessSidebar from '@/components/layout/BusinessSidebar'
 import SubscriptionBanner from '@/components/layout/SubscriptionBanner'
+import ImpersonationBanner from '@/components/layout/ImpersonationBanner'
 
 const PAGE_TITLES: Record<string, string> = {
+  '/business/dashboard':    'Dashboard',
   '/business/orders':       'Sifarişlər',
   '/business/customers':    'Müştərilər',
   '/business/mechanics':    'Ustalar',
   '/business/warehouse':    'Anbar',
   '/business/finance':      'Maliyyə',
-  '/business/debts':        'Borclar',
-  '/business/creditors':    'Kreditorlar',
   '/business/reservations': 'Rezervasiyalar',
   '/business/stores':       'Mağazalar',
   '/business/settings':     'Tənzimləmələr',
@@ -58,6 +58,7 @@ export default function BusinessLayout() {
           <span className="font-serif font-semibold text-base text-ink">{pageTitle}</span>
         </div>
 
+        <ImpersonationBanner />
         <SubscriptionBanner />
         <main className="flex-1 p-6 lg:p-10"><Outlet /></main>
       </div>
