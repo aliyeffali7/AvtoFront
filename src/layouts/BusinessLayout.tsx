@@ -10,7 +10,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/business/orders':       'Sifarişlər',
   '/business/customers':    'Müştərilər',
   '/business/mechanics':    'Ustalar',
-  '/business/warehouse':    'Anbar',
+  '/business/warehouse':    'Stok',
   '/business/finance':      'Maliyyə',
   '/business/reservations': 'Rezervasiyalar',
   '/business/stores':       'Mağazalar',

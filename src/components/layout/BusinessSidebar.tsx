@@ -28,7 +28,7 @@ const navItems = [
   { href: '/business/orders',       label: 'Sifarişlər',      icon: ClipboardList },
   { href: '/business/customers',    label: 'Müştərilər',      icon: UserCircle },
   { href: '/business/mechanics',    label: 'Ustalar',         icon: Users },
-  { href: '/business/warehouse',    label: 'Anbar',           icon: Package },
+  { href: '/business/warehouse',    label: 'Stok',            icon: Package },
   { href: '/business/finance',      label: 'Maliyyə',         icon: Wallet, children: financeChildren },
   { href: '/business/reservations', label: 'Rezervasiyalar',  icon: CalendarDays },
   { href: '/business/stores',       label: 'Mağazalar',       icon: ShoppingCart },
