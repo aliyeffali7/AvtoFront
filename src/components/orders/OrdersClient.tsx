@@ -915,8 +915,8 @@ export default function OrdersClient() {
                     <div className="flex flex-wrap gap-2">
                       {order.images.map(img => (
                         <div key={img.id} className="relative w-16 h-16 rounded overflow-hidden border border-rule group shrink-0">
-                          <a href={`${import.meta.env.VITE_API_URL}${img.image}`} target="_blank" rel="noreferrer">
-                            <img src={`${import.meta.env.VITE_API_URL}${img.image}`} alt="Şəkil" className="w-full h-full object-cover" />
+                          <a href={`${import.meta.env.VITE_API_URL ?? ''}${img.image}`} target="_blank" rel="noreferrer">
+                            <img src={`${import.meta.env.VITE_API_URL ?? ''}${img.image}`} alt="Şəkil" className="w-full h-full object-cover" />
                           </a>
                           {order.payment_status !== 'paid' && (
                             <button onClick={() => handleRemoveImage(img.id)} disabled={removingImageId === img.id} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-ink/70 text-cream flex items-center justify-center opacity-0 group-hover:opacity-100">

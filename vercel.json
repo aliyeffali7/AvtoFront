@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/api/:path*", "destination": "https://auto.era-con.az/api/:path*" },
+    { "source": "/media/:path*", "destination": "https://auto.era-con.az/media/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
