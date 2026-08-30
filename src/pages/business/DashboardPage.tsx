@@ -51,7 +51,11 @@ export default function DashboardPage() {
     { label: 'Kreditorlar (biz borcluyuq)', value: stats.creditors_remaining, fill: CHART_EXPENSE },
   ]
 
-  const topCustomers = stats.top_customers.map(c => ({ name: c.full_name, total_paid: c.total_paid }))
+  const topCustomers = (stats.top_customers ?? []).map(c => ({ name: c.full_name, total_paid: c.total_paid }))
+  const dailyRows = report.daily ?? []
+  const expenseByCategory = report.expense_by_category ?? []
+  const todayStats = stats.today ?? { net: 0 }
+  const reservations = stats.reservations ?? { conversion_rate: null }
 
   return (
     <div className="p-6 lg:p-8">
@@ -63,14 +67,14 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         <StatTile
           label="Bugünkü xalis"
-          value={formatCurrency(stats.today.net)}
-          accent={stats.today.net >= 0 ? CHART_INCOME : CHART_EXPENSE}
+          value={formatCurrency(todayStats.net)}
+          accent={todayStats.net >= 0 ? CHART_INCOME : CHART_EXPENSE}
         />
         <StatTile label="Az qalan / bitmiş məhsul" value={`${stats.low_stock_count} / ${stats.out_of_stock_count}`} />
         <StatTile label="Bu ay yeni müştəri" value={String(stats.new_customers_this_month)} />
         <StatTile
           label="Rezervasiya çevrilməsi"
-          value={stats.reservations.conversion_rate != null ? `${stats.reservations.conversion_rate}%` : '—'}
+          value={reservations.conversion_rate != null ? `${reservations.conversion_rate}%` : '—'}
         />
       </div>
 
@@ -87,11 +91,11 @@ export default function DashboardPage() {
         {/* Kassa: last 14 days */}
         <div className="card p-6">
           <h2 className="card-title mb-4">Kassa — son 14 gün</h2>
-          {report.daily.length === 0 ? (
+          {dailyRows.length === 0 ? (
             <p className="text-sm text-ink-muted">Bu dövrdə qeyd yoxdur.</p>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={report.daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <BarChart data={dailyRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#CBD3C7" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: '#CBD3C7' }} tickFormatter={(d: string) => d.slice(5)} />
                 <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={56} />
@@ -124,12 +128,12 @@ export default function DashboardPage() {
         {/* Maliyyət hesabatı: expense by category */}
         <div className="card p-6">
           <h2 className="card-title mb-4">Xərclər — kateqoriya üzrə (son 14 gün)</h2>
-          {report.expense_by_category.length === 0 ? (
+          {expenseByCategory.length === 0 ? (
             <p className="text-sm text-ink-muted">Bu dövrdə xərc yoxdur.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(report.expense_by_category.length * 40, 120)}>
+            <ResponsiveContainer width="100%" height={Math.max(expenseByCategory.length * 40, 120)}>
               <BarChart
-                data={report.expense_by_category.map(c => ({ ...c, label: EXPENSE_CATEGORY_LABELS[c.category] || c.category }))}
+                data={expenseByCategory.map(c => ({ ...c, label: EXPENSE_CATEGORY_LABELS[c.category] || c.category }))}
                 layout="vertical"
                 margin={{ top: 4, right: 56, left: 0, bottom: 4 }}
               >
@@ -139,7 +143,7 @@ export default function DashboardPage() {
                 <Tooltip formatter={(v: any) => formatCurrency(Number(v))} contentStyle={TOOLTIP_STYLE} />
                 <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
                   <LabelList dataKey="amount" position="right" formatter={(v: any) => formatCurrency(Number(v))} style={{ fontSize: 11, fill: '#1F2A24' }} />
-                  {report.expense_by_category.map(c => (
+                  {expenseByCategory.map(c => (
                     <Cell key={c.category} fill={EXPENSE_CATEGORY_COLORS[c.category] || '#6b7264'} />
                   ))}
                 </Bar>
