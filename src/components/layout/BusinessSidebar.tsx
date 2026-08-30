@@ -64,7 +64,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
   return (
     <aside className="w-72 bg-sidebar min-h-screen flex flex-col shrink-0">
       {/* Brand */}
-      <div className="px-6 py-5 flex items-center justify-between">
+      <div className="px-6 py-5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           {business?.logo && !logoError ? (
             <img
@@ -80,13 +80,23 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
             </p>
           </div>
         </div>
-        {onClose && (
-          <button onClick={onClose} className="lg:hidden p-1.5 rounded text-ink-muted hover:bg-sidebar-active transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={handleLogout}
+            title="Çıxış"
+            aria-label="Çıxış"
+            className="w-11 h-11 flex items-center justify-center rounded text-ink-muted hover:text-cream hover:bg-sidebar-active transition-colors"
+          >
+            <LogOut className="w-5 h-5" strokeWidth={1.8} />
           </button>
-        )}
+          {onClose && (
+            <button onClick={onClose} aria-label="Bağla" className="lg:hidden w-11 h-11 flex items-center justify-center rounded text-ink-muted hover:bg-sidebar-active transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Nav */}
@@ -159,17 +169,6 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
           )
         })}
       </nav>
-
-      {/* Logout */}
-      <div className="px-3 py-3 border-t border-white/10">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-ink-muted hover:text-cream transition-colors min-h-[42px]"
-        >
-          <LogOut className="w-4 h-4 shrink-0" strokeWidth={1.8} />
-          Çıxış
-        </button>
-      </div>
     </aside>
   )
 }
