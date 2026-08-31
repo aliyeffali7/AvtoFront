@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Order, Mechanic, OrderService, Product, Customer, Store } from '@/types'
 import { createOrder, updateOrder, uploadOrderImage, addProductToOrder } from '@/services/orders.service'
 import { getStores } from '@/services/stores.service'
-import { resolveStoreId } from '@/lib/resolveStore'
+import { resolveStoreId, mergeStoreNames } from '@/lib/resolveStore'
 import { getMechanics } from '@/services/mechanics.service'
-import { getProducts, createProduct } from '@/services/warehouse.service'
+import { getProducts, createProduct, getSupplierDebts } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
 import { formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
 import ComboboxInput from '@/components/ui/ComboboxInput'
@@ -60,6 +60,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
   const [notes, setNotes] = useState(order?.notes ?? '')
   const [hasGuarantee, setHasGuarantee] = useState(order?.has_guarantee ?? false)
   const [stores, setStores] = useState<Store[]>([])
+  const [supplierDebtNames, setSupplierDebtNames] = useState<string[]>([])
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -73,7 +74,21 @@ export default function OrderForm({ order, onDone, onCancel }: {
     getMechanics().then(r => setMechanics(r.data)).catch(() => {})
     getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
     getStores().then(r => setStores(r.data)).catch(() => {})
+    // Include paid-off debts too (true) — Kreditorlar's own combobox does the
+    // same, since a supplier stays "known" even after being fully paid.
+    getSupplierDebts(true).then(r => setSupplierDebtNames([...new Set(r.data.map(d => d.supplier_name))])).catch(() => {})
   }, [])
+
+  // "Mağaza" options for the "Anbarda yoxdur" row: Store records alone miss
+  // suppliers entered by hand on the Kreditorlar page (no Store gets created
+  // there), so merge in Kreditorlar's own supplier names too. resolveStoreId
+  // still only matches against real Store records — a name that exists only
+  // in Kreditorlar falls through to createStore(), which is the intended
+  // "add it there too" behavior.
+  const storeOptions = useMemo(
+    () => mergeStoreNames(stores, supplierDebtNames),
+    [stores, supplierDebtNames]
+  )
 
   useEffect(() => {
     if (skipSearchRef.current) { skipSearchRef.current = false; return }
@@ -372,7 +387,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
                   <input value={p.sellPrice} onChange={e => updateNewProductRow(i, 'sellPrice', e.target.value)} type="number" min="0" step="0.01" placeholder="Satış ₼" className="input-mono text-sm flex-1" />
                   <input value={p.qty} onChange={e => updateNewProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="Ədəd" className="input-mono text-sm w-16 shrink-0" />
                 </div>
-                <ComboboxInput value={p.supplierName} onChange={v => updateNewProductRow(i, 'supplierName', v)} options={stores.map(s => s.name)} placeholder="Mağaza adı (borc varsa)" className="text-sm" />
+                <ComboboxInput value={p.supplierName} onChange={v => updateNewProductRow(i, 'supplierName', v)} options={storeOptions} placeholder="Mağaza adı (borc varsa)" className="text-sm" />
               </div>
             ))}
           </div>

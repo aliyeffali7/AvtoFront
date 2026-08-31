@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Product, Store } from '@/types'
-import { getProducts, createProduct, adjustStock, deleteProduct, bulkDeleteProducts, importProductsExcel, getProductUsage, getProductBatches, ProductUsage, ProductBatch } from '@/services/warehouse.service'
+import { getProducts, createProduct, adjustStock, deleteProduct, bulkDeleteProducts, importProductsExcel, getProductUsage, getProductBatches, getSupplierDebts, ProductUsage, ProductBatch } from '@/services/warehouse.service'
 import { getStores } from '@/services/stores.service'
-import { resolveStoreId } from '@/lib/resolveStore'
+import { resolveStoreId, mergeStoreNames } from '@/lib/resolveStore'
 import { formatCurrency, mapApiError } from '@/lib/utils'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import Badge from '@/components/ui/Badge'
@@ -105,11 +105,13 @@ function AddProductPanel({
   onClose,
   onAdded,
   stores = [],
+  storeOptions = [],
 }: {
   open: boolean
   onClose: () => void
   onAdded: () => void
   stores?: Store[]
+  storeOptions?: string[]
 }) {
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
@@ -233,7 +235,7 @@ function AddProductPanel({
           <ComboboxInput
             value={supplierName}
             onChange={setSupplierName}
-            options={stores.map(s => s.name)}
+            options={storeOptions}
             placeholder="Məs. Avtoehtiyat MMC"
           />
           {stockQty > 0 ? (
@@ -269,6 +271,7 @@ function computedFields(p: Product) {
 export default function WarehouseClient() {
   const [products, setProducts] = useState<Product[]>([])
   const [stores, setStores] = useState<Store[]>([])
+  const [supplierDebtNames, setSupplierDebtNames] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [editingStockId, setEditingStockId] = useState<number | null>(null)
@@ -412,16 +415,31 @@ export default function WarehouseClient() {
   const load = useCallback(async (q?: string) => {
     setLoading(true)
     try {
-      const [productsRes, storesRes] = await Promise.all([
+      const [productsRes, storesRes, debtsRes] = await Promise.all([
         getProducts(q),
         getStores().catch(() => ({ data: [] as Store[] })),
+        // Include paid-off debts too — Kreditorlar's own combobox does the
+        // same, since a supplier stays "known" even after being paid off.
+        getSupplierDebts(true).catch(() => ({ data: [] as { supplier_name: string }[] })),
       ])
       setProducts(productsRes.data)
       setStores(storesRes.data)
+      setSupplierDebtNames([...new Set(debtsRes.data.map(d => d.supplier_name))])
     } finally {
       setLoading(false)
     }
   }, [])
+
+  // "Mağaza" options for every store/supplier picker below: Store records
+  // alone miss suppliers entered by hand on the Kreditorlar page (no Store
+  // gets created there), so merge in Kreditorlar's own supplier names too.
+  // resolveStoreId still only matches against real Store records — a name
+  // that exists only in Kreditorlar falls through to createStore(), which is
+  // the intended "add it there too" behavior.
+  const storeOptions = useMemo(
+    () => mergeStoreNames(stores, supplierDebtNames),
+    [stores, supplierDebtNames]
+  )
 
   async function handleExcelImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -607,7 +625,7 @@ export default function WarehouseClient() {
         )}
 
         {/* Inline add-product panel */}
-        <AddProductPanel open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} stores={stores} />
+        <AddProductPanel open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} stores={stores} storeOptions={storeOptions} />
 
         {/* Content */}
         {loading ? (
@@ -682,7 +700,7 @@ export default function WarehouseClient() {
                           <button type="button" onClick={() => setStockOnCredit(true)} className={`flex-1 text-xs font-medium py-1.5 rounded border transition-colors ${stockOnCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted'}`}>Kreditlə</button>
                           <button type="button" onClick={() => setStockOnCredit(false)} className={`flex-1 text-xs font-medium py-1.5 rounded border transition-colors ${!stockOnCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted'}`}>Nağd</button>
                         </div>
-                        <ComboboxInput value={stockSupplier} onChange={setStockSupplier} options={stores.map(s => s.name)} placeholder="Mağaza adı" className="text-xs" />
+                        <ComboboxInput value={stockSupplier} onChange={setStockSupplier} options={storeOptions} placeholder="Mağaza adı" className="text-xs" />
                       </div>
                     )}
                     {editingStockId === p.id && stockError && (
@@ -829,7 +847,7 @@ export default function WarehouseClient() {
                                   <button type="button" onClick={() => setStockOnCredit(true)} className={`flex-1 text-xs font-medium py-1 rounded border transition-colors ${stockOnCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted'}`}>Kreditlə</button>
                                   <button type="button" onClick={() => setStockOnCredit(false)} className={`flex-1 text-xs font-medium py-1 rounded border transition-colors ${!stockOnCredit ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted'}`}>Nağd</button>
                                 </div>
-                                <ComboboxInput value={stockSupplier} onChange={setStockSupplier} options={stores.map(s => s.name)} placeholder="Mağaza adı" className="text-xs" />
+                                <ComboboxInput value={stockSupplier} onChange={setStockSupplier} options={storeOptions} placeholder="Mağaza adı" className="text-xs" />
                               </div>
                             )}
                             {editingStockId === p.id && stockError && (
@@ -972,7 +990,7 @@ export default function WarehouseClient() {
                 <ComboboxInput
                   value={importSupplier}
                   onChange={setImportSupplier}
-                  options={stores.map(s => s.name)}
+                  options={storeOptions}
                   placeholder="Mağaza adı (Məs. Avtoehtiyat MMC)"
                 />
                 {importOnCredit ? (
