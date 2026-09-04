@@ -7,12 +7,23 @@ import { getMechanics } from '@/services/mechanics.service'
 import { getProducts, createProduct, getSupplierDebts } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
 import { formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
+import { loadDraft, saveDraft, clearDraft, ORDER_DRAFT_KEY } from '@/lib/formDraft'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import PlateInput from '@/components/ui/PlateInput'
 
 type SvcRow = { name: string; price: string; mechanicId: string; mechanicAmount: string }
 type ProdRow = { productId: string; qty: string }
 type NewProdRow = { name: string; purchasePrice: string; sellPrice: string; qty: string; supplierName: string }
+
+// Serializable snapshot of everything the user types into a *new* order form —
+// image files are deliberately excluded (a File can't be persisted).
+type OrderDraft = {
+  plate: string; brand: string; model: string; carYear: string; vinCode: string
+  mileage: string; mileageUnit: 'km' | 'mil'; fuelType: string; description: string
+  mechanic: string; services: SvcRow[]; orderProducts: ProdRow[]; newProducts: NewProdRow[]
+  customerName: string; customerPhone: string; selectedCustomerId: number | null
+  customerSearch: string; notes: string; hasGuarantee: boolean
+}
 
 /**
  * Single-column order create/edit form, rendered inline in the master-detail
@@ -26,39 +37,48 @@ export default function OrderForm({ order, onDone, onCancel }: {
 }) {
   const isEdit = !!order
 
+  // Only new-order forms restore a draft; editing an existing order always
+  // starts from that order's real data.
+  const [draft] = useState<OrderDraft | null>(() => (order ? null : loadDraft<OrderDraft>(ORDER_DRAFT_KEY)))
+  const [draftRestored, setDraftRestored] = useState(!!draft)
+
   const [mechanics, setMechanics] = useState<Mechanic[]>([])
   const [warehouseItems, setWarehouseItems] = useState<Product[]>([])
-  const [plate, setPlate] = useState(order?.plate_number ?? '')
-  const [brand, setBrand] = useState(order?.car_brand ?? '')
-  const [model, setModel] = useState(order?.car_model ?? '')
-  const [carYear, setCarYear] = useState(order?.car_year ?? '')
-  const [vinCode, setVinCode] = useState(order?.vin_code ?? '')
-  const [mileage, setMileage] = useState(order?.mileage != null ? String(order.mileage) : '')
-  const [mileageUnit, setMileageUnit] = useState<'km' | 'mil'>(order?.mileage_unit ?? 'km')
-  const [fuelType, setFuelType] = useState(order?.fuel_type ?? '')
-  const [description, setDescription] = useState(order?.description ?? '')
-  const [mechanic, setMechanic] = useState(order?.mechanic ? String(order.mechanic) : '')
+  const [plate, setPlate] = useState(order?.plate_number ?? draft?.plate ?? '')
+  const [brand, setBrand] = useState(order?.car_brand ?? draft?.brand ?? '')
+  const [model, setModel] = useState(order?.car_model ?? draft?.model ?? '')
+  const [carYear, setCarYear] = useState(order?.car_year ?? draft?.carYear ?? '')
+  const [vinCode, setVinCode] = useState(order?.vin_code ?? draft?.vinCode ?? '')
+  const [mileage, setMileage] = useState(order?.mileage != null ? String(order.mileage) : draft?.mileage ?? '')
+  const [mileageUnit, setMileageUnit] = useState<'km' | 'mil'>(order?.mileage_unit ?? draft?.mileageUnit ?? 'km')
+  const [fuelType, setFuelType] = useState(order?.fuel_type ?? draft?.fuelType ?? '')
+  const [description, setDescription] = useState(order?.description ?? draft?.description ?? '')
+  const [mechanic, setMechanic] = useState(order?.mechanic ? String(order.mechanic) : draft?.mechanic ?? '')
   const [services, setServices] = useState<SvcRow[]>(
-    (order?.services ?? []).map((s: OrderService) => ({
-      name: s.name,
-      price: String(s.price),
-      mechanicId: s.mechanic ? String(s.mechanic) : '',
-      mechanicAmount: s.mechanic_amount != null ? String(s.mechanic_amount) : '',
-    }))
+    order
+      ? (order.services ?? []).map((s: OrderService) => ({
+          name: s.name,
+          price: String(s.price),
+          mechanicId: s.mechanic ? String(s.mechanic) : '',
+          mechanicAmount: s.mechanic_amount != null ? String(s.mechanic_amount) : '',
+        }))
+      : draft?.services ?? []
   )
   const [orderProducts, setOrderProducts] = useState<ProdRow[]>(
-    (order?.products ?? []).map(p => ({ productId: String(p.product), qty: String(p.quantity) }))
+    order
+      ? (order.products ?? []).map(p => ({ productId: String(p.product), qty: String(p.quantity) }))
+      : draft?.orderProducts ?? []
   )
-  const [newProducts, setNewProducts] = useState<NewProdRow[]>([])
-  const [customerName, setCustomerName] = useState(order?.customer_name ?? '')
-  const [customerPhone, setCustomerPhone] = useState(order?.customer_phone ?? '')
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(order?.customer ?? null)
-  const [customerSearch, setCustomerSearch] = useState(order?.customer_name ?? '')
+  const [newProducts, setNewProducts] = useState<NewProdRow[]>(order ? [] : draft?.newProducts ?? [])
+  const [customerName, setCustomerName] = useState(order?.customer_name ?? draft?.customerName ?? '')
+  const [customerPhone, setCustomerPhone] = useState(order?.customer_phone ?? draft?.customerPhone ?? '')
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(order?.customer ?? draft?.selectedCustomerId ?? null)
+  const [customerSearch, setCustomerSearch] = useState(order?.customer_name ?? draft?.customerSearch ?? '')
   const [customerResults, setCustomerResults] = useState<Customer[]>([])
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false)
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
-  const [notes, setNotes] = useState(order?.notes ?? '')
-  const [hasGuarantee, setHasGuarantee] = useState(order?.has_guarantee ?? false)
+  const [notes, setNotes] = useState(order?.notes ?? draft?.notes ?? '')
+  const [hasGuarantee, setHasGuarantee] = useState(order?.has_guarantee ?? draft?.hasGuarantee ?? false)
   const [stores, setStores] = useState<Store[]>([])
   const [supplierDebtNames, setSupplierDebtNames] = useState<string[]>([])
   const [imageFiles, setImageFiles] = useState<File[]>([])
@@ -68,7 +88,9 @@ export default function OrderForm({ order, onDone, onCancel }: {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const customerSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const customerAbortRef = useRef<AbortController | null>(null)
-  const skipSearchRef = useRef(false)
+  // A restored draft that already had a customer chosen shouldn't trigger a
+  // fresh search-and-dropdown on mount.
+  const skipSearchRef = useRef(!!draft?.selectedCustomerId)
 
   useEffect(() => {
     getMechanics().then(r => setMechanics(r.data)).catch(() => {})
@@ -78,6 +100,29 @@ export default function OrderForm({ order, onDone, onCancel }: {
     // same, since a supplier stays "known" even after being fully paid.
     getSupplierDebts(true).then(r => setSupplierDebtNames([...new Set(r.data.map(d => d.supplier_name))])).catch(() => {})
   }, [])
+
+  // Persist the in-progress *new* order as a local draft on every change, so
+  // leaving the page (e.g. a quick trip to Maliyyə) and coming back doesn't
+  // lose what was typed. Cleared on a successful save or an explicit "Ləğv et",
+  // and never stored while the form is still completely blank.
+  useEffect(() => {
+    if (isEdit) return
+    const blank =
+      !plate && !brand && !model && !carYear && !vinCode && !mileage && !fuelType &&
+      !description && !mechanic && !customerName && !customerPhone && !selectedCustomerId &&
+      !customerSearch && !notes && !hasGuarantee &&
+      services.length === 0 && orderProducts.length === 0 && newProducts.length === 0
+    if (blank) { clearDraft(ORDER_DRAFT_KEY); return }
+    saveDraft<OrderDraft>(ORDER_DRAFT_KEY, {
+      plate, brand, model, carYear, vinCode, mileage, mileageUnit, fuelType, description,
+      mechanic, services, orderProducts, newProducts,
+      customerName, customerPhone, selectedCustomerId, customerSearch, notes, hasGuarantee,
+    })
+  }, [
+    isEdit, plate, brand, model, carYear, vinCode, mileage, mileageUnit, fuelType, description,
+    mechanic, services, orderProducts, newProducts,
+    customerName, customerPhone, selectedCustomerId, customerSearch, notes, hasGuarantee,
+  ])
 
   useEffect(() => {
     if (skipSearchRef.current) { skipSearchRef.current = false; return }
@@ -226,6 +271,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
       for (const file of imageFiles) {
         try { await uploadOrderImage(orderId, file) } catch { /* ignore per-image errors */ }
       }
+      if (!isEdit) clearDraft(ORDER_DRAFT_KEY)
       onDone(orderId)
     } catch (err) {
       setError(mapApiError(err))
@@ -234,9 +280,31 @@ export default function OrderForm({ order, onDone, onCancel }: {
     }
   }
 
+  function discardDraft() {
+    clearDraft(ORDER_DRAFT_KEY)
+    setDraftRestored(false)
+    setPlate(''); setBrand(''); setModel(''); setCarYear(''); setVinCode('')
+    setMileage(''); setMileageUnit('km'); setFuelType(''); setDescription(''); setMechanic('')
+    setServices([]); setOrderProducts([]); setNewProducts([])
+    setCustomerName(''); setCustomerPhone(''); setSelectedCustomerId(null); setCustomerSearch('')
+    setNotes(''); setHasGuarantee(false); setError('')
+  }
+
+  function handleCancel() {
+    if (!isEdit) clearDraft(ORDER_DRAFT_KEY)
+    onCancel()
+  }
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-5">
       <p className="font-serif font-semibold text-lg text-ink">{isEdit ? 'Sifarişi düzəlt' : 'Yeni sifariş'}</p>
+
+      {draftRestored && (
+        <div className="flex items-center justify-between gap-2 bg-surface-alt border border-rule rounded px-3 py-2 text-xs">
+          <span className="text-ink-muted">Yarımçıq qalmış qaralama bərpa edildi.</span>
+          <button type="button" onClick={discardDraft} className="font-semibold text-danger hover:underline shrink-0">Təmizlə</button>
+        </div>
+      )}
 
       {/* Customer */}
       <div>
@@ -450,7 +518,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
 
       <div className="flex flex-col gap-2.5 pt-1">
         <button type="submit" disabled={loading} className="btn-primary">{loading ? 'Saxlanılır...' : isEdit ? 'Saxla' : 'Sifarişi yarat'}</button>
-        <button type="button" onClick={onCancel} className="btn-secondary">Ləğv et</button>
+        <button type="button" onClick={handleCancel} className="btn-secondary">Ləğv et</button>
       </div>
     </form>
   )

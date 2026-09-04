@@ -78,6 +78,7 @@ export interface OrderService {
 
 export interface Order {
   id: number
+  number?: number | null
   car_brand: string
   car_model: string
   car_year?: string

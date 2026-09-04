@@ -138,7 +138,7 @@ export default function CustomersClient() {
         />
       </div>
 
-      {loading && customers.length === 0 ? <Spinner /> : customers.length === 0 ? (
+      {loading && customers.length === 0 && panelMode === 'empty' ? <Spinner /> : customers.length === 0 && panelMode === 'empty' ? (
         <EmptyState
           title={debouncedSearch ? 'Axtarışa uyğun müştəri tapılmadı' : 'Hələ müştəri yoxdur'}
           subtitle={!debouncedSearch ? 'Yeni müştəri əlavə etmək üçün + düyməsini basın.' : undefined}
@@ -146,6 +146,10 @@ export default function CustomersClient() {
       ) : (
         <div className="w-full bg-surface border border-rule rounded overflow-hidden flex flex-col lg:flex-row" style={{ maxHeight: 'calc(100vh - 210px)' }}>
           <div className={`overflow-auto ${panelMode === 'empty' ? 'w-full' : 'lg:w-[62%] lg:border-r border-rule'}`}>
+            {customers.length === 0 ? (
+            <div className="p-6"><EmptyState title={debouncedSearch ? 'Axtarışa uyğun müştəri tapılmadı' : 'Hələ müştəri yoxdur'} subtitle={!debouncedSearch ? 'Sağdakı formada ilk müştərinizi əlavə edin.' : undefined} /></div>
+            ) : (
+            <>
             <table className="ledger-table">
               <thead>
                 <tr>
@@ -178,6 +182,8 @@ export default function CustomersClient() {
                 ))}
                 <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40">›</button>
               </div>
+            )}
+            </>
             )}
           </div>
 

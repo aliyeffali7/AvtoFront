@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, FileDown, CheckCircle2 } from 'lucide-react'
-import { FinanceRecord } from '@/types'
+import { FinanceRecord, FinanceCategory } from '@/types'
 import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
 import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
 import Badge from '@/components/ui/Badge'
@@ -78,21 +78,36 @@ function filterByRange(records: FinanceRecord[], start: string | null, end: stri
 
 // ── Add record inline form ───────────────────────────────────────────────────
 
+const EXPENSE_CATEGORIES: { value: FinanceCategory; label: string }[] = [
+  { value: 'parts', label: 'Ehtiyat hissə' },
+  { value: 'salary', label: 'Əmək haqqı' },
+  { value: 'rent', label: 'İcarə' },
+  { value: 'utilities', label: 'Kommunal' },
+  { value: 'other', label: 'Digər' },
+]
+
 function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const [type, setType] = useState<'income' | 'expense'>('income')
+  const [category, setCategory] = useState<FinanceCategory>('other')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  function reset() { setAmount(''); setDescription(''); setType('income'); setError('') }
+  function reset() { setAmount(''); setDescription(''); setType('income'); setCategory('other'); setError('') }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      await createFinanceRecord({ type, amount: parseFloat(amount), description, date: new Date().toISOString().slice(0, 10) })
+      await createFinanceRecord({
+        type,
+        amount: parseFloat(amount),
+        description,
+        date: new Date().toISOString().slice(0, 10),
+        ...(type === 'expense' ? { category } : {}),
+      })
       reset(); onAdded(); onClose()
     } catch (err) {
       setError(mapApiError(err))
@@ -126,6 +141,16 @@ function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () 
               </button>
             </div>
           </div>
+          {type === 'expense' && (
+            <div className="flex flex-col gap-1.5 min-w-[160px]">
+              <label className="label">Maddə</label>
+              <select value={category} onChange={e => setCategory(e.target.value as FinanceCategory)} className="input">
+                {EXPENSE_CATEGORIES.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex flex-col gap-1.5 flex-1 min-w-[140px]">
             <label className="label">Məbləğ (₼)</label>
             <input value={amount} onChange={e => setAmount(e.target.value)} required type="number" step="0.01" min="0.01" placeholder="0.00" className="input-mono" />

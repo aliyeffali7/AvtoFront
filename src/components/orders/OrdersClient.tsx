@@ -631,11 +631,15 @@ export default function OrdersClient() {
         )}
       </div>
 
-      {loading && orders.length === 0 ? <Spinner /> : orders.length === 0 ? (
+      {loading && orders.length === 0 && panelMode === 'empty' ? <Spinner /> : orders.length === 0 && panelMode === 'empty' ? (
         <EmptyState title="Hələ sifariş yoxdur" subtitle="Yeni sifariş yaratmaq üçün + düyməsini basın." />
       ) : (
         <div className="w-full bg-surface border border-rule rounded overflow-hidden flex flex-col lg:flex-row" style={{ maxHeight: 'calc(100vh - 230px)' }}>
           <div className={`overflow-auto ${panelMode === 'empty' ? 'w-full' : 'lg:w-[62%] lg:border-r border-rule'}`}>
+            {orders.length === 0 ? (
+            <div className="p-6"><EmptyState title="Hələ sifariş yoxdur" subtitle="Sağdakı formada ilk sifarişinizi yaradın." /></div>
+            ) : (
+            <>
             <table className="ledger-table">
               <thead>
                 <tr>
@@ -674,6 +678,8 @@ export default function OrdersClient() {
                 <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40">›</button>
               </div>
             )}
+            </>
+            )}
           </div>
 
           {/* RIGHT PANEL — only rendered once an order is selected or being created */}
@@ -709,6 +715,7 @@ export default function OrdersClient() {
                   </div>
                   <p className="text-sm text-ink-soft">{order.car_brand} {order.car_model}</p>
                   <p className="text-xs text-ink-muted mt-0.5">
+                    {(order.number ?? order.id) != null && <>Sifariş №{order.number ?? order.id} · </>}
                     {formatDate(order.created_at)}
                     {order.mileage != null && <> · {order.mileage.toLocaleString()} {order.mileage_unit ?? 'km'}</>}
                     {(order.mechanic_name || order.mechanic_email) ? <> · Usta: {order.mechanic_name ?? order.mechanic_email}</> : <> · <span className="text-warning">usta təyin edilməyib</span></>}
