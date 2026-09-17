@@ -26,6 +26,20 @@ export default function MechanicBottomNav() {
 
       <div className="w-px bg-white/10" />
 
+      <Link
+        to="/mechanic/earnings"
+        className={`flex-1 flex flex-col items-center justify-center gap-1 text-xs font-semibold transition-colors border-t-2 ${
+          pathname.startsWith('/mechanic/earnings') ? 'text-cream border-sidebar-accent bg-sidebar-active' : 'text-ink-muted border-transparent'
+        }`}
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 12v-2m0-12a9 9 0 100 18 9 9 0 000-18z" />
+        </svg>
+        Qazancım
+      </Link>
+
+      <div className="w-px bg-white/10" />
+
       <button
         onClick={handleLogout}
         className="flex-1 flex flex-col items-center justify-center gap-1 text-xs font-semibold text-ink-muted hover:text-cream transition-colors border-t-2 border-transparent"

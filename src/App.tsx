@@ -23,6 +23,7 @@ import SettingsPage from '@/pages/business/SettingsPage'
 import StoresPage from '@/pages/business/StoresPage'
 import MechanicOrdersPage from '@/pages/mechanic/MechanicOrdersPage'
 import MechanicOrderDetailPage from '@/pages/mechanic/MechanicOrderDetailPage'
+import MechanicEarningsPage from '@/pages/mechanic/MechanicEarningsPage'
 import AdminPage from '@/pages/admin/AdminPage'
 
 // The access/refresh tokens are httpOnly cookies the SPA can't read, so
@@ -125,6 +126,7 @@ export default function App() {
             <Route element={<MechanicLayout />}>
               <Route path="/mechanic/orders" element={<MechanicOrdersPage />} />
               <Route path="/mechanic/orders/:id" element={<MechanicOrderDetailPage />} />
+              <Route path="/mechanic/earnings" element={<MechanicEarningsPage />} />
             </Route>
           </Route>
           <Route element={<RoleGuard role="SUPER_ADMIN" />}>

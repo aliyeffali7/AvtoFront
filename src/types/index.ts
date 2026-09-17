@@ -274,6 +274,8 @@ export interface MechanicEarnings {
   to: string
   total: number
   daily: { date: string; amount: number }[]
+  today?: number
+  this_month?: number
 }
 
 export interface ManualDebt {

@@ -9,6 +9,9 @@ export const getMechanicOrders = (id: number) =>
 export const getMechanicEarnings = (id: number, from: string, to: string) =>
   api.get<MechanicEarnings>(`/api/mechanics/${id}/earnings/`, { params: { from, to } })
 
+export const getMyEarnings = (from?: string, to?: string) =>
+  api.get<MechanicEarnings>('/api/mechanics/me/earnings/', { params: { from, to } })
+
 type MechanicCreateData = {
   full_name: string
   phone: string
