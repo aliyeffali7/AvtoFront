@@ -563,6 +563,12 @@ export default function OrdersClient() {
   const grandTotal = servicesTotal + productsTotal
   const effectiveOrderTotal = order ? grandTotal - Number(order.discount_amount ?? 0) : 0
   const debt = effectiveOrderTotal - Number(order?.paid_amount ?? 0)
+  // Internal-only figure for the business owner — cost of parts used plus what
+  // was paid out to mechanics. Never shown on the customer-facing PDF and has
+  // no link to the Kassa/finance records.
+  const productsExpense = orderProductsList.reduce((s, p) => s + (p.purchase_price ?? 0) * p.quantity, 0)
+  const mechanicPayExpense = order?.services?.reduce((s, t) => s + (parseFloat(String(t.mechanic_amount ?? 0)) || 0), 0) ?? 0
+  const netProfit = effectiveOrderTotal - productsExpense - mechanicPayExpense
 
   const paymentBadgeVariant = { unpaid: 'danger', partial: 'warning', paid: 'paid' } as const
   const paymentBadgeLabel = order ? {
@@ -952,6 +958,12 @@ export default function OrdersClient() {
                     {order.payment_status === 'partial' && <p className="text-xs text-cream/70">Ödənilən: {formatCurrency(Number(order.paid_amount))} · Borc: {formatCurrency(debt)}</p>}
                   </div>
                   <span className="text-xl font-mono font-bold text-cream">{formatCurrency(effectiveOrderTotal)}</span>
+                </div>
+
+                {/* Net profit — business owner only, never printed on the customer PDF */}
+                <div className="bg-surface-alt rounded px-4 py-2.5 flex items-center justify-between">
+                  <p className="text-xs font-mono uppercase tracking-wide text-ink-muted">Xalis mənfəət</p>
+                  <span className="text-sm font-mono font-bold text-ink">{formatCurrency(netProfit)}</span>
                 </div>
 
                 {/* Payment action */}
