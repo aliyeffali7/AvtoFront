@@ -7,6 +7,7 @@ import { formatCurrency, formatDate, autoFormatSearch } from '@/lib/utils'
 import { printOrderPDF, printCustomerPDF } from '@/lib/printOrderPDF'
 import StatusBadge from '@/components/orders/StatusBadge'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import Pagination from '@/components/ui/Pagination'
 import CustomerForm from './CustomerForm'
 import Spinner from '@/components/ui/Spinner'
 import EmptyState from '@/components/ui/EmptyState'
@@ -174,15 +175,7 @@ export default function CustomersClient() {
               </tbody>
             </table>
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-1.5 py-3 border-t border-rule">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40">‹</button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                  <button key={n} onClick={() => setPage(n)} className={`w-8 h-8 rounded text-sm font-mono ${n === page ? 'bg-accent text-cream' : 'border border-rule text-ink-muted hover:bg-surface-alt'}`}>{n}</button>
-                ))}
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40">›</button>
-              </div>
-            )}
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
             </>
             )}
           </div>
