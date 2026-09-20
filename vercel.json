@@ -1,7 +1,7 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://auto.era-con.az/api/$1" },
-    { "source": "/media/(.*)", "destination": "https://auto.era-con.az/media/$1" },
+    { "source": "/api/(.*)", "destination": "https://auto2.era-con.az/api/$1" },
+    { "source": "/media/(.*)", "destination": "https://auto2.era-con.az/media/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
