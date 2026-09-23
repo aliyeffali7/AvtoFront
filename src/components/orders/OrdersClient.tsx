@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useGoBack } from '@/lib/useGoBack'
 import { Order, Mechanic, Product, Business, Customer, Store } from '@/types'
 import {
   getOrders, getOrder, createOrder, assignMechanic, changeOrderStatus,
@@ -198,6 +199,7 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
 
 export default function OrdersClient() {
   const navigate = useNavigate()
+  const goBack = useGoBack('/business/orders')
   const { id } = useParams<{ id?: string }>()
 
   const [orders, setOrders] = useState<Order[]>([])
@@ -341,7 +343,7 @@ export default function OrdersClient() {
 
   function selectRow(o: Order) { navigate(`/business/orders/${o.id}`) }
   function startCreate() { navigate('/business/orders'); setOrder(null); setPanelMode('create') }
-  function closePanel() { navigate('/business/orders'); setOrder(null); setPanelMode('empty') }
+  function closePanel() { goBack(); setOrder(null); setPanelMode('empty') }
 
   useEffect(() => {
     if (panelMode === 'empty') return

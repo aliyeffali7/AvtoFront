@@ -4,6 +4,7 @@ import { Plus, FileDown, CheckCircle2 } from 'lucide-react'
 import { FinanceRecord, FinanceCategory } from '@/types'
 import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
 import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
+import { loadDraft, saveDraft } from '@/lib/formDraft'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -12,6 +13,16 @@ import Spinner from '@/components/ui/Spinner'
 
 type Period = 'day' | 'week' | 'month' | 'specific_month' | 'all' | 'custom'
 type TypeFilter = 'all' | 'income' | 'expense'
+
+// Kassaya baxılan qeyddən (məs. sifarişə keçib "geri" qayıdanda) filtrlərin sıfırlanmaması üçün.
+const FINANCE_FILTERS_KEY = 'avtoservis:filters:finance:v1'
+
+interface SavedFinanceFilters {
+  period: Period
+  customDate: string
+  selectedMonth: string
+  typeFilter: TypeFilter
+}
 
 const PERIODS: { key: Period; label: string }[] = [
   { key: 'day', label: 'Bugün' },
@@ -328,10 +339,11 @@ export default function FinanceClient() {
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [endDayOpen, setEndDayOpen] = useState(false)
-  const [period, setPeriod] = useState<Period>('day')
-  const [customDate, setCustomDate] = useState(getToday())
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth())
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [savedFilters] = useState(() => loadDraft<SavedFinanceFilters>(FINANCE_FILTERS_KEY))
+  const [period, setPeriod] = useState<Period>(savedFilters?.period ?? 'day')
+  const [customDate, setCustomDate] = useState(savedFilters?.customDate ?? getToday())
+  const [selectedMonth, setSelectedMonth] = useState(savedFilters?.selectedMonth ?? getCurrentYearMonth())
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>(savedFilters?.typeFilter ?? 'all')
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [pageNote, setPageNote] = useState('')
@@ -347,6 +359,10 @@ export default function FinanceClient() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    saveDraft(FINANCE_FILTERS_KEY, { period, customDate, selectedMonth, typeFilter })
+  }, [period, customDate, selectedMonth, typeFilter])
 
   const singleDate = period === 'day' ? getToday() : period === 'custom' ? customDate : null
 
