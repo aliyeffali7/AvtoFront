@@ -4,6 +4,7 @@ import { createCustomer, updateCustomer } from '@/services/customers.service'
 import { mapApiError } from '@/lib/utils'
 import { loadDraft, saveDraft, clearDraft, CUSTOMER_DRAFT_KEY } from '@/lib/formDraft'
 import PlateInput from '@/components/ui/PlateInput'
+import CarBrandModelInputs from '@/components/ui/CarBrandModelInputs'
 
 type CustomerDraft = {
   fullName: string; phone: string; carBrand: string; carModel: string
@@ -97,8 +98,7 @@ export default function CustomerForm({ customer, onDone, onCancel }: {
       <div className="border-t border-rule pt-1">
         <p className="section-label mb-2">Avtomobil</p>
         <div className="flex flex-col gap-2.5">
-          <input value={carBrand} onChange={e => setCarBrand(e.target.value)} placeholder="Marka" className="input" />
-          <input value={carModel} onChange={e => setCarModel(e.target.value)} placeholder="Model" className="input" />
+          <CarBrandModelInputs brand={carBrand} model={carModel} onBrandChange={setCarBrand} onModelChange={setCarModel} />
           <div className="flex gap-2.5">
             <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="İl" maxLength={4} className="input flex-1" />
             <PlateInput value={carPlate} onChange={setCarPlate} className="input-mono tracking-wider flex-1" />

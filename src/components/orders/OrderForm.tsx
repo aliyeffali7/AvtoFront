@@ -10,6 +10,7 @@ import { formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
 import { loadDraft, saveDraft, clearDraft, ORDER_DRAFT_KEY } from '@/lib/formDraft'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import PlateInput from '@/components/ui/PlateInput'
+import CarBrandModelInputs from '@/components/ui/CarBrandModelInputs'
 
 type SvcRow = { name: string; price: string; mechanicId: string; mechanicAmount: string }
 type ProdRow = { productId: string; qty: string }
@@ -351,8 +352,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
         <p className="section-label mb-2">Avtomobil</p>
         <div className="flex flex-col gap-2.5">
           <PlateInput value={plate} onChange={setPlate} className="input-mono tracking-wider" />
-          <input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Marka" className="input" />
-          <input value={model} onChange={e => setModel(e.target.value)} placeholder="Model" className="input" />
+          <CarBrandModelInputs brand={brand} model={model} onBrandChange={setBrand} onModelChange={setModel} />
           <div className="flex gap-2.5">
             <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="İl" maxLength={4} className="input flex-1" />
             <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="VIN kod" maxLength={17} className="input-mono flex-[2] text-sm" />

@@ -427,7 +427,7 @@ export default function FinanceClient() {
       h1{font-family:'Newsreader','Noto Sans',serif;font-size:22px;font-weight:600;margin-bottom:4px}
       .sub{color:#6b7264;margin-bottom:24px;font-size:12px;font-family:'IBM Plex Mono','Noto Sans',monospace}
       .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
-      .card{border:1px solid #CBD3C7;border-radius:3px;padding:14px 16px}
+      .card{border:1px solid #CBD3C7;border-radius:10px;padding:14px 16px}
       .card-label{font-family:'IBM Plex Mono','Noto Sans',monospace;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
       .card-value{font-family:'Newsreader','Noto Sans',serif;font-size:22px;font-weight:600}
       .green{color:#1F4D36}.red{color:#A13D2B}

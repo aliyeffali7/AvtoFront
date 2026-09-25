@@ -90,7 +90,7 @@ export default function HesabatTab() {
                   <CartesianGrid stroke="#CBD3C7" strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={{ stroke: '#CBD3C7' }} />
                   <YAxis tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={false} width={60} />
-                  <Tooltip formatter={(v: any) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 4, fontSize: 12 }} />
+                  <Tooltip formatter={(v: any) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 10, fontSize: 12 }} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Line type="monotone" dataKey="income" name="Gəlir" stroke={CHART_INCOME} strokeWidth={2} dot={{ r: 3 }} />
                   <Line type="monotone" dataKey="expense" name="Xərc" stroke={CHART_EXPENSE} strokeWidth={2} dot={{ r: 3 }} />
@@ -113,7 +113,7 @@ export default function HesabatTab() {
                   <CartesianGrid stroke="#CBD3C7" strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={{ stroke: '#CBD3C7' }} />
                   <YAxis type="category" dataKey="label" tick={{ fontSize: 12, fill: '#1F2A24' }} tickLine={false} axisLine={false} width={110} />
-                  <Tooltip formatter={(v: any) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 4, fontSize: 12 }} />
+                  <Tooltip formatter={(v: any) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 10, fontSize: 12 }} />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]} label={{ position: 'right', fontSize: 11, fill: '#1F2A24', formatter: (v: any) => formatCurrency(Number(v)) }}>
                     {report.expense_by_category.map(c => (
                       <Cell key={c.category} fill={EXPENSE_CATEGORY_COLORS[c.category] || '#6b7264'} />

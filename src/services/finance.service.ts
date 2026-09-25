@@ -1,5 +1,5 @@
 import api from '@/lib/axios'
-import { FinanceRecord, ManualDebt, FinanceReport, DebtorGroup, DashboardStats } from '@/types'
+import { FinanceRecord, ManualDebt, FinanceReport, DebtorGroup, DashboardStats, WeeklyIncome } from '@/types'
 
 export const getFinanceRecords = () =>
   api.get<FinanceRecord[]>('/api/finance')
@@ -33,6 +33,9 @@ export const getFinanceReport = (from: string, to: string) =>
 
 export const getDebtors = () =>
   api.get<DebtorGroup[]>('/api/finance/debtors/')
+
+export const getWeeklyIncome = (date: string) =>
+  api.get<WeeklyIncome>('/api/finance/weekly-income/', { params: { date } })
 
 export const getDashboardStats = () =>
   api.get<DashboardStats>('/api/finance/dashboard/')

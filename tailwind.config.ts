@@ -36,12 +36,12 @@ const config: Config = {
         mono: ['IBM Plex Mono', 'Noto Sans', 'monospace'],
       },
       borderRadius: {
-        DEFAULT: '3px',
-        sm: '2px',
-        md: '3px',
-        lg: '4px',
-        xl: '4px',
-        '2xl': '4px',
+        DEFAULT: '10px',
+        sm: '10px',
+        md: '10px',
+        lg: '10px',
+        xl: '10px',
+        '2xl': '10px',
         full: '9999px',
       },
       boxShadow: {

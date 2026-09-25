@@ -16,6 +16,7 @@ import { resolveStoreId } from '@/lib/resolveStore'
 import { getBusinessProfile } from '@/services/auth.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import { printOrderPDF } from '@/lib/printOrderPDF'
+import BrandLogo from '@/components/ui/BrandLogo'
 import StatusBadge from './StatusBadge'
 import OrderForm from './OrderForm'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -665,7 +666,9 @@ export default function OrdersClient() {
                     onClick={() => selectRow(o)}
                     className={`ledger-row ${order?.id === o.id ? 'ledger-row-selected' : ''}`}
                   >
-                    <td className="ledger-td font-mono font-semibold">{o.plate_number}</td>
+                    <td className="ledger-td font-mono font-semibold">
+                      <span className="flex items-center gap-2"><BrandLogo brand={o.car_brand} />{o.plate_number}</span>
+                    </td>
                     <td className="ledger-td">
                       {[o.customer_name, o.customer_surname].filter(Boolean).join(' ') || <span className="text-ink-muted">—</span>}
                     </td>

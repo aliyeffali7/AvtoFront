@@ -8,14 +8,23 @@ interface Props {
   className?: string
   autoFocus?: boolean
   id?: string
+  icons?: Record<string, string>
+  wordStart?: boolean
 }
 
-export default function ComboboxInput({ value, onChange, options, placeholder, className = '', autoFocus, id }: Props) {
+export default function ComboboxInput({ value, onChange, options, placeholder, className = '', autoFocus, id, icons, wordStart }: Props) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const filtered = value.trim()
-    ? options.filter(o => o.toLowerCase().includes(value.toLowerCase()))
+  const query = value.trim().toLowerCase()
+  const matches = (o: string) => {
+    const name = o.toLowerCase()
+    return wordStart ? name.split(/[\s\-/]+/).some(w => w.startsWith(query)) || name.startsWith(query) : name.includes(query)
+  }
+  const filtered = query
+    ? options
+        .filter(matches)
+        .sort((a, b) => Number(b.toLowerCase().startsWith(query)) - Number(a.toLowerCase().startsWith(query)))
     : options
 
   useEffect(() => {
@@ -48,8 +57,13 @@ export default function ComboboxInput({ value, onChange, options, placeholder, c
             <li
               key={opt}
               onMouseDown={e => { e.preventDefault(); onChange(opt); setOpen(false) }}
-              className={`px-3 py-2.5 text-sm cursor-pointer hover:bg-surface-alt hover:text-accent ${opt === value ? 'bg-surface-alt text-accent font-medium' : 'text-ink'}`}
+              className={`px-3 py-2.5 text-sm cursor-pointer hover:bg-surface-alt hover:text-accent flex items-center gap-2 ${opt === value ? 'bg-surface-alt text-accent font-medium' : 'text-ink'}`}
             >
+              {icons && (
+                <span className="w-6 h-6 inline-flex items-center justify-center shrink-0">
+                  {icons[opt] && <img src={icons[opt]} alt="" loading="lazy" className="max-w-full max-h-full object-contain" />}
+                </span>
+              )}
               {opt}
             </li>
           ))}

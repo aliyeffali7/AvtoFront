@@ -190,8 +190,21 @@ export interface LowStockData {
   out_of_stock: Product[]
 }
 
+export interface WeeklyIncome {
+  week_start: string
+  week_end: string
+  total: number
+  previous_total: number
+  change_percent: number | null
+  days: { date: string; total: number; is_today: boolean; is_future: boolean }[]
+}
+
 export interface DashboardStats {
   today: { income: number; expense: number; net: number }
+  active_orders_count: number
+  debtor_customers_count: number
+  in_stock_count: number
+  weekly_income: WeeklyIncome
   low_stock_count: number
   out_of_stock_count: number
   reservations: { total: number; converted: number; no_show: number; conversion_rate: number | null }
@@ -238,6 +251,13 @@ export interface Customer {
 
 export interface CustomerDetail extends Customer {
   orders: Order[]
+}
+
+export interface CarBrand {
+  id: number
+  name: string
+  logo_url: string
+  models: string[]
 }
 
 export interface Store {
