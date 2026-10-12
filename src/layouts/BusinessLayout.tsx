@@ -13,7 +13,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/business/warehouse':    'Stok',
   '/business/finance':      'Maliyyə',
   '/business/reservations': 'Rezervasiyalar',
-  '/business/stores':       'Mağazalar',
+  '/business/shops':        'Mağazalar',
+  '/business/stores':       'Tədarükçülər',
   '/business/settings':     'Tənzimləmələr',
 }
 

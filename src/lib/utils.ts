@@ -1,3 +1,13 @@
+/** YYYY-MM-DD in the user's own timezone. toISOString() is UTC — in Baku
+ * (UTC+4) it returns yesterday between 00:00 and 04:00, and local month-start
+ * midnight becomes the previous month's last day. */
+export function toLocalISODate(date: Date = new Date()): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 export function formatCurrency(amount: number | string): string {
   return `${Number(amount).toFixed(2)} ₼`
 }
@@ -50,10 +60,20 @@ export function mapApiError(error: unknown): string {
   if (!error || typeof error !== 'object') return genericMessage
 
   const err = error as {
+    code?: string
     response?: { data?: Record<string, unknown>; status?: number }
   }
 
-  if (!err.response?.data) return genericMessage
+  if (!err.response) {
+    if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+      return 'Server vaxtında cavab vermədi. Yenidən cəhd edin.'
+    }
+    return 'Bağlantı xətası. İnterneti yoxlayıb yenidən cəhd edin.'
+  }
+  if (err.response.status === 429) {
+    return 'Çox sayda sorğu göndərildi. Bir neçə saniyə gözləyib yenidən cəhd edin.'
+  }
+  if (!err.response.data) return genericMessage
 
   const data = err.response.data
   const status = err.response.status

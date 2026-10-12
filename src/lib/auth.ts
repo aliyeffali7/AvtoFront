@@ -18,10 +18,13 @@ export function setCsrfToken(token: string | null): void {
 }
 
 export function getCsrfToken(): string | null {
-  if (csrfToken) return csrfToken
-  // Same-origin (or same-registrable-domain) dev fallback only.
+  // The cookie wins whenever it's readable (same origin — local dev and the
+  // Vercel /api proxy): it is shared by every open tab, so it is always the
+  // current value, while the in-memory copy is per tab and goes stale as soon
+  // as another tab gets a new token.
   const match = document.cookie.match(new RegExp(`(?:^|; )${CSRF_COOKIE}=([^;]*)`))
-  return match ? decodeURIComponent(match[1]) : null
+  if (match) return decodeURIComponent(match[1])
+  return csrfToken
 }
 
 // The authenticated user, cached in memory for the lifetime of the page.

@@ -5,6 +5,7 @@ import { Business } from '@/types'
 import { mapApiError } from '@/lib/utils'
 import { useCurrentUser } from '@/App'
 import ChangePasswordSection from '@/components/settings/ChangePasswordSection'
+import { mediaUrl } from '@/lib/apiUrl'
 
 export default function SettingsClient() {
   const currentUser = useCurrentUser()
@@ -18,6 +19,9 @@ export default function SettingsClient() {
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [guaranteeText, setGuaranteeText] = useState('')
+  const [guaranteeExclusions, setGuaranteeExclusions] = useState('')
+  const [slogan, setSlogan] = useState('')
+  const [instagram, setInstagram] = useState('')
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [signatureFile, setSignatureFile] = useState<File | null>(null)
@@ -34,8 +38,11 @@ export default function SettingsClient() {
         setPhone(b.phone ?? '')
         setAddress(b.address ?? '')
         setGuaranteeText(b.guarantee_text ?? '')
-        if (b.logo) setLogoPreview(b.logo.startsWith('http') ? b.logo : (import.meta.env.VITE_API_URL ?? '') + b.logo)
-        if (b.signature) setSignaturePreview(b.signature.startsWith('http') ? b.signature : (import.meta.env.VITE_API_URL ?? '') + b.signature)
+        setGuaranteeExclusions(b.guarantee_exclusions ?? '')
+        setSlogan(b.slogan ?? '')
+        setInstagram(b.instagram ?? '')
+        if (b.logo) setLogoPreview(mediaUrl(b.logo))
+        if (b.signature) setSignaturePreview(mediaUrl(b.signature))
       })
       .catch(() => setError('Məlumatlar yüklənmədi'))
       .finally(() => setLoading(false))
@@ -59,9 +66,14 @@ export default function SettingsClient() {
       form.append('phone', phone.trim())
       form.append('address', address.trim())
       form.append('guarantee_text', guaranteeText.trim())
+      form.append('guarantee_exclusions', guaranteeExclusions.trim())
+      form.append('slogan', slogan.trim())
+      form.append('instagram', instagram.trim())
       if (logoFile) form.append('logo', logoFile)
       if (signatureFile) form.append('signature', signatureFile)
-      await updateBusinessProfile(form)
+      const res = await updateBusinessProfile(form)
+      // The backend normalises a pasted link or "@handle" to the bare handle.
+      setInstagram(res.data.instagram ?? '')
       setSuccess(true)
       setLogoFile(null)
       setTimeout(() => setSuccess(false), 3000)
@@ -134,6 +146,19 @@ export default function SettingsClient() {
           />
         </div>
 
+        {/* Slogan */}
+        <div>
+          <label className="label">Şüar</label>
+          <p className="text-xs text-ink-muted mb-1.5">PDF-də biznes adının altında görünür. Boş qalsa, göstərilmir.</p>
+          <input
+            value={slogan}
+            onChange={e => setSlogan(e.target.value)}
+            maxLength={150}
+            placeholder="Məs: Dəqiq diaqnoz. Bizim işimiz sizin yolunuz"
+            className="input"
+          />
+        </div>
+
         {/* Login code (read-only) — mechanics need this to log in */}
         <div>
           <label className="label">Biznes kodu</label>
@@ -165,6 +190,21 @@ export default function SettingsClient() {
           />
         </div>
 
+        {/* Instagram */}
+        <div>
+          <label className="label">Instagram</label>
+          <p className="text-xs text-ink-muted mb-1.5">PDF-in aşağısında göstərilir, QR kod da bu səhifəyə aparır. Linki də yapışdıra bilərsiniz.</p>
+          <div className="flex">
+            <span className="input rounded-r-none border-r-0 w-auto shrink-0 bg-surface-alt text-ink-muted">@</span>
+            <input
+              value={instagram}
+              onChange={e => setInstagram(e.target.value)}
+              placeholder="garage1903"
+              className="input rounded-l-none flex-1"
+            />
+          </div>
+        </div>
+
         {/* Guarantee text */}
         <div>
           <label className="label">Zəmanət mətni</label>
@@ -174,6 +214,19 @@ export default function SettingsClient() {
             onChange={e => setGuaranteeText(e.target.value)}
             placeholder="Məs: İşimizə 3 ay zəmanət veririk. Eyni nasazlıq baş verərsə pulsuz düzəldilir."
             rows={3}
+            className="input resize-none"
+          />
+        </div>
+
+        {/* Guarantee exclusions */}
+        <div>
+          <label className="label">Zəmanətə daxil olmayan hallar</label>
+          <p className="text-xs text-ink-muted mb-1.5">Hər sətir ayrıca bənd olacaq. Zəmanət mətninin yanında göstərilir.</p>
+          <textarea
+            value={guaranteeExclusions}
+            onChange={e => setGuaranteeExclusions(e.target.value)}
+            placeholder={'Məs:\nEhtiyat hissələrinin səhv istismarı\nMüştərinin gətirdiyi ehtiyat hissələri\nÜçüncü şəxslərin müdaxiləsi'}
+            rows={4}
             className="input resize-none"
           />
         </div>

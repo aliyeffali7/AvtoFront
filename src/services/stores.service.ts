@@ -13,3 +13,7 @@ export const updateStore = (id: number, data: { name?: string; phone?: string; c
   api.patch<Store>(`/api/stores/${id}`, data)
 
 export const deleteStore = (id: number) => api.delete(`/api/stores/${id}`)
+
+/** Fold this supplier into another one (duplicates like "Avto ehtiyat" / "Avtoehtiyat"). */
+export const mergeStore = (id: number, intoId: number) =>
+  api.post<Store>(`/api/stores/${id}/merge/`, { into_id: intoId })

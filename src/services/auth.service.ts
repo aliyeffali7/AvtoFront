@@ -50,6 +50,7 @@ export const getBusinessProfile = () =>
 export const updateBusinessProfile = (data: FormData) =>
   api.patch<Business>('/api/auth/business/profile', data, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   })
 
 export const requestPasswordReset = (email: string) =>
@@ -75,6 +76,14 @@ export const extendSubscription = (businessId: number, days: number, amount?: st
     days,
     ...(amount ? { amount } : {}),
     ...(note ? { note } : {}),
+  })
+
+/** Set the exact last day of access (end of that day). Optional amount is
+ * recorded as a platform payment (and pays the referrer's commission). */
+export const setBusinessEndDate = (businessId: number, endDate: string, amount?: string) =>
+  api.post<BusinessAdmin>(`/api/auth/businesses/${businessId}/set-end-date`, {
+    end_date: endDate,
+    ...(amount ? { amount } : {}),
   })
 
 export const toggleBusinessActive = (businessId: number) =>

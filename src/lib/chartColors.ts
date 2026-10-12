@@ -12,6 +12,9 @@ export const EXPENSE_CATEGORY_COLORS: Record<string, string> = {
   rent: '#1baf7a',
   utilities: '#eda100',
   other: '#e87ba4',
+  // slots 6–7 (validated as one 7-slot set with the five above)
+  write_off: '#008300',
+  cogs: '#4a3aa7',
 }
 
 export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
@@ -20,6 +23,15 @@ export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
   rent: 'İcarə',
   utilities: 'Kommunal',
   other: 'Digər',
+  cogs: 'Maya dəyəri',
+  write_off: 'Anbar itkisi',
+}
+
+export const INCOME_CATEGORY_LABELS: Record<string, string> = {
+  service: 'Xidmət',
+  parts_sale: 'Hissə satışı',
+  discount: 'Endirim',
+  other: 'Digər gəlir',
 }
 
 export const CHART_SEQUENTIAL = '#1F4D36' // brand accent — single-series magnitude only

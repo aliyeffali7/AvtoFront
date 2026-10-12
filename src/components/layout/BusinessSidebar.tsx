@@ -10,11 +10,20 @@ import {
   Wallet,
   UserCircle,
   CalendarDays,
-  ShoppingCart,
+  Store,
   Settings,
   LogOut,
   ChevronDown,
 } from 'lucide-react'
+import { mediaUrl } from '@/lib/apiUrl'
+
+const stockChildren = [
+  { href: '/business/warehouse/products',  label: 'Məhsullar' },
+  { href: '/business/warehouse/purchases', label: 'Alışlar' },
+  { href: '/business/warehouse/movements', label: 'Hərəkətlər' },
+  { href: '/business/stores',              label: 'Tədarükçülər' },
+  { href: '/business/warehouse/report',    label: 'Anbar hesabatı' },
+]
 
 const financeChildren = [
   { href: '/business/finance/kassa',       label: 'Kassa' },
@@ -28,10 +37,10 @@ const navItems = [
   { href: '/business/orders',       label: 'Sifarişlər',      icon: ClipboardList },
   { href: '/business/customers',    label: 'Müştərilər',      icon: UserCircle },
   { href: '/business/mechanics',    label: 'Ustalar',         icon: Users },
-  { href: '/business/warehouse',    label: 'Stok',            icon: Package },
+  { href: '/business/warehouse',    label: 'Stok',            icon: Package, children: stockChildren },
   { href: '/business/finance',      label: 'Maliyyə',         icon: Wallet, children: financeChildren },
   { href: '/business/reservations', label: 'Rezervasiyalar',  icon: CalendarDays },
-  { href: '/business/stores',       label: 'Mağazalar',       icon: ShoppingCart },
+  { href: '/business/shops',        label: 'Mağazalar',       icon: Store },
   { href: '/business/settings',     label: 'Tənzimləmələr',   icon: Settings },
 ]
 
@@ -53,7 +62,6 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     const parent = navItems.find(item => 'children' in item && item.children?.some(c => pathname.startsWith(c.href)))
     setOpenMenu(parent ? parent.href : null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 
   async function handleLogout() {
@@ -68,7 +76,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
         <div className="flex items-center gap-3 min-w-0">
           {business?.logo && !logoError ? (
             <img
-              src={business.logo.startsWith('http') ? business.logo : (import.meta.env.VITE_API_URL ?? '') + business.logo}
+              src={mediaUrl(business.logo)}
               alt="logo"
               className="w-24 h-24 rounded object-contain shrink-0 bg-cream"
               onError={() => setLogoError(true)}
@@ -125,9 +133,9 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
                   <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} strokeWidth={2} />
                 </button>
                 {/* max-height transition — content stays mounted (no pop-in)
-                    and slides open/closed. 220px comfortably fits all 4
-                    finance sub-items. */}
-                <div className={`overflow-hidden transition-[max-height] duration-200 ease-in-out ${isOpen ? 'max-h-[220px]' : 'max-h-0'}`}>
+                    and slides open/closed. 260px comfortably fits the
+                    5 stock sub-items. */}
+                <div className={`overflow-hidden transition-[max-height] duration-200 ease-in-out ${isOpen ? 'max-h-[260px]' : 'max-h-0'}`}>
                   <div className="flex flex-col gap-0.5 mt-0.5 mb-1">
                     {item.children!.map(child => {
                       const childActive = pathname.startsWith(child.href)

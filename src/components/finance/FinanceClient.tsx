@@ -3,88 +3,28 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, FileDown, CheckCircle2 } from 'lucide-react'
 import { FinanceRecord, FinanceCategory } from '@/types'
 import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
-import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
+import { formatCurrency, formatDate, mapApiError, toLocalISODate } from '@/lib/utils'
 import { loadDraft, saveDraft } from '@/lib/formDraft'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
+import PeriodFilter from '@/components/ui/PeriodFilter'
+import { Period, isPeriodKey, makePeriod, periodLabel as describePeriod, periodRange } from '@/lib/period'
 
-type Period = 'day' | 'week' | 'month' | 'specific_month' | 'all' | 'custom'
 type TypeFilter = 'all' | 'income' | 'expense'
 
 // Kassaya baxılan qeyddən (məs. sifarişə keçib "geri" qayıdanda) filtrlərin sıfırlanmaması üçün.
-const FINANCE_FILTERS_KEY = 'avtoservis:filters:finance:v1'
+const FINANCE_FILTERS_KEY = 'avtoservis:filters:finance:v2'
 
 interface SavedFinanceFilters {
   period: Period
-  customDate: string
-  selectedMonth: string
   typeFilter: TypeFilter
 }
 
-const PERIODS: { key: Period; label: string }[] = [
-  { key: 'day', label: 'Bugün' },
-  { key: 'week', label: 'Bu həftə' },
-  { key: 'month', label: 'Bu ay' },
-  { key: 'specific_month', label: 'Ay seç' },
-  { key: 'all', label: 'Hamısı' },
-  { key: 'custom', label: 'Tarix seç' },
-]
-
-function getCurrentYearMonth() {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-}
-
-function getMonthRange(ym: string): { start: string; end: string } {
-  const [year, month] = ym.split('-').map(Number)
-  const lastDay = new Date(year, month, 0).getDate()
-  return {
-    start: `${ym}-01`,
-    end:   `${ym}-${String(lastDay).padStart(2, '0')}`,
-  }
-}
-
-function monthLabel(ym: string): string {
-  const [year, month] = ym.split('-').map(Number)
-  const MONTHS = ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr']
-  return `${MONTHS[month - 1]} ${year}`
-}
-
 function getToday() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function getPeriodRange(period: Period, specificMonth?: string): { start: string | null; end: string | null } {
-  const now = new Date()
-  const today = now.toISOString().slice(0, 10)
-  if (period === 'day') return { start: today, end: today }
-  if (period === 'week') {
-    const d = new Date(now)
-    const day = d.getDay()
-    const diff = day === 0 ? -6 : 1 - day
-    d.setDate(d.getDate() + diff)
-    return { start: d.toISOString().slice(0, 10), end: today }
-  }
-  if (period === 'month') {
-    const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-    return { start, end: today }
-  }
-  if (period === 'specific_month' && specificMonth) {
-    return getMonthRange(specificMonth)
-  }
-  return { start: null, end: null }
-}
-
-function filterByRange(records: FinanceRecord[], start: string | null, end: string | null) {
-  return records.filter(r => {
-    const d = r.date.slice(0, 10)
-    if (start && d < start) return false
-    if (end && d > end) return false
-    return true
-  })
+  return toLocalISODate(new Date())
 }
 
 // ── Add record inline form ───────────────────────────────────────────────────
@@ -95,7 +35,19 @@ const EXPENSE_CATEGORIES: { value: FinanceCategory; label: string }[] = [
   { value: 'rent', label: 'İcarə' },
   { value: 'utilities', label: 'Kommunal' },
   { value: 'other', label: 'Digər' },
+  { value: 'owner_draw', label: 'Sahibkar götürdü' },
 ]
+
+const INCOME_CATEGORIES: { value: FinanceCategory; label: string }[] = [
+  { value: 'other', label: 'Digər gəlir' },
+  { value: 'owner_deposit', label: 'Sahibkar qoydu' },
+]
+
+// Owner's own money moving in/out: real kassa cash, but not profit or expense.
+const OWNER_CATEGORY_LABELS: Partial<Record<FinanceCategory, string>> = {
+  owner_draw: 'Sahibkar götürdü',
+  owner_deposit: 'Sahibkar qoydu',
+}
 
 function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const [type, setType] = useState<'income' | 'expense'>('income')
@@ -116,8 +68,8 @@ function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () 
         type,
         amount: parseFloat(amount),
         description,
-        date: new Date().toISOString().slice(0, 10),
-        ...(type === 'expense' ? { category } : {}),
+        date: toLocalISODate(new Date()),
+        category,
       })
       reset(); onAdded(); onClose()
     } catch (err) {
@@ -142,26 +94,24 @@ function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () 
           <div className="flex flex-col gap-1.5">
             <label className="label">Növ</label>
             <div className="flex border border-rule rounded overflow-hidden">
-              <button type="button" onClick={() => setType('income')}
+              <button type="button" onClick={() => { setType('income'); setCategory('other') }}
                 className={`px-4 py-2.5 text-sm font-semibold transition-colors ${type === 'income' ? 'bg-success text-cream' : 'bg-surface text-ink-soft hover:bg-surface-alt'}`}>
                 Gəlir
               </button>
-              <button type="button" onClick={() => setType('expense')}
+              <button type="button" onClick={() => { setType('expense'); setCategory('other') }}
                 className={`px-4 py-2.5 text-sm font-semibold transition-colors border-l border-rule ${type === 'expense' ? 'bg-danger text-cream' : 'bg-surface text-ink-soft hover:bg-surface-alt'}`}>
                 Xərc
               </button>
             </div>
           </div>
-          {type === 'expense' && (
-            <div className="flex flex-col gap-1.5 min-w-[160px]">
-              <label className="label">Maddə</label>
-              <select value={category} onChange={e => setCategory(e.target.value as FinanceCategory)} className="input">
-                {EXPENSE_CATEGORIES.map(c => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="label">Maddə</label>
+            <select value={category} onChange={e => setCategory(e.target.value as FinanceCategory)} className="input">
+              {(type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex flex-col gap-1.5 flex-1 min-w-[140px]">
             <label className="label">Məbləğ (₼)</label>
             <input value={amount} onChange={e => setAmount(e.target.value)} required type="number" step="0.01" min="0.01" placeholder="0.00" className="input-mono" />
@@ -171,6 +121,9 @@ function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () 
             <input value={description} onChange={e => setDescription(e.target.value)} required placeholder="Məs. Ehtiyat hissəsi alışı" className="input" />
           </div>
         </div>
+        {category in OWNER_CATEGORY_LABELS && (
+          <p className="text-xs text-ink-muted">Kassada görünür, amma Hesabatda mənfəətə təsir etmir — bu, biznesin gəliri və ya xərci deyil.</p>
+        )}
         {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
         <div className="flex gap-2">
           <Button type="submit" loading={loading}>Saxla</Button>
@@ -183,9 +136,12 @@ function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () 
 
 // ── End of day modal ─────────────────────────────────────────────────────────
 
-function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: () => void }) {
+function EndDayModal({ onClose }: { onClose: () => void }) {
   const today = getToday()
-  const todayRecords = records.filter(r => r.date.slice(0, 10) === today)
+  const [todayRecords, setTodayRecords] = useState<FinanceRecord[]>([])
+  useEffect(() => {
+    getFinanceRecords({ from: today, to: today, all: true }).then(r => setTodayRecords(r.data.results)).catch(() => {})
+  }, [today])
   const income = todayRecords.filter(r => r.type === 'income').reduce((s, r) => s + Number(r.amount), 0)
   const expense = todayRecords.filter(r => r.type === 'expense').reduce((s, r) => s + Number(r.amount), 0)
   const net = income - expense
@@ -336,35 +292,64 @@ function EndDayModal({ records, onClose }: { records: FinanceRecord[]; onClose: 
 export default function FinanceClient() {
   const navigate = useNavigate()
   const [records, setRecords] = useState<FinanceRecord[]>([])
+  const [totals, setTotals] = useState({ income: 0, income_count: 0, expense: 0, expense_count: 0 })
+  const [count, setCount] = useState(0)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [endDayOpen, setEndDayOpen] = useState(false)
   const [savedFilters] = useState(() => loadDraft<SavedFinanceFilters>(FINANCE_FILTERS_KEY))
-  const [period, setPeriod] = useState<Period>(savedFilters?.period ?? 'day')
-  const [customDate, setCustomDate] = useState(savedFilters?.customDate ?? getToday())
-  const [selectedMonth, setSelectedMonth] = useState(savedFilters?.selectedMonth ?? getCurrentYearMonth())
+  const [period, setPeriod] = useState<Period>(() =>
+    savedFilters?.period && isPeriodKey(savedFilters.period.key) ? savedFilters.period : makePeriod('today'),
+  )
   const [typeFilter, setTypeFilter] = useState<TypeFilter>(savedFilters?.typeFilter ?? 'all')
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [pageNote, setPageNote] = useState('')
 
+  // The selected period as a date range (null = open-ended), sent to the server.
+  const range = useMemo(() => {
+    const { from, to } = periodRange(period)
+    return { start: from, end: to }
+  }, [period])
+  const typeParam = typeFilter === 'all' ? undefined : typeFilter
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await getFinanceRecords()
-      setRecords(res.data)
+      const res = await getFinanceRecords({ from: range.start, to: range.end, type: typeParam, page: 1 })
+      setRecords(res.data.results)
+      setTotals(res.data.totals)
+      setCount(res.data.count)
+      setPage(1)
+      setTotalPages(res.data.total_pages)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [range, typeParam])
 
   useEffect(() => { load() }, [load])
 
-  useEffect(() => {
-    saveDraft(FINANCE_FILTERS_KEY, { period, customDate, selectedMonth, typeFilter })
-  }, [period, customDate, selectedMonth, typeFilter])
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const res = await getFinanceRecords({ from: range.start, to: range.end, type: typeParam, page: page + 1 })
+      setRecords(prev => [...prev, ...res.data.results])
+      setPage(res.data.page)
+      setTotalPages(res.data.total_pages)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
-  const singleDate = period === 'day' ? getToday() : period === 'custom' ? customDate : null
+  useEffect(() => {
+    saveDraft(FINANCE_FILTERS_KEY, { period, typeFilter })
+  }, [period, typeFilter])
+
+  // The day note belongs to one day, so it shows only when a single day is selected.
+  const singleDate = range.start && range.start === range.end ? range.start : null
 
 
   useEffect(() => {
@@ -376,36 +361,27 @@ export default function FinanceClient() {
     setDeletingId(id)
     try {
       await deleteFinanceRecord(id)
-      setRecords(prev => prev.filter(r => r.id !== id))
+      await load()
     } finally {
       setDeletingId(null)
       setConfirmDeleteId(null)
     }
   }
 
-  const periodFiltered = useMemo(() => {
-    if (period === 'custom') return filterByRange(records, customDate, customDate)
-    const { start, end } = getPeriodRange(period, selectedMonth)
-    return filterByRange(records, start, end)
-  }, [records, period, customDate, selectedMonth])
-
-  const filtered = useMemo(() => {
-    if (typeFilter === 'all') return periodFiltered
-    return periodFiltered.filter(r => r.type === typeFilter)
-  }, [periodFiltered, typeFilter])
-
-  const income = periodFiltered.filter(r => r.type === 'income').reduce((s, r) => s + Number(r.amount), 0)
-  const expense = periodFiltered.filter(r => r.type === 'expense').reduce((s, r) => s + Number(r.amount), 0)
+  const filtered = records
+  const income = Number(totals.income)
+  const expense = Number(totals.expense)
   const net = income - expense
+  const operationCount = totals.income_count + totals.expense_count
 
-  const periodLabel = period === 'custom'
-    ? customDate
-    : period === 'specific_month'
-    ? monthLabel(selectedMonth)
-    : PERIODS.find(p => p.key === period)?.label ?? ''
+  const periodLabel = describePeriod(period)
 
-  function exportPDF() {
-    const rows = periodFiltered.map(r => `
+  async function exportPDF() {
+    // The PDF lists the whole period (every type), not just the loaded page.
+    const win = window.open('', '_blank')
+    if (!win) return
+    const all = (await getFinanceRecords({ from: range.start, to: range.end, all: true })).data.results
+    const rows = all.map(r => `
       <tr>
         <td>${r.date.slice(0, 10)}</td>
         <td>${r.description || '—'}</td>
@@ -417,8 +393,6 @@ export default function FinanceClient() {
       ? `<div class="note-box"><p class="note-label">Gün qeydi</p><p class="note-text">${pageNote.replace(/\n/g, '<br>')}</p></div>`
       : ''
 
-    const win = window.open('', '_blank')
-    if (!win) return
     win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Maliyyə Hesabatı — ${periodLabel}</title>
     <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -448,7 +422,7 @@ export default function FinanceClient() {
       <div class="card"><p class="card-label red">Xərc</p><p class="card-value red">${expense.toFixed(2)} ₼</p></div>
       <div class="card"><p class="card-label ${net >= 0 ? 'green' : 'red'}">Xalis</p><p class="card-value ${net >= 0 ? 'green' : 'red'}">${net >= 0 ? '+' : ''}${net.toFixed(2)} ₼</p></div>
     </div>
-    ${periodFiltered.length === 0 ? '<p style="color:#6b7264;text-align:center;padding:32px 0">Bu dövr üzrə əməliyyat yoxdur.</p>' : `
+    ${all.length === 0 ? '<p style="color:#6b7264;text-align:center;padding:32px 0">Bu dövr üzrə əməliyyat yoxdur.</p>' : `
     <table>
       <thead><tr><th>Tarix</th><th>Açıqlama</th><th>Növ</th><th style="text-align:right">Məbləğ</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -480,65 +454,7 @@ export default function FinanceClient() {
           </div>
         </div>
 
-        {/* Period tabs */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <div className="flex flex-wrap gap-1 border border-rule rounded p-1 bg-surface-alt">
-            {PERIODS.map(p => (
-              <button
-                key={p.key}
-                onClick={() => setPeriod(p.key)}
-                className={`px-4 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap ${
-                  period === p.key ? 'bg-surface text-ink border border-rule' : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                {p.key === 'custom' && (
-                  <svg className="w-4 h-4 inline mr-1.5 -mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                )}
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Custom single date */}
-        {period === 'custom' && (
-          <div className="flex items-center gap-3 mb-6 bg-cream border border-rule rounded px-5 py-4 w-fit">
-            <svg className="w-5 h-5 text-ink-muted shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <div className="flex flex-col gap-1">
-              <label className="label">Tarix seçin</label>
-              <input
-                type="date"
-                value={customDate}
-                max={getToday()}
-                onChange={e => setCustomDate(e.target.value)}
-                className="input-mono"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Specific month picker */}
-        {period === 'specific_month' && (
-          <div className="flex items-center gap-3 mb-6 bg-cream border border-rule rounded px-5 py-4 w-fit">
-            <svg className="w-5 h-5 text-ink-muted shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <div className="flex flex-col gap-1">
-              <label className="label">Ay seçin</label>
-              <input
-                type="month"
-                value={selectedMonth}
-                max={getCurrentYearMonth()}
-                onChange={e => setSelectedMonth(e.target.value)}
-                className="input-mono"
-              />
-            </div>
-          </div>
-        )}
+        <PeriodFilter value={period} onChange={setPeriod} withAll className="mb-6" />
 
         {/* Summary: big net total + income/expense pair */}
         <Card className="px-6 py-6 mb-8">
@@ -548,16 +464,16 @@ export default function FinanceClient() {
               <p className={`font-serif font-semibold text-[40px] leading-none ${net >= 0 ? 'text-accent' : 'text-danger'}`}>
                 {net >= 0 ? '+' : ''}{formatCurrency(net)}
               </p>
-              <p className="text-sm text-ink-soft mt-1.5">Xalis · {periodFiltered.length} əməliyyat</p>
+              <p className="text-sm text-ink-soft mt-1.5">Xalis · {operationCount} əməliyyat</p>
             </div>
             <div className="flex gap-8">
               <div className="text-right">
                 <p className="font-mono font-semibold text-xl text-ink">{formatCurrency(income)}</p>
-                <p className="section-label mt-1">Gəlir · {periodFiltered.filter(r => r.type === 'income').length}</p>
+                <p className="section-label mt-1">Gəlir · {totals.income_count}</p>
               </div>
               <div className="text-right">
                 <p className="font-mono font-semibold text-xl text-danger">{formatCurrency(expense)}</p>
-                <p className="section-label mt-1">Xərc · {periodFiltered.filter(r => r.type === 'expense').length}</p>
+                <p className="section-label mt-1">Xərc · {totals.expense_count}</p>
               </div>
             </div>
           </div>
@@ -578,7 +494,7 @@ export default function FinanceClient() {
               </button>
             ))}
           </div>
-          <p className="section-label">{filtered.length} qeyd</p>
+          <p className="section-label">{count} qeyd</p>
         </div>
 
         {/* Inline add-record form — expands above the records table */}
@@ -617,6 +533,9 @@ export default function FinanceClient() {
                     </td>
                     <td className="ledger-td whitespace-normal">
                       <span className="flex items-center gap-1.5">
+                        {r.category && OWNER_CATEGORY_LABELS[r.category] && (
+                          <Badge variant="neutral">{OWNER_CATEGORY_LABELS[r.category]}</Badge>
+                        )}
                         {r.description}
                         {r.order && (
                           <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -629,7 +548,9 @@ export default function FinanceClient() {
                       {r.type === 'income' ? '+' : '-'}{formatCurrency(Number(r.amount))}
                     </td>
                     <td className="ledger-td text-right" onClick={e => e.stopPropagation()}>
-                      {confirmDeleteId === r.id ? (
+                      {r.source && r.source !== 'manual' ? (
+                        <span className="text-xs text-ink-muted" title="Sistem qeydidir — onu yaradan sifariş, alış və ya borc üzərindən dəyişdirilir">avtomatik</span>
+                      ) : confirmDeleteId === r.id ? (
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-xs text-ink-muted">Silinsin?</span>
                           <button
@@ -666,6 +587,14 @@ export default function FinanceClient() {
         )}
 
 
+        {!loading && page < totalPages && (
+          <div className="flex justify-center mt-4">
+            <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
+              Daha çox göstər ({records.length} / {count})
+            </Button>
+          </div>
+        )}
+
         {/* Saved day note */}
         {singleDate && pageNote && (
           <div className="card mt-6 px-5 py-4 border-l-2 border-l-warning">
@@ -675,7 +604,7 @@ export default function FinanceClient() {
         )}
       </div>
 
-      {endDayOpen && <EndDayModal records={records} onClose={() => setEndDayOpen(false)} />}
+      {endDayOpen && <EndDayModal onClose={() => { setEndDayOpen(false); load() }} />}
     </>
   )
 }

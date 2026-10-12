@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { BusinessAdmin, AdminDashboardStats } from '@/types'
 import {
   getBusinesses, getAdminDashboard, extendSubscription, toggleBusinessActive, resetOwnerPassword,
-  impersonateBusiness, logout,
+  impersonateBusiness, logout, setBusinessEndDate,
 } from '@/services/auth.service'
-import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
+import { leadFromBusiness } from '@/services/crm.service'
+import { formatDate, formatCurrency, mapApiError, toLocalISODate } from '@/lib/utils'
+import CrmTab from '@/components/admin/CrmTab'
+import ReferrersTab from '@/components/admin/ReferrersTab'
 import { useCurrentUser } from '@/App'
 import Badge, { BadgeVariant } from '@/components/ui/Badge'
 import Spinner from '@/components/ui/Spinner'
@@ -20,14 +23,25 @@ const EXTEND_OPTIONS = [
 ]
 
 function subscriptionVariant(b: BusinessAdmin): BadgeVariant {
-  if (!b.owner_active) return 'danger'
-  return b.is_subscription_active ? 'success' : 'warning'
+  if (b.access_state === 'suspended') return 'danger'
+  return b.access_state === 'active' ? 'success' : 'warning'
 }
 
 function subscriptionLabel(b: BusinessAdmin): string {
-  if (!b.owner_active) return 'Bloklanıb'
-  return b.is_subscription_active ? 'Aktiv' : 'Bitib'
+  if (b.access_state === 'suspended') return 'Dayandırılıb'
+  return b.access_state === 'active' ? 'Aktiv' : 'Müddəti bitib'
 }
+
+function daysLeft(iso: string | null) {
+  if (!iso) return null
+  const end = new Date(iso)
+  const today = new Date(toLocalISODate())
+  const endDay = new Date(toLocalISODate(end))
+  return Math.round((endDay.getTime() - today.getTime()) / 86400000)
+}
+
+type AdminTab = 'businesses' | 'crm' | 'referrals'
+const TAB_KEY = 'avtoservis:admin:tab'
 
 export default function AdminPage() {
   const navigate = useNavigate()
@@ -42,6 +56,23 @@ export default function AdminPage() {
   const [rowMessage, setRowMessage] = useState<Record<number, string>>({})
   const [confirmAction, setConfirmAction] = useState<{ business: BusinessAdmin; kind: 'toggle' | 'reset-password' } | null>(null)
   const [rowAmount, setRowAmount] = useState<Record<number, string>>({})
+
+  const [rowDate, setRowDate] = useState<Record<number, string>>({})
+  const [tab, setTab] = useState<AdminTab>(() => {
+    try { return (localStorage.getItem(TAB_KEY) as AdminTab) || 'businesses' } catch { return 'businesses' }
+  })
+  const [openLeadId, setOpenLeadId] = useState<number | null>(null)
+  const clearOpenLead = useCallback(() => setOpenLeadId(null), [])
+
+  function changeTab(t: AdminTab) {
+    setTab(t)
+    try { localStorage.setItem(TAB_KEY, t) } catch { /* ignore */ }
+  }
+
+  function openLead(leadId: number) {
+    setOpenLeadId(leadId)
+    changeTab('crm')
+  }
 
   const [dashboard, setDashboard] = useState<AdminDashboardStats | null>(null)
   const [dashboardError, setDashboardError] = useState('')
@@ -98,6 +129,37 @@ export default function AdminPage() {
       setRowError(prev => ({ ...prev, [business.id]: mapApiError(err) }))
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function handleSetDate(business: BusinessAdmin) {
+    const day = rowDate[business.id]
+    if (!day) return
+    setBusyId(business.id)
+    setRowError(prev => ({ ...prev, [business.id]: '' }))
+    const amount = (rowAmount[business.id] ?? '').trim()
+    try {
+      const res = await setBusinessEndDate(business.id, day, amount || undefined)
+      setBusinesses(prev => prev.map(b => (b.id === business.id ? res.data : b)))
+      setRowAmount(prev => ({ ...prev, [business.id]: '' }))
+      setRowDate(prev => ({ ...prev, [business.id]: '' }))
+      setRowMessage(prev => ({ ...prev, [business.id]: `Bitmə tarixi: ${formatDate(day)}${amount ? `, ${amount} ₼ qeyd edildi` : ''}.` }))
+      setTimeout(() => setRowMessage(prev => ({ ...prev, [business.id]: '' })), 3000)
+      loadDashboard()
+    } catch (err) {
+      setRowError(prev => ({ ...prev, [business.id]: mapApiError(err) }))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleOpenCrm(business: BusinessAdmin) {
+    try {
+      const res = await leadFromBusiness(business.id)
+      setBusinesses(prev => prev.map(b => (b.id === business.id ? { ...b, crm_lead_id: res.data.id } : b)))
+      openLead(res.data.id)
+    } catch (err) {
+      setRowError(prev => ({ ...prev, [business.id]: mapApiError(err) }))
     }
   }
 
@@ -183,6 +245,19 @@ export default function AdminPage() {
         </div>
       )}
 
+      <div className="flex gap-1 border border-rule rounded p-1 bg-surface-alt w-fit mb-6">
+        {([['businesses', 'Bizneslər'], ['crm', 'CRM'], ['referrals', 'Referallar']] as const).map(([key, label]) => (
+          <button key={key} onClick={() => changeTab(key)}
+            className={`px-5 py-2 rounded text-sm font-medium ${tab === key ? 'bg-surface text-ink border border-rule' : 'text-ink-muted hover:text-ink'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'crm' && <CrmTab businesses={businesses} openLeadId={openLeadId} onOpened={clearOpenLead} />}
+      {tab === 'referrals' && <ReferrersTab onOpenLead={openLead} />}
+
+      {tab === 'businesses' && (<>
       {dashboardError ? (
         <p className="text-sm text-danger bg-danger-bg rounded px-4 py-3 mb-6">{dashboardError}</p>
       ) : dashboard && (
@@ -298,12 +373,16 @@ export default function AdminPage() {
                   <td className="ledger-td text-ink-soft">{b.owner_email ?? '—'}</td>
                   <td className="ledger-td">
                     <Badge variant={subscriptionVariant(b)}>{subscriptionLabel(b)}</Badge>
-                    {b.trial_ends_at && (
-                      <p className="text-xs text-ink-muted mt-1">sınaq: {formatDate(b.trial_ends_at)}</p>
-                    )}
-                    {b.subscription_ends_at && (
-                      <p className="text-xs text-ink-muted mt-1">abunə: {formatDate(b.subscription_ends_at)}</p>
-                    )}
+                    {b.access_ends_at && (() => {
+                      const left = daysLeft(b.access_ends_at)
+                      return (
+                        <p className={`text-xs mt-1 font-mono ${left !== null && left <= 3 ? 'text-danger font-semibold' : 'text-ink-muted'}`}>
+                          bitir: {formatDate(b.access_ends_at)}
+                          {left !== null && (left >= 0 ? ` · ${left} gün` : ` · ${-left} gün əvvəl`)}
+                        </p>
+                      )
+                    })()}
+                    <p className="text-xs text-ink-muted mt-0.5">{b.subscription_ends_at ? 'ödənişli' : b.trial_ends_at ? 'sınaq' : ''}</p>
                   </td>
                   <td className="ledger-td text-right font-mono">
                     {b.member_count}
@@ -339,15 +418,37 @@ export default function AdminPage() {
                           </button>
                         ))}
                       </div>
+                      <div className="flex gap-1.5 items-center">
+                        <input
+                          type="date"
+                          value={rowDate[b.id] ?? ''}
+                          onChange={e => setRowDate(prev => ({ ...prev, [b.id]: e.target.value }))}
+                          className="input-mono text-xs py-1.5 px-2 h-auto flex-1"
+                          aria-label="Bitmə tarixi"
+                        />
+                        <button
+                          onClick={() => handleSetDate(b)}
+                          disabled={busyId === b.id || !rowDate[b.id]}
+                          className="text-xs font-semibold px-2 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40 whitespace-nowrap"
+                        >
+                          Tarixi təyin et
+                        </button>
+                      </div>
                       <div className="flex gap-1.5 flex-wrap">
                         <button
                           onClick={() => setConfirmAction({ business: b, kind: 'toggle' })}
                           disabled={busyId === b.id}
                           className={`text-xs font-semibold px-2.5 py-1.5 rounded disabled:opacity-40 ${
-                            b.owner_active ? 'bg-danger-bg text-danger hover:opacity-80' : 'bg-success-bg text-success hover:opacity-80'
+                            b.is_suspended ? 'bg-success-bg text-success hover:opacity-80' : 'bg-danger-bg text-danger hover:opacity-80'
                           }`}
                         >
-                          {b.owner_active ? 'Blokla' : 'Aktivləşdir'}
+                          {b.is_suspended ? 'Davam etdir' : 'Dayandır'}
+                        </button>
+                        <button
+                          onClick={() => handleOpenCrm(b)}
+                          className="text-xs font-semibold px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt"
+                        >
+                          {b.crm_lead_id ? 'CRM kartı' : 'CRM kartı yarat'}
                         </button>
                         <button
                           onClick={() => setConfirmAction({ business: b, kind: 'reset-password' })}
@@ -368,24 +469,26 @@ export default function AdminPage() {
         </div>
       )}
 
+      </>)}
+
       <ConfirmDialog
         open={confirmAction !== null}
         title={
           confirmAction?.kind === 'toggle'
-            ? confirmAction.business.owner_active
-              ? 'Biznesi blokla?'
-              : 'Biznesi aktivləşdir?'
+            ? confirmAction.business.is_suspended
+              ? 'Biznesin işini davam etdir?'
+              : 'Biznesi dayandır?'
             : 'Şifrəni sıfırla?'
         }
         message={
           confirmAction?.kind === 'toggle'
-            ? confirmAction.business.owner_active
-              ? `"${confirmAction.business.name}" biznesinin sahibi və bütün ustaları sistemə daxil ola bilməyəcək.`
-              : `"${confirmAction.business.name}" biznesinin sahibi və ustaları yenidən sistemə daxil ola biləcək.`
+            ? confirmAction.business.is_suspended
+              ? `"${confirmAction.business.name}" yenidən normal işləyəcək: yazmaq və dəyişmək mümkün olacaq.`
+              : `"${confirmAction.business.name}" sahibi və ustaları daxil olub baxa biləcək, amma heç nəyi dəyişə bilməyəcək. Yuxarıda "hesab admin tərəfindən dayandırılıb" bildirişi görünəcək.`
             : `"${confirmAction?.business.name}" biznesinin sahibinə yeni, təsadüfi şifrə göndəriləcək (${confirmAction?.business.owner_email}).`
         }
         confirmLabel="Bəli"
-        danger={!!(confirmAction?.kind === 'toggle' && confirmAction.business.owner_active)}
+        danger={!!(confirmAction?.kind === 'toggle' && !confirmAction.business.is_suspended)}
         onConfirm={() => {
           if (!confirmAction) return
           if (confirmAction.kind === 'toggle') handleToggleActive(confirmAction.business)

@@ -5,7 +5,7 @@ import { ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronRight, ClipboardList,
 import { DashboardStats, FinanceReport, Order, WeeklyIncome } from '@/types'
 import { getDashboardStats, getFinanceReport, getWeeklyIncome } from '@/services/finance.service'
 import { getOrders } from '@/services/orders.service'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, toLocalISODate } from '@/lib/utils'
 import Spinner from '@/components/ui/Spinner'
 import BrandLogo from '@/components/ui/BrandLogo'
 import StatusBadge from '@/components/orders/StatusBadge'
@@ -61,10 +61,10 @@ export default function DashboardPage() {
     setLoading(true)
     try {
       const today = new Date()
-      const to = today.toISOString().slice(0, 10)
+      const to = toLocalISODate(today)
       const fromDate = new Date(today)
       fromDate.setDate(fromDate.getDate() - 13)
-      const from = fromDate.toISOString().slice(0, 10)
+      const from = toLocalISODate(fromDate)
       const [statsRes, reportRes, ordersRes] = await Promise.all([
         getDashboardStats(),
         getFinanceReport(from, to),
@@ -88,7 +88,7 @@ export default function DashboardPage() {
     anchor.setUTCDate(anchor.getUTCDate() + delta * 7)
     setWeekLoading(true)
     try {
-      const res = await getWeeklyIncome(anchor.toISOString().slice(0, 10))
+      const res = await getWeeklyIncome(toLocalISODate(anchor))
       setShownWeek(res.data)
     } finally {
       setWeekLoading(false)
@@ -186,10 +186,10 @@ export default function DashboardPage() {
                 <XAxis dataKey="label" tick={AXIS_TICK} tickLine={false} axisLine={false} />
                 <Tooltip
                   cursor={{ fill: 'transparent' }}
-                  formatter={(v: any) => [formatCurrency(Number(v)), 'Gəlir']}
-                  labelFormatter={(l: any) => {
+                  formatter={(v: unknown) => [formatCurrency(Number(v)), 'Gəlir']}
+                  labelFormatter={(l: unknown) => {
                     const day = weekChart.find(d => d.label === l)
-                    return day ? formatDate(day.date) : l
+                    return day ? formatDate(day.date) : String(l)
                   }}
                   contentStyle={TOOLTIP_STYLE}
                 />
@@ -240,10 +240,10 @@ export default function DashboardPage() {
 
       {stats.out_of_stock_count > 0 && (
         <Link
-          to="/business/warehouse"
+          to="/business/warehouse/products?tab=out"
           className="block mb-8 bg-danger-bg border border-danger/30 rounded-[10px] px-6 py-3 text-sm text-danger font-medium hover:opacity-90 transition-opacity"
         >
-          {stats.out_of_stock_count} məhsul stokda bitib — Anbara keç →
+          {stats.out_of_stock_count} məhsul stokda bitib — Bitənlərə bax →
         </Link>
       )}
 
@@ -259,7 +259,7 @@ export default function DashboardPage() {
                 <CartesianGrid stroke="#CBD3C7" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: '#CBD3C7' }} tickFormatter={(d: string) => d.slice(5)} />
                 <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={56} />
-                <Tooltip formatter={(v: any) => formatCurrency(Number(v))} contentStyle={TOOLTIP_STYLE} />
+                <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} contentStyle={TOOLTIP_STYLE} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="income" name="Gəlir" fill={CHART_INCOME} radius={[3, 3, 0, 0]} />
                 <Bar dataKey="expense" name="Xərc" fill={CHART_EXPENSE} radius={[3, 3, 0, 0]} />

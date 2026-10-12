@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Store, StorePurchases } from '@/types'
-import { getStores, createStore, updateStore, deleteStore, getStorePurchases } from '@/services/stores.service'
+import { Link } from 'react-router-dom'
+import { getStores, createStore, updateStore, deleteStore, getStorePurchases, mergeStore } from '@/services/stores.service'
 import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
@@ -25,6 +26,10 @@ export default function StoresPage() {
   const [formError, setFormError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState(false)
+  const [mergeInto, setMergeInto] = useState('')
+  const [merging, setMerging] = useState(false)
+  const [actionError, setActionError] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -98,13 +103,33 @@ export default function StoresPage() {
   async function handleDelete() {
     if (!selectedStore) return
     setDeleting(true)
+    setActionError('')
     try {
       await deleteStore(selectedStore.id)
       setConfirmDelete(false)
       setSelectedId(null)
       load()
+    } catch (err) {
+      setActionError(mapApiError(err))
     } finally {
       setDeleting(false)
+    }
+  }
+
+  async function handleMerge() {
+    if (!selectedStore || !mergeInto) return
+    setMerging(true)
+    setActionError('')
+    try {
+      const res = await mergeStore(selectedStore.id, parseInt(mergeInto))
+      setMergeOpen(false)
+      setMergeInto('')
+      await load()
+      setSelectedId(res.data.id)
+    } catch (err) {
+      setActionError(mapApiError(err))
+    } finally {
+      setMerging(false)
     }
   }
 
@@ -119,9 +144,10 @@ export default function StoresPage() {
           <table className="ledger-table min-w-[520px]">
             <thead>
               <tr>
-                <th className="ledger-th">Mağaza</th>
+                <th className="ledger-th">Tədarükçü</th>
                 <th className="ledger-th">Telefon</th>
                 <th className="ledger-th text-right">Cəmi alış</th>
+                <th className="ledger-th text-right">Borc qalığı</th>
               </tr>
             </thead>
             <tbody>
@@ -134,6 +160,7 @@ export default function StoresPage() {
                   <td className="ledger-td font-medium">{store.name}</td>
                   <td className="ledger-td font-mono text-ink-muted">{store.phone || '—'}</td>
                   <td className="ledger-td text-right font-mono font-semibold">{formatCurrency(store.total_purchased || 0)}</td>
+                  <td className={`ledger-td text-right font-mono ${(store.debt_remaining || 0) > 0 ? 'text-danger font-semibold' : 'text-ink-muted'}`}>{formatCurrency(store.debt_remaining || 0)}</td>
                 </tr>
               ))}
             </tbody>
@@ -194,9 +221,27 @@ export default function StoresPage() {
         </div>
       </div>
 
+      <div className="flex gap-3 mt-2">
+        <button onClick={() => { setMergeOpen(v => !v); setActionError('') }} className="text-xs font-semibold text-accent hover:underline">Başqa tədarükçü ilə birləşdir</button>
+      </div>
+      {mergeOpen && (
+        <div className="mt-2 mb-2 bg-surface border border-rule rounded p-3 flex flex-col gap-2">
+          <p className="text-sm text-ink-soft">Eyni mağaza iki dəfə yazılıbsa (məs. "Avto ehtiyat" və "Avtoehtiyat"), bunun bütün alışları, borcları və tarixçəsi seçdiyinizə köçürüləcək, bu qeyd silinəcək.</p>
+          <select value={mergeInto} onChange={e => setMergeInto(e.target.value)} className="input text-sm">
+            <option value="">Hansı tədarükçüyə?</option>
+            {stores.filter(st => st.id !== selectedStore.id).map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
+          </select>
+          <div className="flex gap-2">
+            <Button className="min-h-0 py-2 text-sm" loading={merging} disabled={!mergeInto} onClick={handleMerge}>Birləşdir</Button>
+            <Button variant="secondary" className="min-h-0 py-2 text-sm" onClick={() => setMergeOpen(false)}>Ləğv et</Button>
+          </div>
+        </div>
+      )}
+      {actionError && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2 mt-2">{actionError}</p>}
+
       {confirmDelete && (
         <div className="mt-3 mb-2 flex items-center gap-2 bg-danger-bg border border-danger/30 rounded px-3 py-2">
-          <p className="text-sm text-danger flex-1">Bu mağaza silinsin?</p>
+          <p className="text-sm text-danger flex-1">Bu tədarükçü silinsin?</p>
           <button onClick={handleDelete} disabled={deleting} className="text-xs font-semibold bg-danger text-cream px-2.5 py-1.5 rounded hover:opacity-90 disabled:opacity-50">
             {deleting ? '...' : 'Bəli, sil'}
           </button>
@@ -208,18 +253,22 @@ export default function StoresPage() {
         <div className="mt-4"><Spinner /></div>
       ) : purchases ? (
         <>
-          <div className="grid grid-cols-3 gap-2 my-4">
+          <div className="grid grid-cols-2 gap-2 my-4">
+            <div className="bg-surface border border-rule rounded px-3 py-2.5">
+              <p className="section-label mb-1">Borc qalığı</p>
+              <p className={`font-mono font-semibold text-sm ${purchases.debt_remaining > 0 ? 'text-danger' : 'text-success'}`}>{formatCurrency(purchases.debt_remaining)}</p>
+            </div>
             <div className="bg-surface border border-rule rounded px-3 py-2.5">
               <p className="section-label mb-1">Cəmi alış</p>
               <p className="font-mono font-semibold text-sm text-ink">{formatCurrency(purchases.total_purchased)}</p>
             </div>
             <div className="bg-surface border border-rule rounded px-3 py-2.5">
-              <p className="section-label mb-1">Kreditlə</p>
-              <p className="font-mono font-semibold text-sm text-danger">{formatCurrency(purchases.credit_total)}</p>
+              <p className="section-label mb-1">Nisyə alınıb</p>
+              <p className="font-mono font-semibold text-sm text-ink">{formatCurrency(purchases.credit_total)}</p>
             </div>
             <div className="bg-surface border border-rule rounded px-3 py-2.5">
-              <p className="section-label mb-1">Nağd</p>
-              <p className="font-mono font-semibold text-sm text-success">{formatCurrency(purchases.cash_total)}</p>
+              <p className="section-label mb-1">Nağd alınıb</p>
+              <p className="font-mono font-semibold text-sm text-ink">{formatCurrency(purchases.cash_total)}</p>
             </div>
           </div>
 
@@ -241,10 +290,12 @@ export default function StoresPage() {
                 <tbody>
                   {purchases.purchases.map(p => (
                     <tr key={p.id}>
-                      <td className="ledger-td font-medium text-ink">{p.product_name}</td>
-                      <td className="ledger-td text-center font-mono">{p.quantity}</td>
+                      <td className="ledger-td font-medium text-ink">
+                        <Link to={`/business/warehouse/purchases/${p.purchase}`} className="hover:text-accent">{p.product_name}</Link>
+                      </td>
+                      <td className="ledger-td text-center font-mono">{p.quantity}{p.returned_quantity > 0 ? ` (−${p.returned_quantity})` : ''}</td>
                       <td className="ledger-td text-right font-mono font-semibold">{formatCurrency(p.line_total)}</td>
-                      <td className="ledger-td"><Badge variant={p.on_credit ? 'warning' : 'success'}>{p.on_credit ? 'Kreditlə' : 'Nağd'}</Badge></td>
+                      <td className="ledger-td"><Badge variant={p.on_credit ? 'warning' : 'success'}>{p.on_credit ? 'Nisyə' : 'Nağd'}</Badge></td>
                       <td className="ledger-td font-mono text-xs text-ink-muted">{formatDate(p.date)}</td>
                     </tr>
                   ))}
@@ -261,10 +312,10 @@ export default function StoresPage() {
     <div className="p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title">Mağazalar</h1>
-          <p className="text-sm text-ink-muted mt-0.5">İşlədiyiniz təchizatçı mağazalar</p>
+          <h1 className="page-title">Tədarükçülər</h1>
+          <p className="text-sm text-ink-muted mt-0.5">Mal aldığınız mağazalar: nə alınıb, nə qədər borc var</p>
         </div>
-        <Button onClick={openCreate}>+ Yeni mağaza</Button>
+        <Button onClick={openCreate}>+ Yeni tədarükçü</Button>
       </div>
 
       <MasterDetailShell

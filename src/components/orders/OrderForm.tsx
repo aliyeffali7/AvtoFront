@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { Order, Mechanic, OrderService, Product, Customer, Store } from '@/types'
-import { createOrder, updateOrder, uploadOrderImage, addProductToOrder } from '@/services/orders.service'
+import { createOrder, updateOrder, uploadOrderImage, purchaseProductForOrder } from '@/services/orders.service'
 import { getStores } from '@/services/stores.service'
-import { resolveStoreId } from '@/lib/resolveStore'
 import { getMechanics } from '@/services/mechanics.service'
-import { getProducts, createProduct, getSupplierDebts } from '@/services/warehouse.service'
+import { getProducts } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
 import { formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
 import { loadDraft, saveDraft, clearDraft, ORDER_DRAFT_KEY } from '@/lib/formDraft'
@@ -14,7 +13,9 @@ import CarBrandModelInputs from '@/components/ui/CarBrandModelInputs'
 
 type SvcRow = { name: string; price: string; mechanicId: string; mechanicAmount: string }
 type ProdRow = { productId: string; qty: string }
-type NewProdRow = { name: string; purchasePrice: string; sellPrice: string; qty: string; supplierName: string }
+type NewProdRow = { name: string; purchasePrice: string; sellPrice: string; qty: string; supplierName: string; onCredit?: boolean }
+// A part the customer brought in: no price, no stock — listed on the act only.
+type CustProdRow = { name: string; qty: string }
 
 // Serializable snapshot of everything the user types into a *new* order form —
 // image files are deliberately excluded (a File can't be persisted).
@@ -22,8 +23,10 @@ type OrderDraft = {
   plate: string; brand: string; model: string; carYear: string; vinCode: string
   mileage: string; mileageUnit: 'km' | 'mil'; fuelType: string; description: string
   mechanic: string; services: SvcRow[]; orderProducts: ProdRow[]; newProducts: NewProdRow[]
+  customerProducts?: CustProdRow[]
   customerName: string; customerPhone: string; selectedCustomerId: number | null
   customerSearch: string; notes: string; hasGuarantee: boolean
+  diagnosis?: string; recommendations?: string
 }
 
 /**
@@ -67,10 +70,21 @@ export default function OrderForm({ order, onDone, onCancel }: {
   )
   const [orderProducts, setOrderProducts] = useState<ProdRow[]>(
     order
-      ? (order.products ?? []).map(p => ({ productId: String(p.product), qty: String(p.quantity) }))
+      ? (order.products ?? [])
+          .filter(p => p.source !== 'customer' && p.product != null)
+          .map(p => ({ productId: String(p.product), qty: String(p.quantity) }))
       : draft?.orderProducts ?? []
   )
   const [newProducts, setNewProducts] = useState<NewProdRow[]>(order ? [] : draft?.newProducts ?? [])
+  const [customerProducts, setCustomerProducts] = useState<CustProdRow[]>(
+    order
+      ? (order.products ?? [])
+          .filter(p => p.source === 'customer')
+          .map(p => ({ name: p.product_name, qty: String(p.quantity) }))
+      : draft?.customerProducts ?? []
+  )
+  const [diagnosis, setDiagnosis] = useState(order?.diagnosis ?? draft?.diagnosis ?? '')
+  const [recommendations, setRecommendations] = useState(order?.recommendations ?? draft?.recommendations ?? '')
   const [customerName, setCustomerName] = useState(order?.customer_name ?? draft?.customerName ?? '')
   const [customerPhone, setCustomerPhone] = useState(order?.customer_phone ?? draft?.customerPhone ?? '')
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(order?.customer ?? draft?.selectedCustomerId ?? null)
@@ -81,7 +95,6 @@ export default function OrderForm({ order, onDone, onCancel }: {
   const [notes, setNotes] = useState(order?.notes ?? draft?.notes ?? '')
   const [hasGuarantee, setHasGuarantee] = useState(order?.has_guarantee ?? draft?.hasGuarantee ?? false)
   const [stores, setStores] = useState<Store[]>([])
-  const [supplierDebtNames, setSupplierDebtNames] = useState<string[]>([])
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -99,7 +112,6 @@ export default function OrderForm({ order, onDone, onCancel }: {
     getStores().then(r => setStores(r.data)).catch(() => {})
     // Include paid-off debts too (true) — Kreditorlar's own combobox does the
     // same, since a supplier stays "known" even after being fully paid.
-    getSupplierDebts(true).then(r => setSupplierDebtNames([...new Set(r.data.map(d => d.supplier_name))])).catch(() => {})
   }, [])
 
   // Persist the in-progress *new* order as a local draft on every change, so
@@ -111,18 +123,21 @@ export default function OrderForm({ order, onDone, onCancel }: {
     const blank =
       !plate && !brand && !model && !carYear && !vinCode && !mileage && !fuelType &&
       !description && !mechanic && !customerName && !customerPhone && !selectedCustomerId &&
-      !customerSearch && !notes && !hasGuarantee &&
-      services.length === 0 && orderProducts.length === 0 && newProducts.length === 0
+      !customerSearch && !notes && !hasGuarantee && !diagnosis && !recommendations &&
+      services.length === 0 && orderProducts.length === 0 && newProducts.length === 0 &&
+      customerProducts.length === 0
     if (blank) { clearDraft(ORDER_DRAFT_KEY); return }
     saveDraft<OrderDraft>(ORDER_DRAFT_KEY, {
       plate, brand, model, carYear, vinCode, mileage, mileageUnit, fuelType, description,
-      mechanic, services, orderProducts, newProducts,
+      mechanic, services, orderProducts, newProducts, customerProducts,
       customerName, customerPhone, selectedCustomerId, customerSearch, notes, hasGuarantee,
+      diagnosis, recommendations,
     })
   }, [
     isEdit, plate, brand, model, carYear, vinCode, mileage, mileageUnit, fuelType, description,
-    mechanic, services, orderProducts, newProducts,
+    mechanic, services, orderProducts, newProducts, customerProducts,
     customerName, customerPhone, selectedCustomerId, customerSearch, notes, hasGuarantee,
+    diagnosis, recommendations,
   ])
 
   useEffect(() => {
@@ -206,10 +221,16 @@ export default function OrderForm({ order, onDone, onCancel }: {
     setOrderProducts(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
   }
 
-  function addNewProductRow() { setNewProducts(prev => [...prev, { name: '', purchasePrice: '', sellPrice: '', qty: '1', supplierName: '' }]) }
+  function addNewProductRow() { setNewProducts(prev => [...prev, { name: '', purchasePrice: '', sellPrice: '', qty: '1', supplierName: '', onCredit: false }]) }
   function removeNewProductRow(i: number) { setNewProducts(prev => prev.filter((_, idx) => idx !== i)) }
-  function updateNewProductRow(i: number, field: keyof NewProdRow, value: string) {
+  function updateNewProductRow<K extends keyof NewProdRow>(i: number, field: K, value: NewProdRow[K]) {
     setNewProducts(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
+  }
+
+  function addCustomerProductRow() { setCustomerProducts(prev => [...prev, { name: '', qty: '1' }]) }
+  function removeCustomerProductRow(i: number) { setCustomerProducts(prev => prev.filter((_, idx) => idx !== i)) }
+  function updateCustomerProductRow(i: number, field: keyof CustProdRow, value: string) {
+    setCustomerProducts(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -227,19 +248,17 @@ export default function OrderForm({ order, onDone, onCancel }: {
     const filledProducts = orderProducts
       .filter(p => p.productId)
       .map(p => ({ product: parseInt(p.productId), quantity: parseInt(p.qty) || 1 }))
+    const filledCustomerProducts = customerProducts
+      .filter(p => p.name.trim())
+      .map(p => ({ name: p.name.trim(), quantity: parseInt(p.qty) || 1 }))
+    const toBuy = newProducts.filter(p => p.name.trim())
+    const noStore = toBuy.find(p => !p.supplierName.trim())
+    if (noStore) {
+      setError(`"${noStore.name.trim()}" hansı mağazadan alınıb? Mağazanı yazın.`)
+      setLoading(false)
+      return
+    }
     try {
-      const newNonWarehouseProducts: Array<{ productId: number; qty: number; supplierName: string }> = []
-      for (const np of newProducts.filter(p => p.name.trim())) {
-        const qty = parseInt(np.qty) || 1
-        const res = await createProduct({
-          name: np.name.trim(),
-          purchase_price: parseFloat(np.purchasePrice) || 0,
-          sell_price: parseFloat(np.sellPrice) || 0,
-          stock_quantity: qty,
-          is_warehouse: false,
-        })
-        newNonWarehouseProducts.push({ productId: res.data.id, qty, supplierName: np.supplierName.trim() })
-      }
 
       const payload = {
         plate_number: plate,
@@ -257,17 +276,28 @@ export default function OrderForm({ order, onDone, onCancel }: {
         customer_phone: customerPhone || undefined,
         notes: notes || undefined,
         has_guarantee: hasGuarantee,
+        diagnosis: diagnosis.trim(),
+        recommendations: recommendations.trim(),
         services: filledServices,
         products: filledProducts,
+        customer_products: filledCustomerProducts,
       }
 
       const orderId = isEdit
         ? (await updateOrder(order!.id, payload)).data.id
         : (await createOrder(payload)).data.id
 
-      for (const { productId, qty, supplierName } of newNonWarehouseProducts) {
-        const storeId = supplierName ? await resolveStoreId(stores, supplierName) : undefined
-        await addProductToOrder(orderId, productId, qty, storeId)
+      // "Anbarda yoxdur": each part is bought from its store now and put on
+      // the order (an existing product with the same name is reused).
+      for (const np of toBuy) {
+        await purchaseProductForOrder(orderId, {
+          name: np.name.trim(),
+          quantity: parseInt(np.qty) || 1,
+          purchase_price: parseFloat(np.purchasePrice) || 0,
+          sell_price: parseFloat(np.sellPrice) || 0,
+          store_name: np.supplierName.trim(),
+          on_credit: !!np.onCredit,
+        })
       }
       for (const file of imageFiles) {
         try { await uploadOrderImage(orderId, file) } catch { /* ignore per-image errors */ }
@@ -286,7 +316,8 @@ export default function OrderForm({ order, onDone, onCancel }: {
     setDraftRestored(false)
     setPlate(''); setBrand(''); setModel(''); setCarYear(''); setVinCode('')
     setMileage(''); setMileageUnit('km'); setFuelType(''); setDescription(''); setMechanic('')
-    setServices([]); setOrderProducts([]); setNewProducts([])
+    setServices([]); setOrderProducts([]); setNewProducts([]); setCustomerProducts([])
+    setDiagnosis(''); setRecommendations('')
     setCustomerName(''); setCustomerPhone(''); setSelectedCustomerId(null); setCustomerSearch('')
     setNotes(''); setHasGuarantee(false); setError('')
   }
@@ -373,7 +404,8 @@ export default function OrderForm({ order, onDone, onCancel }: {
             <option value="lpg">LPG</option>
             <option value="electric">Tam elektrik</option>
           </select>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Tapşırıq — görüləcək iş" className="input resize-none" />
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Müştərinin müraciəti — nədən şikayətlənir" className="input resize-none" />
+          <textarea value={diagnosis} onChange={e => setDiagnosis(e.target.value)} rows={2} placeholder="Diaqnostika nəticəsi — nə aşkarlandı (könüllü)" className="input resize-none" />
         </div>
       </div>
 
@@ -426,6 +458,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
           <div className="flex gap-3">
             <button type="button" onClick={addProductRow} className="text-xs font-semibold text-accent hover:text-accent-hover">+ Anbarda var</button>
             <button type="button" onClick={addNewProductRow} className="text-xs font-semibold text-warning hover:text-ink">+ Anbarda yoxdur</button>
+            <button type="button" onClick={addCustomerProductRow} className="text-xs font-semibold text-ink-muted hover:text-ink">+ Müştəri gətirib</button>
           </div>
         </div>
 
@@ -444,13 +477,33 @@ export default function OrderForm({ order, onDone, onCancel }: {
                   <input value={p.sellPrice} onChange={e => updateNewProductRow(i, 'sellPrice', e.target.value)} type="number" min="0" step="0.01" placeholder="Satış ₼" className="input-mono text-sm flex-1" />
                   <input value={p.qty} onChange={e => updateNewProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="Ədəd" className="input-mono text-sm w-16 shrink-0" />
                 </div>
-                <ComboboxInput value={p.supplierName} onChange={v => updateNewProductRow(i, 'supplierName', v)} options={supplierDebtNames} placeholder="Kreditor adı (borc varsa)" className="text-sm" />
+                <ComboboxInput value={p.supplierName} onChange={v => updateNewProductRow(i, 'supplierName', v)} options={stores.map(st => st.name)} placeholder="Mağaza (məcburi)" className="text-sm" />
+                <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+                  <input type="checkbox" checked={!!p.onCredit} onChange={e => updateNewProductRow(i, 'onCredit', e.target.checked)} className="w-4 h-4" />
+                  Nisyə alınıb
+                  <span className="text-xs text-ink-muted">{p.onCredit ? '— kreditor borcu yaranacaq' : '— kassadan çıxacaq'}</span>
+                </label>
               </div>
             ))}
           </div>
         )}
 
-        {orderProducts.length === 0 && newProducts.length === 0 ? (
+        {customerProducts.length > 0 && (
+          <div className="flex flex-col gap-2 mb-2.5">
+            <p className="text-xs text-ink-muted">Müştərinin özü gətirdiyi hissələr: qiyməti yoxdur, anbardan çıxmır, aktda "Müştəri" kimi göstərilir.</p>
+            {customerProducts.map((p, i) => (
+              <div key={i} className="flex gap-1.5">
+                <input value={p.name} onChange={e => updateCustomerProductRow(i, 'name', e.target.value)} placeholder="Hissənin adı" className="input text-sm flex-1" />
+                <input value={p.qty} onChange={e => updateCustomerProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" className="input-mono text-sm w-16 shrink-0" />
+                <button type="button" onClick={() => removeCustomerProductRow(i)} className="p-1 text-ink-muted hover:text-danger shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {orderProducts.length === 0 && newProducts.length === 0 && customerProducts.length === 0 ? (
           <p className="text-xs text-ink-muted italic">Məhsul seçilməyib</p>
         ) : (
           <div className="flex flex-col gap-2">
@@ -507,6 +560,11 @@ export default function OrderForm({ order, onDone, onCancel }: {
       <div>
         <p className="section-label mb-2">Əlavə qeydlər</p>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Məs. maşına çirkli paltarla oturulmasın..." className="input resize-none" />
+      </div>
+
+      <div>
+        <p className="section-label mb-2">Tövsiyə olunan işlər</p>
+        <textarea value={recommendations} onChange={e => setRecommendations(e.target.value)} rows={2} placeholder={'Hər sətir ayrıca bənd. Məs:\nNövbəti 5 000 km-də yağ səviyyəsini yoxlamaq'} className="input resize-none" />
       </div>
 
       <label className="flex items-center gap-2.5 cursor-pointer select-none">

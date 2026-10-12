@@ -4,6 +4,7 @@ import { fetchCurrentUserResilient } from '@/services/auth.service'
 import { User } from '@/types'
 
 import LandingPage from '@/pages/LandingPage'
+import PublicOrderPage from '@/pages/PublicOrderPage'
 import BusinessLayout from '@/layouts/BusinessLayout'
 import MechanicLayout from '@/layouts/MechanicLayout'
 import DashboardPage from '@/pages/business/DashboardPage'
@@ -11,6 +12,10 @@ import OrdersPage from '@/pages/business/OrdersPage'
 import OrderDetailPage from '@/pages/business/OrderDetailPage'
 import MechanicsPage from '@/pages/business/MechanicsPage'
 import WarehousePage from '@/pages/business/WarehousePage'
+import ProductsTab from '@/components/warehouse/ProductsTab'
+import PurchasesTab from '@/components/warehouse/PurchasesTab'
+import MovementsTab from '@/components/warehouse/MovementsTab'
+import StockReportTab from '@/components/warehouse/StockReportTab'
 import FinancePage from '@/pages/business/FinancePage'
 import FinanceClient from '@/components/finance/FinanceClient'
 import CreditorsPage from '@/pages/business/CreditorsPage'
@@ -21,6 +26,7 @@ import CustomersPage from '@/pages/business/CustomersPage'
 import CustomerDetailPage from '@/pages/business/CustomerDetailPage'
 import SettingsPage from '@/pages/business/SettingsPage'
 import StoresPage from '@/pages/business/StoresPage'
+import ShopsPage from '@/pages/business/ShopsPage'
 import MechanicOrdersPage from '@/pages/mechanic/MechanicOrdersPage'
 import MechanicOrderDetailPage from '@/pages/mechanic/MechanicOrderDetailPage'
 import MechanicEarningsPage from '@/pages/mechanic/MechanicEarningsPage'
@@ -100,6 +106,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomeRedirect />} />
+        {/* Customer's order link — public, outside the login gate. */}
+        <Route path="/s/:token" element={<PublicOrderPage />} />
         <Route element={<AuthGate><Outlet /></AuthGate>}>
           <Route element={<RoleGuard role="BUSINESS_OWNER" />}>
             <Route element={<BusinessLayout />}>
@@ -107,7 +115,15 @@ export default function App() {
               <Route path="/business/orders" element={<OrdersPage />} />
               <Route path="/business/orders/:id" element={<OrderDetailPage />} />
               <Route path="/business/mechanics" element={<MechanicsPage />} />
-              <Route path="/business/warehouse" element={<WarehousePage />} />
+              <Route path="/business/warehouse" element={<WarehousePage />}>
+                <Route index element={<Navigate to="products" replace />} />
+                <Route path="products" element={<ProductsTab />} />
+                <Route path="products/:productId" element={<ProductsTab />} />
+                <Route path="purchases" element={<PurchasesTab />} />
+                <Route path="purchases/:purchaseId" element={<PurchasesTab />} />
+                <Route path="movements" element={<MovementsTab />} />
+                <Route path="report" element={<StockReportTab />} />
+              </Route>
               <Route path="/business/finance" element={<FinancePage />}>
                 <Route index element={<Navigate to="kassa" replace />} />
                 <Route path="kassa" element={<FinanceClient />} />
@@ -119,6 +135,7 @@ export default function App() {
               <Route path="/business/customers" element={<CustomersPage />} />
               <Route path="/business/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/business/stores" element={<StoresPage />} />
+              <Route path="/business/shops" element={<ShopsPage />} />
               <Route path="/business/settings" element={<SettingsPage />} />
             </Route>
           </Route>

@@ -4,7 +4,9 @@ import { Customer, CustomerDetail, Business } from '@/types'
 import { getCustomers, getCustomer, updateCustomer, deleteCustomer } from '@/services/customers.service'
 import { getBusinessProfile } from '@/services/auth.service'
 import { formatCurrency, formatDate, autoFormatSearch } from '@/lib/utils'
-import { printOrderPDF, printCustomerPDF } from '@/lib/printOrderPDF'
+import { printCustomerPDF } from '@/lib/printOrderPDF'
+import { printOrderPDF } from '@/lib/serviceActPdf'
+import { hasWhatsAppNumber, whatsappLink } from '@/lib/whatsapp'
 import StatusBadge from '@/components/orders/StatusBadge'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import Pagination from '@/components/ui/Pagination'
@@ -28,7 +30,6 @@ export default function CustomersClient() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [panelMode, setPanelMode] = useState<'empty' | 'view' | 'create' | 'edit'>('empty')
@@ -52,7 +53,6 @@ export default function CustomersClient() {
       const res = await getCustomers({ page: p, search: debouncedSearch || undefined })
       setCustomers(res.data.results)
       setTotalPages(res.data.total_pages)
-      setTotalCount(res.data.count)
     } finally {
       setLoading(false)
     }
@@ -202,6 +202,9 @@ export default function CustomersClient() {
                   <div className="min-w-0">
                     <h2 className="font-serif font-semibold text-xl text-ink">{customer.full_name}</h2>
                     {customer.phone && <p className="text-sm font-mono text-ink-muted mt-0.5">{customer.phone}</p>}
+                    {hasWhatsAppNumber(customer.phone) && (
+                      <a href={whatsappLink(customer.phone)} target="_blank" rel="noreferrer" className="btn-secondary text-xs mt-2 inline-flex">WhatsApp</a>
+                    )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button onClick={() => setPanelMode('edit')} className="p-2 rounded border border-rule text-ink-muted hover:bg-surface-alt">

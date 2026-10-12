@@ -8,6 +8,11 @@ export interface Business {
   logo?: string | null
   signature?: string | null
   guarantee_text?: string
+  // One exclusion per line; printed beside the guarantee on the order PDF.
+  guarantee_exclusions?: string
+  slogan?: string
+  // Bare handle, no "@" — the backend strips URLs and "@".
+  instagram?: string
   owner_email?: string | null
   login_code?: string | null
   is_subscription_active?: boolean
@@ -30,7 +35,114 @@ export interface BusinessAdmin {
   is_subscription_active: boolean
   trial_ends_at: string | null
   subscription_ends_at: string | null
+  is_suspended: boolean
+  access_state: AccessState
+  access_ends_at: string | null
+  crm_lead_id: number | null
   created_at: string
+}
+
+export type AccessState = 'active' | 'suspended' | 'expired'
+
+export interface SubscriptionStatus {
+  is_active: boolean
+  state: AccessState
+  read_only: boolean
+  ends_at: string | null
+  days_left: number | null
+}
+
+export type LeadStage = 'prospect' | 'interested' | 'demo' | 'trial' | 'customer' | 'lost'
+export type LeadSource = '' | 'visit' | 'referral' | 'instagram' | 'customer' | 'other'
+export type LeadObjection = 'expensive' | 'excel_enough' | 'no_time' | 'other_software' | 'mechanics_against' | 'not_needed'
+export type LeadNoteKind = 'visit' | 'call' | 'whatsapp' | 'note'
+
+export interface LeadNote {
+  id: number
+  kind: LeadNoteKind
+  text: string
+  created_at: string
+}
+
+export interface Lead {
+  id: number
+  name: string
+  contact_person: string
+  phone: string
+  district: string
+  address: string
+  stage: LeadStage
+  next_action_date: string | null
+  next_action: string
+  offered_price: number | null
+  source: LeadSource
+  objections: LeadObjection[]
+  referrer: number | null
+  referrer_name: string | null
+  commission_percent: number
+  business: number | null
+  business_name: string | null
+  /** paid subscription end of the linked business */
+  paid_until: string | null
+  last_note: LeadNote | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BusinessHealth {
+  business_id: number
+  business_name: string
+  access_state: AccessState
+  ends_at: string | null
+  days_left: number | null
+  last_activity: string | null
+  orders_14d: number
+  risk: string[]
+}
+
+export interface ReferralCommission {
+  id: number
+  lead: number | null
+  lead_name: string | null
+  payment_amount: number
+  payment_date: string
+  /** how many days that payment covered (30, 90, 365…) */
+  payment_days: number
+  percent: number
+  amount: number
+  created_at: string
+}
+
+export interface LeadDetail extends Lead {
+  notes: LeadNote[]
+  health: BusinessHealth | null
+  commissions: ReferralCommission[]
+}
+
+export interface CrmAgenda {
+  today: Lead[]
+  overdue: Lead[]
+  at_risk: { lead: Lead; health: BusinessHealth }[]
+  objections: [LeadObjection, number][]
+  stages: Partial<Record<LeadStage, number>>
+}
+
+export interface Referrer {
+  id: number
+  name: string
+  phone: string
+  note: string
+  created_at: string
+  earned: number
+  paid: number
+  owed: number
+  lead_count?: number
+}
+
+export interface ReferrerDetail extends Referrer {
+  leads: Lead[]
+  commissions: ReferralCommission[]
+  payouts: { id: number; amount: number; date: string; note: string; created_at: string }[]
 }
 
 export interface BusinessExpiringSoon extends BusinessAdmin {
@@ -103,9 +215,15 @@ export interface Order {
   customer_phone?: string
   notes?: string
   has_guarantee?: boolean
+  diagnosis?: string
+  recommendations?: string
+  // Day the order was booked as done ("Təhvil tarixi"); null while open.
+  completed_on?: string | null
   mileage_unit?: 'km' | 'mil'
   fuel_type?: string
   total?: number
+  // Gross − discount − paid, computed by the backend (never negative).
+  amount_due?: number
   created_at: string
 }
 
@@ -117,8 +235,11 @@ export interface OrderImage {
 
 export interface OrderProduct {
   id: number
-  product: number
+  // null for a part the customer brought (source 'customer') or a deleted product.
+  product: number | null
   product_name: string
+  // 'customer' = brought by the customer: no price, no stock movement.
+  source: 'service' | 'customer'
   quantity: number
   sell_price: number
   // null for a MECHANIC-role response — cost data isn't theirs to see.
@@ -136,9 +257,18 @@ export interface Product {
   discount_percent: number
   stock_quantity: number
   is_warehouse?: boolean
+  is_archived?: boolean
+  low_stock_threshold?: number
 }
 
-export type FinanceCategory = 'parts' | 'salary' | 'rent' | 'utilities' | 'other'
+export type FinanceCategory =
+  | 'parts' | 'salary' | 'rent' | 'utilities' | 'other'
+  | 'cogs' | 'write_off' | 'service' | 'parts_sale' | 'discount' | 'goods_purchase'
+  | 'owner_draw' | 'owner_deposit'
+
+export type FinanceSource =
+  | 'manual' | 'order_completion' | 'order_payment' | 'discount' | 'purchase'
+  | 'supplier_payment' | 'supplier_return' | 'write_off' | 'debtor_payment'
 
 export interface FinanceRecord {
   id: number
@@ -148,6 +278,8 @@ export interface FinanceRecord {
   description: string
   date: string
   order?: number | null
+  purchase?: number | null
+  source?: FinanceSource
 }
 
 export interface FinanceReport {
@@ -156,8 +288,20 @@ export interface FinanceReport {
   total_income: number
   total_expense: number
   net: number
+  income_by_category: { category: FinanceCategory; amount: number }[]
   expense_by_category: { category: FinanceCategory; amount: number }[]
   daily: { date: string; income: number; expense: number }[]
+  movements: {
+    purchases_cash: number
+    purchases_credit: number
+    supplier_payments: number
+    customer_payments: number
+    cash_in: number
+    cash_out: number
+    owner_draws: number
+    owner_deposits: number
+  }
+  balances: { stock_value: number; creditors: number; debtors: number }
 }
 
 export interface DebtorOrder {
@@ -214,6 +358,8 @@ export interface DashboardStats {
   debtors_remaining: number
 }
 
+export type MechanicPayType = 'percent' | 'salary' | 'mixed'
+
 export interface Mechanic {
   id: number
   full_name?: string
@@ -222,6 +368,30 @@ export interface Mechanic {
   work_percent: number
   total_earnings: number
   image?: string | null
+  pay_type?: MechanicPayType
+  salary?: number
+  hired_at?: string | null
+  left_at?: string | null
+  pay_immediately?: boolean
+  balance?: number
+}
+
+export interface MechanicAccount {
+  earned: number
+  paid: number
+  balance: number
+  this_month_salary: number
+  months: { month: string; earned: number; paid: number }[]
+  entries: {
+    id: number
+    date: string
+    amount: number
+    description: string
+    source: string
+    order: number | null
+    earned: boolean
+    paid: boolean
+  }[]
 }
 
 export interface PaginatedResponse<T> {
@@ -266,18 +436,20 @@ export interface Store {
   phone?: string
   contact_person?: string
   total_purchased?: number
+  debt_remaining?: number
   created_at: string
 }
 
 export interface StorePurchase {
   id: number
+  purchase: number
   product: number | null
   product_name: string
   quantity: number
+  returned_quantity: number
   purchase_price: number
   line_total: number
   on_credit: boolean
-  debt: number | null
   date: string
 }
 
@@ -286,7 +458,168 @@ export interface StorePurchases {
   total_purchased: number
   credit_total: number
   cash_total: number
+  debt_remaining: number
   purchases: StorePurchase[]
+}
+
+export interface PurchaseLine {
+  id: number
+  product: number
+  product_name: string
+  product_code: string
+  unit: string
+  quantity: number
+  unit_cost: number
+  sell_price: number
+  line_total: number
+  returned_quantity: number
+  remaining_quantity: number
+}
+
+export interface Purchase {
+  id: number
+  store: number
+  store_name: string
+  date: string
+  on_credit: boolean
+  invoice_no: string
+  note: string
+  source: 'manual' | 'excel' | 'order' | 'migration'
+  order: number | null
+  order_number: number | null
+  total: number
+  is_cancelled: boolean
+  debt_id: number | null
+  debt_remaining: number | null
+  lines?: PurchaseLine[]
+  line_count?: number
+  created_at: string
+}
+
+export interface Paginated<T> {
+  count: number
+  page: number
+  total_pages: number
+  results: T[]
+}
+
+export type StockMovementKind =
+  | 'purchase' | 'purchase_cancel' | 'order_out' | 'order_return' | 'supplier_return'
+  | 'write_off' | 'count_adjust' | 'opening' | 'merge'
+
+export interface StockMovement {
+  id: number
+  date: string
+  kind: StockMovementKind
+  kind_label: string
+  product: number
+  product_name: string
+  quantity: number
+  unit_cost: number
+  unit_price: number | null
+  store: number | null
+  store_name: string | null
+  purchase: number | null
+  order: number | null
+  order_number: number | null
+  plate_number: string | null
+  customer_name: string | null
+  note: string
+  created_at: string
+}
+
+export interface ProductBatchInfo {
+  id: number
+  purchase_price: number
+  quantity: number
+  remaining_quantity: number
+  date: string
+  store: number | null
+  store_name: string | null
+}
+
+export interface ProductCard {
+  product: Product
+  batches: ProductBatchInfo[]
+  purchases: {
+    purchase_id: number
+    line_id: number
+    date: string
+    store: number
+    store_name: string
+    on_credit: boolean
+    quantity: number
+    returned_quantity: number
+    unit_cost: number
+    sell_price: number
+  }[]
+  sales: {
+    order_id: number
+    order_number: number
+    date: string
+    status: 'pending' | 'in_progress' | 'done'
+    plate: string
+    customer_name: string
+    quantity: number
+    sell_price: number
+    unit_cost: number
+    profit: number
+  }[]
+  movements: StockMovement[]
+  totals: {
+    bought_quantity: number
+    sold_quantity: number
+    revenue: number
+    cost: number
+    profit: number
+    stock_value: number
+  }
+}
+
+export interface StockReportRow {
+  product: number
+  name: string
+  code: string
+  unit: string
+  opening_qty: number
+  opening_value: number
+  in_qty: number
+  in_value: number
+  out_qty: number
+  out_value: number
+  closing_qty: number
+  closing_value: number
+}
+
+export interface StockReport {
+  from: string
+  to: string
+  rows: StockReportRow[]
+  totals: Omit<StockReportRow, 'product' | 'name' | 'code' | 'unit'>
+  stock_value: number
+  top_sold: { product: number; name: string; quantity: number; revenue: number; cost: number; profit: number }[]
+  top_profit: { product: number; name: string; quantity: number; revenue: number; cost: number; profit: number }[]
+  dead_stock: { product: number; name: string; stock_quantity: number }[]
+}
+
+export interface ExcelPreviewRow {
+  row: number
+  name: string
+  code: string
+  unit: string
+  quantity: number
+  unit_cost: number
+  sell_price: number
+  discount_percent: number
+  match: {
+    id: number
+    name: string
+    code: string
+    unit: string
+    stock_quantity: number
+    sell_price: number
+    is_archived: boolean
+  } | null
 }
 
 export interface MechanicEarnings {
@@ -312,6 +645,7 @@ export interface SupplierDebtItem {
   id: number
   product: number | null
   product_name: string
+  unit: string
   quantity: number
   purchase_price: number
   line_total: number
@@ -325,6 +659,8 @@ export interface SupplierDebtItem {
 export interface SupplierDebt {
   id: number
   supplier_name: string
+  store: number | null
+  purchase: number | null
   phone: string
   description: string
   total_amount: number
@@ -368,4 +704,40 @@ export interface LoginCredentials {
   email: string
   password: string
   business_code?: string
+}
+
+// Read-only order behind the customer link — no ids, costs or internal notes.
+export interface PublicOrder {
+  business: {
+    name: string
+    phone: string
+    address: string
+    instagram: string
+    slogan: string
+    logo: string | null
+  }
+  number: number
+  created_at: string
+  completed_on: string | null
+  status: 'pending' | 'in_progress' | 'done'
+  customer_name: string
+  car_brand: string
+  car_model: string
+  car_year: string
+  plate_number: string
+  mileage: number | null
+  mileage_unit: 'km' | 'mil'
+  description: string
+  diagnosis: string
+  recommendations: string
+  services: { name: string; price: number }[]
+  products: { name: string; quantity: number; customer_supplied: boolean; sell_price: number }[]
+  total: number
+  discount_amount: number
+  paid_amount: number
+  amount_due: number
+  payment_status: 'unpaid' | 'partial' | 'paid'
+  has_guarantee: boolean
+  guarantee_text: string
+  guarantee_exclusions: string
 }

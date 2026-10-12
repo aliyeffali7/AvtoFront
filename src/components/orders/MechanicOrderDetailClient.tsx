@@ -201,7 +201,7 @@ export default function MechanicOrderDetailClient({ id }: { id: string }) {
                 >
                   <option value="">Seçin...</option>
                   {warehouseProducts.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.stock_quantity} ədəd)</option>
+                    <option key={p.id} value={p.id} disabled={p.stock_quantity === 0}>{p.name} ({p.stock_quantity > 0 ? `${p.stock_quantity} ${p.unit}` : 'stokda yoxdur'})</option>
                   ))}
                 </select>
               </div>

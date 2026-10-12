@@ -13,10 +13,10 @@ export const getOrders = (params?: {
 
 export const getOrder = (id: number) => api.get<Order>(`/api/orders/${id}`)
 
-export const createOrder = (data: Omit<Partial<Order>, 'products'> & { products?: { product: number; quantity: number }[]; expense_record_ids?: number[] }) =>
+export const createOrder = (data: Omit<Partial<Order>, 'products'> & { products?: { product: number; quantity: number }[]; customer_products?: { name: string; quantity: number }[]; expense_record_ids?: number[] }) =>
   api.post<Order>('/api/orders', data)
 
-export const updateOrder = (id: number, data: Omit<Partial<Order>, 'products' | 'services'> & { products?: { product: number; quantity: number }[]; services?: import('@/types').OrderService[] }) =>
+export const updateOrder = (id: number, data: Omit<Partial<Order>, 'products' | 'services'> & { products?: { product: number; quantity: number }[]; customer_products?: { name: string; quantity: number }[]; services?: import('@/types').OrderService[] }) =>
   api.patch<Order>(`/api/orders/${id}`, data)
 
 export const deleteOrder = (id: number) =>
@@ -36,14 +36,32 @@ export const recordPayment = (orderId: number, paid_amount: number, discount_amo
     ...(discount_amount !== undefined && discount_amount > 0 ? { discount_amount } : {}),
   })
 
-export const addProductToOrder = (orderId: number, productId: number, quantity: number, store_id?: number) =>
-  api.post<Order>(`/api/orders/${orderId}/products`, { product: productId, quantity, ...(store_id ? { store_id } : {}) })
+export const addProductToOrder = (orderId: number, productId: number, quantity: number) =>
+  api.post<Order>(`/api/orders/${orderId}/products`, { product: productId, quantity })
+
+/** "Anbarda yoxdur": buy the part from a store now and put it on the order.
+ * An existing product with the same name is reused, not duplicated. */
+export const purchaseProductForOrder = (orderId: number, data: {
+  name: string
+  quantity: number
+  purchase_price: number
+  sell_price: number
+  store_name: string
+  on_credit: boolean
+  product_id?: number
+}) => api.post<Order>(`/api/orders/${orderId}/products/purchase`, data)
+
+export const updateOrderProduct = (orderId: number, orderProductId: number, data: { quantity?: number; sell_price?: number }) =>
+  api.patch<Order>(`/api/orders/${orderId}/products/${orderProductId}`, data)
+
+/** Customer brings a part back after the order was completed. `refund`
+ * is what was handed back from Kassa (0 if the order wasn't overpaid). */
+export const returnOrderProduct = (orderId: number, orderProductId: number, quantity: number) =>
+  api.post<Order & { refund: number }>(`/api/orders/${orderId}/products/${orderProductId}/return`, { quantity })
 
 export const removeProductFromOrder = (orderId: number, orderProductId: number) =>
   api.delete<Order>(`/api/orders/${orderId}/products/${orderProductId}`)
 
-export const updateOrderProductQty = (orderId: number, orderProductId: number, quantity: number) =>
-  api.patch<Order>(`/api/orders/${orderId}/products/${orderProductId}`, { quantity })
 
 export const addServiceToOrder = (orderId: number, name: string, price: number, mechanic?: number | null, mechanic_amount?: number | null) =>
   api.post<Order>(`/api/orders/${orderId}/services`, { name, price, mechanic: mechanic ?? null, mechanic_amount: mechanic_amount ?? null })
@@ -56,8 +74,19 @@ export const uploadOrderImage = (orderId: number, file: File) => {
   form.append('image', file)
   return api.post<Order>(`/api/orders/${orderId}/images`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   })
 }
 
 export const deleteOrderImage = (orderId: number, imageId: number) =>
   api.delete<Order>(`/api/orders/${orderId}/images/${imageId}`)
+
+// Customer link (/s/<token>): create-or-get, replace, and the public read.
+export const shareOrder = (orderId: number) =>
+  api.post<{ token: string }>(`/api/orders/${orderId}/share`)
+
+export const resetOrderShare = (orderId: number) =>
+  api.post<{ token: string }>(`/api/orders/${orderId}/share/reset`)
+
+export const getPublicOrder = (token: string) =>
+  api.get<import('@/types').PublicOrder>(`/api/public/orders/${encodeURIComponent(token)}`)

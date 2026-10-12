@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Mechanic, Order, MechanicEarnings } from '@/types'
 import { getMechanics, createMechanic, updateMechanic, deactivateMechanic, activateMechanic, getMechanicOrders, getMechanicEarnings } from '@/services/mechanics.service'
+import MechanicPayPanel, { PAY_TYPE_LABELS } from './MechanicPayPanel'
 import { mapApiError, formatCurrency, formatDate } from '@/lib/utils'
 import { CHART_SEQUENTIAL } from '@/lib/chartColors'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -11,6 +12,9 @@ import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
+import { mediaUrl } from '@/lib/apiUrl'
+import PeriodFilter from '@/components/ui/PeriodFilter'
+import { Period, makePeriod, periodRange } from '@/lib/period'
 
 const ORDER_STATUS_LABELS: Record<Order['status'], string> = {
   pending: 'Gözləyir',
@@ -24,33 +28,9 @@ const ORDER_STATUS_BADGE: Record<Order['status'], 'neutral' | 'warning' | 'succe
   done: 'success',
 }
 
-type EarningsPreset = '7' | '30' | '90' | 'month'
-
-const EARNINGS_PRESETS: { key: EarningsPreset; label: string }[] = [
-  { key: '7', label: 'Son 7 gün' },
-  { key: '30', label: 'Son 30 gün' },
-  { key: '90', label: 'Son 90 gün' },
-  { key: 'month', label: 'Bu ay' },
-]
-
-function earningsRangeFor(preset: EarningsPreset) {
-  const today = new Date()
-  const to = today.toISOString().slice(0, 10)
-  let from: string
-  if (preset === 'month') {
-    from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10)
-  } else {
-    const d = new Date(today)
-    d.setDate(d.getDate() - parseInt(preset, 10))
-    from = d.toISOString().slice(0, 10)
-  }
-  return { from, to }
-}
-
 function getMechanicImageUrl(image?: string | null) {
   if (!image) return ''
-  if (image.startsWith('http')) return image
-  return `${import.meta.env.VITE_API_URL ?? ''}${image}`
+  return mediaUrl(image)
 }
 
 function MechanicAvatar({ mechanic, className = 'w-9 h-9 text-sm' }: { mechanic: Pick<Mechanic, 'full_name' | 'phone' | 'image'>; className?: string }) {
@@ -193,7 +173,7 @@ function MechanicDetail({
 
   const [orders, setOrders] = useState<Order[]>([])
   const [ordersLoading, setOrdersLoading] = useState(true)
-  const [earningsPreset, setEarningsPreset] = useState<EarningsPreset>('30')
+  const [earningsPeriod, setEarningsPeriod] = useState<Period>(() => makePeriod('30'))
   const [earnings, setEarnings] = useState<MechanicEarnings | null>(null)
   const [earningsLoading, setEarningsLoading] = useState(true)
 
@@ -213,9 +193,9 @@ function MechanicDetail({
 
   useEffect(() => {
     setEarningsLoading(true)
-    const { from, to } = earningsRangeFor(earningsPreset)
-    getMechanicEarnings(mechanic.id, from, to).then(r => setEarnings(r.data)).finally(() => setEarningsLoading(false))
-  }, [mechanic.id, earningsPreset])
+    const { from, to } = periodRange(earningsPeriod)
+    getMechanicEarnings(mechanic.id, from ?? '', to ?? '').then(r => setEarnings(r.data)).finally(() => setEarningsLoading(false))
+  }, [mechanic.id, earningsPeriod])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -249,30 +229,11 @@ function MechanicDetail({
         <Badge variant={mechanic.is_active ? 'success' : 'neutral'}>{mechanic.is_active ? 'Aktiv' : 'Deaktiv'}</Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-6">
-        <div className="bg-surface border border-rule rounded px-3 py-2.5">
-          <p className="section-label mb-1">İş faizi</p>
-          <p className="font-mono font-semibold text-sm text-ink">{mechanic.work_percent}%</p>
-        </div>
-        <div className="bg-surface border border-rule rounded px-3 py-2.5">
-          <p className="section-label mb-1">Qazanc (cəmi)</p>
-          <p className="font-mono font-semibold text-sm text-ink">{formatCurrency(mechanic.total_earnings)}</p>
-        </div>
-      </div>
+      <MechanicPayPanel mechanic={mechanic} onChanged={onSaved} />
 
       <div className="mb-8">
         <p className="section-label mb-2">Dövr üzrə qazanc</p>
-        <div className="flex flex-wrap gap-1 border border-rule rounded p-1 bg-surface-alt w-fit mb-4">
-          {EARNINGS_PRESETS.map(p => (
-            <button
-              key={p.key}
-              onClick={() => setEarningsPreset(p.key)}
-              className={`text-xs font-mono font-semibold uppercase tracking-wide px-3 py-2 rounded transition-colors ${earningsPreset === p.key ? 'bg-ink text-cream' : 'text-ink-muted hover:bg-surface'}`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <PeriodFilter value={earningsPeriod} onChange={setEarningsPeriod} className="mb-4" />
 
         {earningsLoading || !earnings ? (
           <Spinner />
@@ -290,7 +251,7 @@ function MechanicDetail({
                   <CartesianGrid stroke="#CBD3C7" strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={{ stroke: '#CBD3C7' }} />
                   <YAxis tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={false} width={56} />
-                  <Tooltip formatter={(v: any) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 10, fontSize: 12 }} />
+                  <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 10, fontSize: 12 }} />
                   <Bar dataKey="amount" name="Qazanc" fill={CHART_SEQUENTIAL} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -422,8 +383,8 @@ function MechanicTable({
               <tr>
                 <th className="ledger-th">Usta</th>
                 <th className="ledger-th">Telefon</th>
-                <th className="ledger-th text-right">İş faizi</th>
-                <th className="ledger-th text-right">Qazanc</th>
+                <th className="ledger-th">Ödəniş</th>
+                <th className="ledger-th text-right">Qalıq (borcumuz)</th>
                 <th className="ledger-th">Status</th>
               </tr>
             </thead>
@@ -441,8 +402,13 @@ function MechanicTable({
                     </div>
                   </td>
                   <td className="ledger-td font-mono text-ink-muted">{m.phone || '—'}</td>
-                  <td className="ledger-td text-right font-mono">{m.work_percent}%</td>
-                  <td className="ledger-td text-right font-mono font-semibold">{formatCurrency(m.total_earnings)}</td>
+                  <td className="ledger-td text-sm">
+                    {PAY_TYPE_LABELS[m.pay_type ?? 'percent']}
+                    <span className="block text-xs text-ink-muted font-mono">
+                      {[m.pay_type !== 'salary' ? `${m.work_percent}%` : null, m.pay_type !== 'percent' && m.pay_type ? `${formatCurrency(m.salary ?? 0)}/ay` : null].filter(Boolean).join(' + ')}
+                    </span>
+                  </td>
+                  <td className={`ledger-td text-right font-mono font-semibold ${(m.balance ?? 0) > 0 ? 'text-danger' : ''}`}>{formatCurrency(m.balance ?? 0)}</td>
                   <td className="ledger-td"><Badge variant={m.is_active ? 'success' : 'neutral'}>{m.is_active ? 'Aktiv' : 'Deaktiv'}</Badge></td>
                 </tr>
               ))}

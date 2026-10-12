@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { DebtorGroup, ManualDebt } from '@/types'
+import { Business, DebtorGroup, ManualDebt } from '@/types'
+import { getBusinessProfile } from '@/services/auth.service'
+import { debtReminderMessage, hasWhatsAppNumber, whatsappLink } from '@/lib/whatsapp'
 import { getDebtors } from '@/services/finance.service'
 import { getManualDebts, createManualDebt, payManualDebt, deleteManualDebt } from '@/services/finance.service'
 import { recordPayment } from '@/services/orders.service'
@@ -30,6 +32,7 @@ function statusLabel(g: DebtorGroup): string {
 
 export default function DebitorlarTab() {
   const [debtors, setDebtors] = useState<DebtorGroup[]>([])
+  const [business, setBusiness] = useState<Business | null>(null)
   const [manualDebts, setManualDebts] = useState<ManualDebt[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
@@ -63,6 +66,7 @@ export default function DebitorlarTab() {
   }, [])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => { getBusinessProfile().then(res => setBusiness(res.data)).catch(() => {}) }, [])
 
   const visible = showPaid ? debtors : debtors.filter(g => !g.is_paid)
   const totalUnpaid = debtors.filter(g => !g.is_paid).reduce((s, g) => s + g.remaining, 0)
@@ -181,6 +185,16 @@ export default function DebitorlarTab() {
         <div className="min-w-0">
           <h2 className="font-serif font-semibold text-xl text-ink truncate">{selectedGroup.customer_name}</h2>
           {selectedGroup.phone && <p className="font-mono text-xs text-ink-muted mt-0.5">{selectedGroup.phone}</p>}
+          {business && selectedGroup.remaining > 0 && hasWhatsAppNumber(selectedGroup.phone) && (
+            <a
+              href={whatsappLink(selectedGroup.phone, debtReminderMessage({ customer_name: selectedGroup.customer_name, amount: selectedGroup.remaining }, business))}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary text-xs mt-2 inline-flex"
+            >
+              WhatsApp xatırlatma
+            </a>
+          )}
         </div>
         <Badge variant={statusVariant(selectedGroup)}>{statusLabel(selectedGroup)}</Badge>
       </div>
@@ -203,7 +217,6 @@ export default function DebitorlarTab() {
       <p className="section-label mb-2">Sifarişlər ({selectedGroup.orders.length})</p>
       <div className="flex flex-col gap-3">
         {selectedGroup.orders.map(order => {
-          const isPartial = order.payment_status === 'partial'
           return (
             <div key={order.id} className={`bg-surface border border-rule rounded px-4 py-3 ${order.remaining <= 0 ? 'opacity-60' : ''}`}>
               <div className="flex items-start justify-between gap-3 mb-2">

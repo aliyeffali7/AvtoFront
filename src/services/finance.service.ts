@@ -1,8 +1,31 @@
 import api from '@/lib/axios'
 import { FinanceRecord, ManualDebt, FinanceReport, DebtorGroup, DashboardStats, WeeklyIncome } from '@/types'
 
-export const getFinanceRecords = () =>
-  api.get<FinanceRecord[]>('/api/finance')
+export interface KassaPage {
+  count: number
+  page: number
+  total_pages: number
+  totals: { income: number; income_count: number; expense: number; expense_count: number }
+  results: FinanceRecord[]
+}
+
+/** Kassa records filtered and totalled on the server (100 per page; `all`
+ * returns every row in range — for PDF and the day close). */
+export const getFinanceRecords = (params: {
+  from?: string | null
+  to?: string | null
+  type?: 'income' | 'expense'
+  page?: number
+  all?: boolean
+}) => api.get<KassaPage>('/api/finance', {
+  params: {
+    ...(params.from ? { from: params.from } : {}),
+    ...(params.to ? { to: params.to } : {}),
+    ...(params.type ? { type: params.type } : {}),
+    ...(params.page ? { page: params.page } : {}),
+    ...(params.all ? { all: 'true' } : {}),
+  },
+})
 
 export const createFinanceRecord = (data: Partial<FinanceRecord>) =>
   api.post<FinanceRecord>('/api/finance', data)

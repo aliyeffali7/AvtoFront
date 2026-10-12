@@ -1,48 +1,31 @@
 import { useState, useEffect, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { MechanicEarnings } from '@/types'
-import { getMyEarnings } from '@/services/mechanics.service'
+import { MechanicAccount, MechanicEarnings } from '@/types'
+import { getMyAccount, getMyEarnings } from '@/services/mechanics.service'
 import { formatCurrency } from '@/lib/utils'
+import PeriodFilter from '@/components/ui/PeriodFilter'
+import { Period, makePeriod, periodRange } from '@/lib/period'
 import { CHART_SEQUENTIAL } from '@/lib/chartColors'
 import Spinner from '@/components/ui/Spinner'
 
-type Preset = '7' | '30' | 'month'
-
-const PRESETS: { key: Preset; label: string }[] = [
-  { key: '7', label: 'Son 7 gün' },
-  { key: '30', label: 'Son 30 gün' },
-  { key: 'month', label: 'Bu ay' },
-]
-
-function rangeFor(preset: Preset) {
-  const today = new Date()
-  const to = today.toISOString().slice(0, 10)
-  let from: string
-  if (preset === 'month') {
-    from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10)
-  } else {
-    const start = new Date(today)
-    start.setDate(start.getDate() - (Number(preset) - 1))
-    from = start.toISOString().slice(0, 10)
-  }
-  return { from, to }
-}
-
 export default function MechanicEarningsClient() {
-  const [preset, setPreset] = useState<Preset>('30')
+  const [period, setPeriod] = useState<Period>(() => makePeriod('30'))
   const [data, setData] = useState<MechanicEarnings | null>(null)
   const [loading, setLoading] = useState(true)
+  const [account, setAccount] = useState<MechanicAccount | null>(null)
+
+  useEffect(() => { getMyAccount().then(r => setAccount(r.data)).catch(() => {}) }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const { from, to } = rangeFor(preset)
-      const res = await getMyEarnings(from, to)
+      const { from, to } = periodRange(period)
+      const res = await getMyEarnings(from ?? '', to ?? '')
       setData(res.data)
     } finally {
       setLoading(false)
     }
-  }, [preset])
+  }, [period])
 
   useEffect(() => { load() }, [load])
 
@@ -71,23 +54,26 @@ export default function MechanicEarningsClient() {
           </div>
         </div>
 
+        {/* Account: what the shop still owes */}
+        {account && (
+          <div className="card px-5 py-4 grid grid-cols-2 gap-3">
+            <div>
+              <p className="section-label mb-1">Aldığım (cəmi)</p>
+              <p className="text-lg font-bold text-ink font-mono">{formatCurrency(account.paid)}</p>
+            </div>
+            <div>
+              <p className="section-label mb-1">Mənə borc</p>
+              <p className={`text-lg font-bold font-mono ${account.balance > 0 ? 'text-accent' : 'text-ink'}`}>{formatCurrency(account.balance)}</p>
+            </div>
+            {account.this_month_salary > 0 && (
+              <p className="col-span-2 text-xs text-ink-muted">Bu ayın maaşından bu günə qədər: {formatCurrency(account.this_month_salary)}</p>
+            )}
+          </div>
+        )}
+
         {/* Period selector + daily breakdown */}
         <div className="card px-5 py-5">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
-            {PRESETS.map(p => (
-              <button
-                key={p.key}
-                onClick={() => setPreset(p.key)}
-                className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-colors border ${
-                  preset === p.key
-                    ? 'bg-sidebar text-cream border-sidebar'
-                    : 'bg-surface text-ink-muted border-rule hover:border-ink-muted'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <PeriodFilter value={period} onChange={setPeriod} className="mb-4" />
 
           {loading ? (
             <Spinner />
@@ -105,7 +91,7 @@ export default function MechanicEarningsClient() {
                     <CartesianGrid stroke="#CBD3C7" strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={{ stroke: '#CBD3C7' }} />
                     <YAxis tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={false} width={56} />
-                    <Tooltip formatter={(v: any) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 10, fontSize: 12 }} />
+                    <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 10, fontSize: 12 }} />
                     <Bar dataKey="amount" name="Qazanc" fill={CHART_SEQUENTIAL} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
