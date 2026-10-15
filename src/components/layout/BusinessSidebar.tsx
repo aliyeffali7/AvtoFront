@@ -90,10 +90,20 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
 
   return (
     <aside className="w-[232px] bg-ink border-r border-ink-up h-screen flex flex-col shrink-0">
-      {/* Brand */}
-      <div className="px-4 py-5 flex items-center justify-between">
-        <Link to="/business/dashboard" onClick={onClose} aria-label="Servo">
-          <ServoLogo variant="white" className="h-[22px]" />
+      {/* Business (the shop's own brand on top) */}
+      <div className="px-4 pt-5 pb-4 flex items-start justify-between gap-2">
+        <Link to="/business/dashboard" onClick={onClose} className="flex flex-col gap-3 min-w-0">
+          {business?.logo && !logoError ? (
+            <img
+              src={mediaUrl(business.logo)}
+              alt={business.name}
+              className="w-24 h-24 rounded-md object-contain bg-paper shrink-0"
+              onError={() => setLogoError(true)}
+            />
+          ) : null}
+          <span className="font-display font-semibold text-[17px] leading-tight tracking-[-0.02em] text-paper break-words">
+            {business?.name ?? user?.business?.name ?? ''}
+          </span>
         </Link>
         {onClose && (
           <button
@@ -179,20 +189,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
 
       {/* Footer */}
       <div className="shrink-0 p-4 border-t border-ink-up flex flex-col gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          {business?.logo && !logoError ? (
-            <img
-              src={mediaUrl(business.logo)}
-              alt="logo"
-              className="w-8 h-8 rounded-sm object-contain shrink-0 bg-paper"
-              onError={() => setLogoError(true)}
-            />
-          ) : null}
-          <div className="min-w-0 text-small text-text-4">
-            <p className="text-paper truncate">{business?.name ?? user?.business?.name ?? ''}</p>
-            <p className="truncate">{user?.email}</p>
-          </div>
-        </div>
+        <p className="text-small text-text-4 truncate">{user?.email}</p>
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 h-9 px-2 -mx-2 rounded-md text-small text-text-4 hover:bg-ink-up hover:text-paper transition-colors duration-[120ms]"
@@ -200,6 +197,10 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
           <LogOut className="w-4 h-4" strokeWidth={1.75} />
           Çıxış
         </button>
+        {/* Servo brand at the bottom */}
+        <div className="pt-3 border-t border-ink-up">
+          <ServoLogo variant="white" className="h-8" />
+        </div>
       </div>
     </aside>
   )
