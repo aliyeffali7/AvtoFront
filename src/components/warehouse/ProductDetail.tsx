@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Archive, ArchiveRestore, ClipboardCheck, GitMerge, Pencil, Trash2 } from 'lucide-react'
-import { Product, ProductCard } from '@/types'
+import { ArrowLeft, Archive, ArchiveRestore, ClipboardCheck, GitMerge, Pencil, Trash2, Undo2 } from 'lucide-react'
+import { Product, ProductCard, SupplierPaymentStatus } from '@/types'
 import {
   getProductCard, updateProduct, writeOffProduct, countProduct, deleteProduct, getProducts, mergeProduct,
+  returnPurchaseLine,
 } from '@/services/warehouse.service'
 import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
 import { useGoBack } from '@/lib/useGoBack'
@@ -19,7 +20,25 @@ import StatusBadge from '@/components/ui/StatusBadge'
 import OrderStatusBadge from '@/components/orders/StatusBadge'
 import MovementKindBadge from './MovementKindBadge'
 
-type Action = 'none' | 'edit' | 'writeoff' | 'count' | 'merge'
+type Action = 'none' | 'edit' | 'writeoff' | 'count' | 'merge' | 'return'
+
+const PAYMENT_STATUS: Record<SupplierPaymentStatus, { label: string; variant: 'success' | 'warning' | 'danger' }> = {
+  paid: { label: 'Ödənilib', variant: 'success' },
+  partial: { label: 'Qismən', variant: 'warning' },
+  unpaid: { label: 'Ödənilməyib', variant: 'danger' },
+}
+
+/** Nağd, or Nisyə with the kreditor state (Ödənilib / Qismən / Ödənilməyib). */
+function PaymentCell({ onCredit, status }: { onCredit: boolean | null; status: SupplierPaymentStatus | null }) {
+  if (onCredit === null) return <span className="text-text-3">—</span>
+  if (!onCredit) return <Badge variant="success">Nağd</Badge>
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <Badge variant="warning">Nisyə</Badge>
+      {status && <Badge variant={PAYMENT_STATUS[status].variant}>{PAYMENT_STATUS[status].label}</Badge>}
+    </span>
+  )
+}
 
 /** Full-page product card: header, ink band, batches, purchases, sales, movements. */
 export default function ProductDetail() {
@@ -47,6 +66,8 @@ export default function ProductDetail() {
   // merge
   const [catalog, setCatalog] = useState<Product[]>([])
   const [mergeName, setMergeName] = useState('')
+  // return to supplier
+  const [returnLineId, setReturnLineId] = useState('')
 
   const load = useCallback(async () => {
     if (!Number.isFinite(id)) { setLoadError(true); setLoading(false); return }
@@ -66,6 +87,13 @@ export default function ProductDetail() {
   }, [id])
 
   useEffect(() => { setCard(null); setNotice(''); load() }, [load])
+
+  function openReturn(lineId?: number | null) {
+    const first = card?.purchases.find(pl => pl.remaining_quantity > 0)
+    openAction('return')
+    setReturnLineId(String(lineId ?? first?.line_id ?? ''))
+    setQty('1')
+  }
 
   function openAction(a: Action) {
     if (a === 'merge' && catalog.length === 0) {
@@ -116,6 +144,9 @@ export default function ProductDetail() {
   const out = isWarehouse && p.stock_quantity <= 0
   const closeModal = () => setAction('none')
   const mergeTarget = catalog.find(x => x.name === mergeName)
+  const returnable = card.purchases.filter(pl => pl.remaining_quantity > 0)
+  const returnLine = returnable.find(pl => String(pl.line_id) === returnLineId)
+  const returnQtyNum = parseInt(qty) || 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -142,6 +173,9 @@ export default function ProductDetail() {
           <Button variant="secondary" icon={Pencil} onClick={() => openAction('edit')}>Düzəliş</Button>
           {p.stock_quantity > 0 && (
             <Button variant="secondary" icon={Trash2} onClick={() => openAction('writeoff')}>Silinmə / itki</Button>
+          )}
+          {returnable.length > 0 && (
+            <Button variant="secondary" icon={Undo2} onClick={() => openReturn()}>Tədarükçüyə qaytar</Button>
           )}
           <Button variant="secondary" icon={ClipboardCheck} onClick={() => openAction('count')}>Sayım</Button>
           <Button variant="secondary" icon={GitMerge} onClick={() => openAction('merge')}>Birləşdir</Button>
@@ -186,9 +220,12 @@ export default function ProductDetail() {
                 <tr>
                   <th className="ledger-th">Tarix</th>
                   <th className="ledger-th">Tədarükçü</th>
+                  <th className="ledger-th">Alış (qaimə)</th>
+                  <th className="ledger-th">Ödəniş</th>
                   <th className="ledger-th text-right">Qalıb</th>
                   <th className="ledger-th text-right">Alış qiyməti</th>
                   <th className="ledger-th text-right">Dəyəri</th>
+                  <th className="ledger-th" />
                 </tr>
               </thead>
               <tbody>
@@ -200,18 +237,32 @@ export default function ProductDetail() {
                         <Link to={`/business/stores/${b.store}`} className="hover:underline">{b.store_name}</Link>
                       ) : (b.store_name ?? <span className="text-text-3">—</span>)}
                     </td>
+                    <td className="ledger-td">
+                      {b.purchase ? (
+                        <Link to={`/business/warehouse/purchases/${b.purchase}`} className="font-mono text-small font-semibold hover:underline underline-offset-2">
+                          {b.invoice_no ? `№${b.invoice_no}` : `Alış #${b.purchase}`}
+                        </Link>
+                      ) : <span className="text-text-3">İlkin qalıq</span>}
+                    </td>
+                    <td className="ledger-td"><PaymentCell onCredit={b.on_credit} status={b.payment_status} /></td>
                     <td className="ledger-td text-right font-mono tabular-nums">{b.remaining_quantity} / {b.quantity}</td>
                     <td className="ledger-td text-right"><Money value={b.purchase_price} /></td>
                     <td className="ledger-td text-right"><Money value={b.remaining_quantity * Number(b.purchase_price)} /></td>
+                    <td className="ledger-td text-right">
+                      {b.purchase_line && returnable.some(pl => pl.line_id === b.purchase_line) && (
+                        <Button variant="secondary" size="sm" icon={Undo2} onClick={() => openReturn(b.purchase_line)}>Qaytar</Button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={2}>Cəmi · {card.batches.length} partiya</td>
+                  <td className="ledger-td font-semibold" colSpan={4}>Cəmi · {card.batches.length} partiya</td>
                   <td className="ledger-td text-right font-mono font-bold tabular-nums">{card.batches.reduce((s, b) => s + b.remaining_quantity, 0)}</td>
                   <td className="ledger-td" />
                   <td className="ledger-td text-right"><Money value={card.batches.reduce((s, b) => s + b.remaining_quantity * Number(b.purchase_price), 0)} className="font-bold" /></td>
+                  <td className="ledger-td" />
                 </tr>
               </tfoot>
             </table>
@@ -244,7 +295,7 @@ export default function ProductDetail() {
                     <tr key={pl.line_id} onClick={() => navigate(`/business/warehouse/purchases/${pl.purchase_id}`)} className="ledger-row">
                       <td className="ledger-td font-mono text-text-2">{formatDate(pl.date)}</td>
                       <td className="ledger-td font-semibold">{pl.store_name}</td>
-                      <td className="ledger-td"><Badge variant={pl.on_credit ? 'warning' : 'success'}>{pl.on_credit ? 'Nisyə' : 'Nağd'}</Badge></td>
+                      <td className="ledger-td"><PaymentCell onCredit={pl.on_credit} status={pl.payment_status} /></td>
                       <td className="ledger-td text-right font-mono tabular-nums">{pl.quantity - pl.returned_quantity}</td>
                       <td className="ledger-td text-right"><Money value={pl.unit_cost} /></td>
                     </tr>
@@ -410,6 +461,58 @@ export default function ProductDetail() {
           <Field label="Qeyd"><input className="input" value={note} onChange={e => setNote(e.target.value)} placeholder="Məs. Aylıq sayım" /></Field>
           {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-3 py-2">{error}</p>}
         </form>
+      </Modal>
+
+      {/* Return to supplier */}
+      <Modal
+        open={action === 'return'}
+        onClose={closeModal}
+        title="Tədarükçüyə qaytar"
+        subtitle={p.name}
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeModal}>Ləğv et</Button>
+            <Button
+              variant="danger"
+              loading={busy}
+              disabled={!returnLine || returnQtyNum < 1 || returnQtyNum > (returnLine?.remaining_quantity ?? 0)}
+              onClick={() => returnLine && run(
+                () => returnPurchaseLine(returnLine.line_id, returnQtyNum),
+                returnLine.on_credit ? 'Qaytarıldı — borc azaldıldı.' : 'Qaytarıldı — pul kassaya qayıtdı.',
+              )}
+            >
+              Tədarükçüyə qaytar
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4 pb-2">
+          <Field label="Hansı alışdan?">
+            <select className="input" value={returnLineId} onChange={e => { setReturnLineId(e.target.value); setQty('1') }}>
+              {returnable.map(pl => (
+                <option key={pl.line_id} value={pl.line_id}>
+                  {formatDate(pl.date)} · {pl.store_name}{pl.invoice_no ? ` · №${pl.invoice_no}` : ''} · qalıb {pl.remaining_quantity} · {pl.on_credit ? 'Nisyə' : 'Nağd'}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {returnLine && (
+            <>
+              <Field label={`Miqdar (maks. ${returnLine.remaining_quantity})`}>
+                <input className="input-mono" type="number" min={1} max={returnLine.remaining_quantity} value={qty} onChange={e => setQty(e.target.value)} autoFocus />
+              </Field>
+              <div className="rounded bg-surface-2 px-4 py-3 text-body text-text-2 flex flex-col gap-1.5">
+                <p className="font-semibold text-ink">Nə olacaq?</p>
+                <p>Stokdan {returnQtyNum > 0 ? returnQtyNum : '—'} {p.unit} çıxır{returnQtyNum > 0 ? ` (təxminən ${formatCurrency(returnQtyNum * Number(returnLine.unit_cost))})` : ''}.</p>
+                {returnLine.on_credit
+                  ? <p>Qaytarılan məbləğ əvvəlcə {returnLine.store_name} qarşısındakı borcdan çıxılır (borc azalır). Borc qalmayıbsa, artıq ödənmiş hissə kassaya geri qayıdır.</p>
+                  : <p>Alış nağd olub — qaytarılan malın pulu kassaya geri qayıdır.</p>}
+                <p className="text-small text-text-3">Hesabata (mənfəətə) təsir etmir.</p>
+              </div>
+            </>
+          )}
+          {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-3 py-2">{error}</p>}
+        </div>
       </Modal>
 
       {/* Merge */}

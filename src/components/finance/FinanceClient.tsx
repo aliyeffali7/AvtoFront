@@ -74,6 +74,16 @@ function categoryLabel(r: FinanceRecord): string {
   return CATEGORY_LABELS[r.category] ?? '—'
 }
 
+/** Where a system-created Kassa row came from: the page to open and a short label. */
+function recordSource(r: FinanceRecord): { to: string; label: string; hint: string } | null {
+  if (r.order) return { to: `/business/orders/${r.order}`, label: 'Sifariş', hint: 'Sifarişə keç' }
+  if (r.purchase) return { to: `/business/warehouse/purchases/${r.purchase}`, label: 'Alış', hint: 'Alışa (qaiməyə) keç' }
+  if (r.mechanic) return { to: `/business/mechanics/${r.mechanic}`, label: 'Usta', hint: 'Ustanın səhifəsinə keç' }
+  if (r.source === 'supplier_payment') return { to: '/business/finance/kreditorlar', label: 'Kreditor', hint: 'Kreditorlara keç' }
+  if (r.source === 'debtor_payment') return { to: '/business/finance/debitorlar', label: 'Debitor', hint: 'Debitorlara keç' }
+  return null
+}
+
 function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const [type, setType] = useState<'income' | 'expense'>('income')
   const [category, setCategory] = useState<FinanceCategory>('other')
@@ -496,12 +506,14 @@ export default function FinanceClient() {
                 </tr>
               </thead>
               <tbody>
-                {records.map(r => (
+                {records.map(r => {
+                  const src = recordSource(r)
+                  return (
                   <tr
                     key={r.id}
-                    className={`ledger-row ${r.order ? '' : '!cursor-default'}`}
-                    onClick={r.order ? () => navigate(`/business/orders/${r.order}`) : undefined}
-                    title={r.order ? 'Sifarişə keç' : undefined}
+                    className={`ledger-row ${src ? '' : '!cursor-default'}`}
+                    onClick={src ? () => navigate(src.to) : undefined}
+                    title={src?.hint}
                   >
                     <td className="ledger-td font-mono text-text-2">{formatDate(r.date)}</td>
                     <td className="ledger-td">
@@ -515,15 +527,13 @@ export default function FinanceClient() {
                     <td className="ledger-td !whitespace-normal">{r.description || <span className="text-text-3">—</span>}</td>
                     <td className="ledger-td" onClick={e => e.stopPropagation()}>
                       <span className="flex items-center gap-2">
-                        {r.order ? (
-                          <Link to={`/business/orders/${r.order}`} className="font-mono text-small hover:underline underline-offset-2">Sifariş</Link>
-                        ) : r.purchase ? (
-                          <Link to={`/business/warehouse/purchases/${r.purchase}`} className="font-mono text-small hover:underline underline-offset-2">Alış</Link>
-                        ) : null}
+                        {src && (
+                          <Link to={src.to} className="font-mono text-small hover:underline underline-offset-2">{src.label}</Link>
+                        )}
                         {r.source && r.source !== 'manual' && (
                           <span className="text-small text-text-3" title="Sistem qeydidir — onu yaradan sifariş, alış və ya borc üzərindən dəyişdirilir">avtomatik</span>
                         )}
-                        {!r.order && !r.purchase && (!r.source || r.source === 'manual') && <span className="text-text-3">—</span>}
+                        {!src && (!r.source || r.source === 'manual') && <span className="text-text-3">—</span>}
                       </span>
                     </td>
                     <td className="ledger-td text-right">
@@ -543,7 +553,8 @@ export default function FinanceClient() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">

@@ -271,6 +271,7 @@ export type FinanceCategory =
 export type FinanceSource =
   | 'manual' | 'order_completion' | 'order_payment' | 'discount' | 'purchase'
   | 'supplier_payment' | 'supplier_return' | 'write_off' | 'debtor_payment'
+  | 'salary' | 'mechanic_payout' | 'customer_return' | 'customer_refund'
 
 export interface FinanceRecord {
   id: number
@@ -281,6 +282,8 @@ export interface FinanceRecord {
   date: string
   order?: number | null
   purchase?: number | null
+  /** Mechanic (user id) a salary / payout record belongs to. */
+  mechanic?: number | null
   source?: FinanceSource
 }
 
@@ -540,13 +543,27 @@ export interface ProductBatchInfo {
   date: string
   store: number | null
   store_name: string | null
+  /** The purchase (qaimə) this batch came from; null for opening stock. */
+  purchase: number | null
+  purchase_line: number | null
+  invoice_no: string
+  /** null when the batch has no purchase. */
+  on_credit: boolean | null
+  /** Kreditor state of an on-credit batch; null for cash / unknown. */
+  payment_status: SupplierPaymentStatus | null
 }
+
+export type SupplierPaymentStatus = 'paid' | 'partial' | 'unpaid'
 
 export interface ProductCard {
   product: Product
   batches: ProductBatchInfo[]
   purchases: {
     purchase_id: number
+    invoice_no: string
+    payment_status: SupplierPaymentStatus | null
+    /** Units of this line still on the shelf (what can be returned). */
+    remaining_quantity: number
     line_id: number
     date: string
     store: number
@@ -744,4 +761,20 @@ export interface PublicOrder {
   has_guarantee: boolean
   guarantee_text: string
   guarantee_exclusions: string
+}
+
+export type ActivityKind =
+  | 'order_created' | 'order_done' | 'payment' | 'purchase'
+  | 'supplier_payment' | 'supplier_return' | 'write_off' | 'mechanic_payout'
+
+/** One line of the dashboard "Son hərəkətlər" feed. */
+export interface ActivityEvent {
+  id: string
+  kind: ActivityKind
+  /** ISO timestamp. */
+  at: string
+  text: string
+  /** SPA path to the source page. */
+  link: string
+  amount: number | string | null
 }

@@ -15,6 +15,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import InkBand from '@/components/ui/InkBand'
 import KpiCard from '@/components/ui/KpiCard'
 import StatusBadge from '@/components/orders/StatusBadge'
+import RecentActivity from '@/components/dashboard/RecentActivity'
 import { CHART_INCOME, CHART_EXPENSE, CHART_SEQUENTIAL, CHART_GOODS } from '@/lib/chartColors'
 
 const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr']
@@ -198,6 +199,8 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      <RecentActivity />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* Həftəlik gəlir — 7 days, Monday to Sunday */}

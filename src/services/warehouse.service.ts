@@ -85,7 +85,7 @@ export interface PurchaseInput {
 }
 
 export const getPurchases = (params: { page?: number; store?: number; from?: string; to?: string; on_credit?: boolean; search?: string }) =>
-  api.get<Paginated<Purchase>>('/api/products/purchases/', { params })
+  api.get<Paginated<Purchase> & { total_amount: number | string }>('/api/products/purchases/', { params })
 
 export const getPurchase = (id: number) =>
   api.get<Purchase>(`/api/products/purchases/${id}/`)

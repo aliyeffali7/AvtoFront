@@ -1,5 +1,5 @@
 import api from '@/lib/axios'
-import { FinanceRecord, ManualDebt, FinanceReport, DebtorGroup, DashboardStats, WeeklyIncome } from '@/types'
+import { FinanceRecord, ManualDebt, FinanceReport, DebtorGroup, DashboardStats, WeeklyIncome, ActivityEvent } from '@/types'
 
 export interface KassaPage {
   count: number
@@ -62,3 +62,6 @@ export const getWeeklyIncome = (date: string) =>
 
 export const getDashboardStats = () =>
   api.get<DashboardStats>('/api/finance/dashboard/')
+
+export const getRecentActivity = () =>
+  api.get<ActivityEvent[]>('/api/finance/activity/')

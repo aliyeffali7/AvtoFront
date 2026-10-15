@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { Purchase } from '@/types'
@@ -10,8 +10,10 @@ import EmptyState from '@/components/ui/EmptyState'
 import Money from '@/components/ui/Money'
 import PageHeader from '@/components/ui/PageHeader'
 import Pagination from '@/components/ui/Pagination'
+import PeriodFilter from '@/components/ui/PeriodFilter'
 import Segmented from '@/components/ui/Segmented'
 import Spinner from '@/components/ui/Spinner'
+import { Period, makePeriod, periodLabel as describePeriod, periodRange } from '@/lib/period'
 import PurchaseForm from './PurchaseForm'
 
 export const SOURCE_LABEL: Record<Purchase['source'], string> = {
@@ -35,30 +37,36 @@ export default function PurchasesTab() {
   const [totalCount, setTotalCount] = useState(0)
   const [search, setSearch] = useState('')
   const [credit, setCredit] = useState<CreditFilter>('all')
+  const [period, setPeriod] = useState<Period>(() => makePeriod('all'))
+  const [totalAmount, setTotalAmount] = useState(0)
+  const range = useMemo(() => periodRange(period), [period])
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const res = await getPurchases({
         page, search: search || undefined,
+        ...(range.from ? { from: range.from } : {}),
+        ...(range.to ? { to: range.to } : {}),
         ...(credit !== 'all' ? { on_credit: credit === 'true' } : {}),
       })
       setPurchases(res.data.results)
       setTotalPages(res.data.total_pages)
       setTotalCount(res.data.count)
+      setTotalAmount(Number(res.data.total_amount ?? 0))
     } finally {
       setLoading(false)
     }
-  }, [page, search, credit])
+  }, [page, search, credit, range])
 
   useEffect(() => {
     const timer = setTimeout(load, search ? 300 : 0)
     return () => clearTimeout(timer)
   }, [load, search])
-  useEffect(() => { setPage(1) }, [search, credit])
+  useEffect(() => { setPage(1) }, [search, credit, range])
 
   const startCreate = () => setParams({ new: '1' })
-  const pageTotal = purchases.filter(p => !p.is_cancelled).reduce((s, p) => s + Number(p.total), 0)
+  const periodText = describePeriod(period)
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,6 +87,7 @@ export default function PurchasesTab() {
             className="input !pl-10"
           />
         </div>
+        <PeriodFilter value={period} onChange={setPeriod} withAll />
         <Segmented
           label="Ödəniş"
           value={credit}
@@ -94,7 +103,9 @@ export default function PurchasesTab() {
       {loading && purchases.length === 0 ? <Spinner /> : purchases.length === 0 ? (
         <EmptyState
           title="Alış yoxdur"
-          subtitle='Mağazadan mal gələndə "Yeni alış" düyməsini basın.'
+          subtitle={period.key === 'all' && !search && credit === 'all'
+            ? 'Mağazadan mal gələndə "Yeni alış" düyməsini basın.'
+            : 'Seçilmiş filtr üzrə alış tapılmadı. Dövrü və ya filtri dəyişin.'}
           action={<Button icon={Plus} onClick={startCreate}>Yeni alış</Button>}
         />
       ) : (
@@ -138,8 +149,8 @@ export default function PurchasesTab() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={6}>Bu səhifədə cəmi · {purchases.length} alış</td>
-                  <td className="ledger-td text-right"><Money value={pageTotal} className="font-bold" /></td>
+                  <td className="ledger-td font-semibold" colSpan={6}>{period.key === 'all' ? 'Cəmi' : `${periodText} üzrə cəmi`} · {totalCount} alış</td>
+                  <td className="ledger-td text-right"><Money value={totalAmount} className="font-bold" /></td>
                 </tr>
               </tfoot>
             </table>
