@@ -6,13 +6,11 @@ import { toLocalISODate } from '@/lib/utils'
 import ActivityRow from '@/components/dashboard/ActivityRow'
 import Spinner from '@/components/ui/Spinner'
 
-/** "14:32" for today, "12.10 14:32" for earlier days. */
-function whenLabel(iso: string): string {
-  const d = new Date(iso)
-  const time = d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit', hour12: false })
-  if (toLocalISODate(d) === toLocalISODate()) return time
-  const day = String(d.getDate()).padStart(2, '0')
-  const month = String(d.getMonth() + 1).padStart(2, '0')
+/** "14:32" for today, "12.10 14:32" for other business dates. */
+function whenLabel(e: ActivityEvent): string {
+  const time = new Date(e.at).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit', hour12: false })
+  if (e.date === toLocalISODate()) return time
+  const [, month, day] = e.date.split('-')
   return `${day}.${month} ${time}`
 }
 
@@ -43,7 +41,7 @@ export default function RecentActivity() {
         <p className="text-body text-text-3 px-5 py-8 text-center">Hələ hərəkət yoxdur. Sifariş və ya alış əlavə etdikdə burada görünəcək.</p>
       ) : (
         <ul>
-          {events.map(e => <ActivityRow key={e.id} event={e} when={whenLabel(e.at)} />)}
+          {events.map(e => <ActivityRow key={e.id} event={e} when={whenLabel(e)} />)}
         </ul>
       )}
     </section>

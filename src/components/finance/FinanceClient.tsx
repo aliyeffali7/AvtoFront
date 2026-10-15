@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, FileDown, CheckCircle2, Printer, Trash2 } from 'lucide-react'
+import { Plus, FileDown, CheckCircle2, Printer, Trash2, Pencil } from 'lucide-react'
 import { FinanceRecord, FinanceCategory, OwnerMove } from '@/types'
-import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
+import { getFinanceRecords, createFinanceRecord, updateFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
 import { formatCurrency, formatDate, mapApiError, toLocalISODate } from '@/lib/utils'
 import { loadDraft, saveDraft } from '@/lib/formDraft'
 import Badge from '@/components/ui/Badge'
@@ -85,12 +85,12 @@ function recordSource(r: FinanceRecord): { to: string; label: string; hint: stri
   return null
 }
 
-function AddRecordForm({ onClose, onAdded, people }: { onClose: () => void; onAdded: () => void; people: string[] }) {
-  const [type, setType] = useState<'income' | 'expense'>('income')
-  const [category, setCategory] = useState<FinanceCategory>('other')
-  const [amount, setAmount] = useState('')
-  const [description, setDescription] = useState('')
-  const [person, setPerson] = useState('')
+function AddRecordForm({ onClose, onAdded, people, record }: { onClose: () => void; onAdded: () => void; people: string[]; record?: FinanceRecord }) {
+  const [type, setType] = useState<'income' | 'expense'>(record?.type ?? 'income')
+  const [category, setCategory] = useState<FinanceCategory>(record?.category || 'other')
+  const [amount, setAmount] = useState(record ? String(Number(record.amount)) : '')
+  const [description, setDescription] = useState(record?.description ?? '')
+  const [person, setPerson] = useState(record?.person ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -99,14 +99,15 @@ function AddRecordForm({ onClose, onAdded, people }: { onClose: () => void; onAd
     setError('')
     setLoading(true)
     try {
-      await createFinanceRecord({
+      const payload = {
         type,
         amount: parseFloat(amount),
         description,
-        date: toLocalISODate(new Date()),
         category,
         ...(category in OWNER_CATEGORY_LABELS ? { person: person.trim() } : {}),
-      })
+      }
+      if (record) await updateFinanceRecord(record.id, payload)
+      else await createFinanceRecord({ ...payload, date: toLocalISODate(new Date()) })
       onAdded(); onClose()
     } catch (err) {
       setError(mapApiError(err))
@@ -118,7 +119,7 @@ function AddRecordForm({ onClose, onAdded, people }: { onClose: () => void; onAd
   return (
     <Modal
       open
-      title="Yeni qeyd"
+      title={record ? 'Qeydi düzəlt' : 'Yeni qeyd'}
       onClose={onClose}
       footer={
         <>
@@ -324,6 +325,7 @@ export default function FinanceClient() {
     savedFilters?.period && isPeriodKey(savedFilters.period.key) ? savedFilters.period : makePeriod('today'),
   )
   const [typeFilter, setTypeFilter] = useState<TypeFilter>(savedFilters?.typeFilter ?? 'all')
+  const [editRecord, setEditRecord] = useState<FinanceRecord | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [pageNote, setPageNote] = useState('')
@@ -559,6 +561,17 @@ export default function FinanceClient() {
                       {(!r.source || r.source === 'manual') && (
                         <button
                           type="button"
+                          onClick={() => setEditRecord(r)}
+                          className="w-9 h-9 inline-flex items-center justify-center rounded text-text-3 hover:text-ink hover:bg-surface-2 transition-colors"
+                          title="Düzəlt"
+                          aria-label="Düzəlt"
+                        >
+                          <Pencil size={18} strokeWidth={1.75} />
+                        </button>
+                      )}
+                      {(!r.source || r.source === 'manual') && (
+                        <button
+                          type="button"
                           onClick={() => setConfirmDeleteId(r.id)}
                           className="w-9 h-9 inline-flex items-center justify-center rounded text-text-3 hover:text-danger hover:bg-danger-subtle transition-colors"
                           title="Ləğv et"
@@ -632,6 +645,7 @@ export default function FinanceClient() {
       )}
 
       {addOpen && <AddRecordForm onClose={() => setAddOpen(false)} onAdded={load} people={ownerPeople} />}
+      {editRecord && <AddRecordForm record={editRecord} onClose={() => setEditRecord(null)} onAdded={load} people={ownerPeople} />}
       {endDayOpen && <EndDayModal onClose={() => { setEndDayOpen(false); load() }} />}
 
       <ConfirmDialog

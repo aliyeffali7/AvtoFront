@@ -785,7 +785,9 @@ export type ActivityKind =
 export interface ActivityEvent {
   id: string
   kind: ActivityKind
-  /** ISO timestamp. */
+  /** Business date (YYYY-MM-DD) the event belongs to. */
+  date: string
+  /** ISO timestamp the event was entered. */
   at: string
   text: string
   /** SPA path to the source page. */

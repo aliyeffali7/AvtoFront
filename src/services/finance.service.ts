@@ -34,6 +34,9 @@ export const getFinanceRecords = (params: {
 export const createFinanceRecord = (data: Partial<FinanceRecord>) =>
   api.post<FinanceRecord>('/api/finance', data)
 
+export const updateFinanceRecord = (id: number, data: Partial<FinanceRecord>) =>
+  api.patch<FinanceRecord>(`/api/finance/${id}`, data)
+
 export const deleteFinanceRecord = (id: number) =>
   api.delete(`/api/finance/${id}`)
 
