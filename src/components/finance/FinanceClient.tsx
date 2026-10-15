@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Plus, FileDown, CheckCircle2, Printer, Trash2 } from 'lucide-react'
-import { FinanceRecord, FinanceCategory } from '@/types'
+import { FinanceRecord, FinanceCategory, OwnerMove } from '@/types'
 import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
 import { formatCurrency, formatDate, mapApiError, toLocalISODate } from '@/lib/utils'
 import { loadDraft, saveDraft } from '@/lib/formDraft'
 import Badge from '@/components/ui/Badge'
+import ComboboxInput from '@/components/ui/ComboboxInput'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import EmptyState from '@/components/ui/EmptyState'
@@ -84,11 +85,12 @@ function recordSource(r: FinanceRecord): { to: string; label: string; hint: stri
   return null
 }
 
-function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
+function AddRecordForm({ onClose, onAdded, people }: { onClose: () => void; onAdded: () => void; people: string[] }) {
   const [type, setType] = useState<'income' | 'expense'>('income')
   const [category, setCategory] = useState<FinanceCategory>('other')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
+  const [person, setPerson] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -103,6 +105,7 @@ function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () 
         description,
         date: toLocalISODate(new Date()),
         category,
+        ...(category in OWNER_CATEGORY_LABELS ? { person: person.trim() } : {}),
       })
       onAdded(); onClose()
     } catch (err) {
@@ -150,6 +153,12 @@ function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () 
           <label className="label">Açıqlama</label>
           <input value={description} onChange={e => setDescription(e.target.value)} required placeholder="Məs. Ehtiyat hissəsi alışı" className="input" />
         </div>
+        {category in OWNER_CATEGORY_LABELS && (
+          <div>
+            <label className="label" htmlFor="kassa-person">Kim (istəyə bağlı)</label>
+            <ComboboxInput id="kassa-person" value={person} onChange={setPerson} options={people} placeholder="Məs. Əli" />
+          </div>
+        )}
         {category in OWNER_CATEGORY_LABELS && (
           <p className="text-small text-info-strong bg-info-subtle rounded px-3 py-2">Kassada görünür, amma Hesabatda mənfəətə təsir etmir — bu, biznesin gəliri və ya xərci deyil.</p>
         )}
@@ -318,6 +327,8 @@ export default function FinanceClient() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [pageNote, setPageNote] = useState('')
+  const [ownerMoves, setOwnerMoves] = useState<OwnerMove[]>([])
+  const [ownerPeople, setOwnerPeople] = useState<string[]>([])
 
   // The selected period as a date range (null = open-ended), sent to the server.
   const range = useMemo(() => {
@@ -332,6 +343,8 @@ export default function FinanceClient() {
       const res = await getFinanceRecords({ from: range.start, to: range.end, type: typeParam, page: 1 })
       setRecords(res.data.results)
       setTotals(res.data.totals)
+      setOwnerMoves(res.data.owner_moves ?? [])
+      setOwnerPeople(res.data.owner_people ?? [])
       setCount(res.data.count)
       setPage(1)
       setTotalPages(res.data.total_pages)
@@ -524,7 +537,10 @@ export default function FinanceClient() {
                         ? <Badge variant="neutral">{OWNER_CATEGORY_LABELS[r.category]}</Badge>
                         : <span className="text-text-2">{categoryLabel(r)}</span>}
                     </td>
-                    <td className="ledger-td !whitespace-normal">{r.description || <span className="text-text-3">—</span>}</td>
+                    <td className="ledger-td !whitespace-normal">
+                      {r.description || <span className="text-text-3">—</span>}
+                      {r.person && <span className="block text-small text-text-3">Kim: <span className="text-text-2 font-medium">{r.person}</span></span>}
+                    </td>
                     <td className="ledger-td" onClick={e => e.stopPropagation()}>
                       <span className="flex items-center gap-2">
                         {src && (
@@ -575,6 +591,38 @@ export default function FinanceClient() {
         </div>
       )}
 
+      {/* Sahibkar hərəkətləri — per-person draws and deposits in the period */}
+      {ownerMoves.length > 0 && (
+        <section className="card overflow-hidden">
+          <div className="px-5 py-4 border-b border-border">
+            <h2 className="card-title">Sahibkar hərəkətləri</h2>
+            <p className="text-small text-text-3 mt-0.5">{periodLabel} · bütün növlər üzrə</p>
+          </div>
+          <table className="ledger-table">
+            <thead>
+              <tr>
+                <th className="ledger-th">Kim</th>
+                <th className="ledger-th text-right">Götürdü</th>
+                <th className="ledger-th text-right">Qoydu</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ownerMoves.map(m => (
+                <tr key={m.person || '__none'} className="ledger-row !cursor-default">
+                  <td className="ledger-td">{m.person || <span className="text-text-3">Qeyd edilməyib</span>}</td>
+                  <td className="ledger-td text-right">
+                    {Number(m.drew) > 0 ? <Money value={-Number(m.drew)} meaning="expense" /> : <span className="text-text-3">—</span>}
+                  </td>
+                  <td className="ledger-td text-right">
+                    {Number(m.deposited) > 0 ? <Money value={Number(m.deposited)} meaning="income" /> : <span className="text-text-3">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
       {/* Saved day note */}
       {singleDate && pageNote && (
         <div className="card px-5 py-4">
@@ -583,7 +631,7 @@ export default function FinanceClient() {
         </div>
       )}
 
-      {addOpen && <AddRecordForm onClose={() => setAddOpen(false)} onAdded={load} />}
+      {addOpen && <AddRecordForm onClose={() => setAddOpen(false)} onAdded={load} people={ownerPeople} />}
       {endDayOpen && <EndDayModal onClose={() => { setEndDayOpen(false); load() }} />}
 
       <ConfirmDialog

@@ -5,6 +5,7 @@ import { Business } from '@/types'
 import { mapApiError } from '@/lib/utils'
 import { useCurrentUser } from '@/App'
 import ChangePasswordSection from '@/components/settings/ChangePasswordSection'
+import ServiceTemplatesCard from '@/components/settings/ServiceTemplatesCard'
 import { mediaUrl } from '@/lib/apiUrl'
 import { ImagePlus, PenLine } from 'lucide-react'
 import Button from '@/components/ui/Button'
@@ -252,6 +253,9 @@ export default function SettingsClient() {
             </div>
           </section>
         </form>
+
+        {/* Hazır işlər */}
+        <ServiceTemplatesCard />
 
         {/* Hesab */}
         {currentUser?.email && (

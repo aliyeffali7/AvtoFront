@@ -1,11 +1,15 @@
 import api from '@/lib/axios'
-import { FinanceRecord, ManualDebt, FinanceReport, DebtorGroup, DashboardStats, WeeklyIncome, ActivityEvent } from '@/types'
+import { FinanceRecord, ManualDebt, FinanceReport, DebtorGroup, DashboardStats, WeeklyIncome, ActivityEvent, ActivityDayPage, OwnerMove } from '@/types'
 
 export interface KassaPage {
   count: number
   page: number
   total_pages: number
   totals: { income: number; income_count: number; expense: number; expense_count: number }
+  /** Per-person Sahibkar götürdü / qoydu totals for the range. */
+  owner_moves: OwnerMove[]
+  /** Names used before on those records (suggestions for "Kim"). */
+  owner_people: string[]
   results: FinanceRecord[]
 }
 
@@ -67,3 +71,7 @@ export const getDashboardStats = () =>
 
 export const getRecentActivity = () =>
   api.get<ActivityEvent[]>('/api/finance/activity/')
+
+/** Every event of one day (YYYY-MM-DD), oldest first, 50 per page. */
+export const getActivityDay = (date: string, page = 1) =>
+  api.get<ActivityDayPage>('/api/finance/activity/', { params: { date, page } })

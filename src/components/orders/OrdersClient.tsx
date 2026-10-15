@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Search, Zap } from 'lucide-react'
-import { Order, Mechanic, Product } from '@/types'
-import { getOrders, createOrder } from '@/services/orders.service'
+import { Order, Mechanic, Product, ServiceTemplate } from '@/types'
+import { getOrders, createOrder, getServiceTemplates } from '@/services/orders.service'
+import ServiceTemplatePicker from '@/components/orders/ServiceTemplatePicker'
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts } from '@/services/warehouse.service'
 import { formatCurrency, mapApiError } from '@/lib/utils'
@@ -40,6 +41,8 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
   const [mechanics, setMechanics] = useState<Mechanic[]>([])
   const [selectedMechanicId, setSelectedMechanicId] = useState('')
   const [mechanicAmount, setMechanicAmount] = useState('')
+  const [templates, setTemplates] = useState<ServiceTemplate[]>([])
+  const [templateId, setTemplateId] = useState<number | null>(null)
   const loadedRef = useRef(false)
 
   useEffect(() => {
@@ -47,28 +50,41 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
       loadedRef.current = true
       getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
       getMechanics().then(r => setMechanics(r.data)).catch(() => {})
+      getServiceTemplates().then(r => setTemplates(r.data)).catch(() => {})
     }
     if (!open) loadedRef.current = false
   }, [open])
 
   useEffect(() => {
+    if (templateId !== null) return
     if (!selectedMechanicId) { setMechanicAmount(''); return }
     const mech = mechanics.find(m => m.id === parseInt(selectedMechanicId))
-    if (mech && mech.work_percent > 0 && price) {
+    if (templateId === null && mech && mech.work_percent > 0 && price) {
       setMechanicAmount(((parseFloat(price) || 0) * mech.work_percent / 100).toFixed(2))
     }
-  }, [selectedMechanicId, price, mechanics])
+  }, [selectedMechanicId, price, mechanics, templateId])
 
   const filteredProducts = warehouseItems.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
 
   function selectProduct(p: Product) {
+    setTemplateId(null)
     setName(p.name)
     setPrice(String(p.sell_price))
     setProductSearch(p.name)
     setShowProductDropdown(false)
   }
 
+  function selectTemplate(t: ServiceTemplate) {
+    setName(t.name)
+    setPrice(String(t.price))
+    setMechanicAmount(String(t.mechanic_amount))
+    setTemplateId(t.id)
+    setProductSearch('')
+    setShowProductDropdown(false)
+  }
+
   function reset() {
+    setTemplateId(null)
     setName(''); setPrice(''); setError('')
     setProductSearch(''); setShowProductDropdown(false)
     setSelectedMechanicId(''); setMechanicAmount('')
@@ -92,7 +108,8 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
           name: name.trim(),
           price: parsedPrice,
           mechanic: mechId,
-          mechanic_amount: (mechId && parsedMechanicAmt > 0) ? parsedMechanicAmt : null,
+          mechanic_amount: templateId !== null ? parsedMechanicAmt : (mechId && parsedMechanicAmt > 0) ? parsedMechanicAmt : null,
+          template: templateId,
         }],
       })
       reset()
@@ -119,6 +136,7 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
       }
     >
       <form id="quick-order-form" onSubmit={handleSubmit} className="flex flex-col gap-3 pb-2">
+        <ServiceTemplatePicker templates={templates} onPick={selectTemplate} />
         <div className="relative">
           <input
             value={productSearch}
@@ -153,7 +171,7 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
             <option key={m.id} value={m.id}>{m.full_name || '—'}{m.work_percent > 0 ? ` (${m.work_percent}%)` : ''}</option>
           ))}
         </select>
-        {selectedMechanicId && (
+        {(selectedMechanicId || templateId !== null) && (
           <input value={mechanicAmount} onChange={e => setMechanicAmount(e.target.value)} type="number" min="0" step="0.01" placeholder="Usta payı ₼" className="input-mono" />
         )}
         {error && <p className="text-body text-danger bg-danger-subtle rounded px-3 py-2">{error}</p>}

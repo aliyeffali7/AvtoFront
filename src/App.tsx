@@ -8,6 +8,7 @@ import PublicOrderPage from '@/pages/PublicOrderPage'
 import BusinessLayout from '@/layouts/BusinessLayout'
 import MechanicLayout from '@/layouts/MechanicLayout'
 import DashboardPage from '@/pages/business/DashboardPage'
+import ActivityPage from '@/pages/business/ActivityPage'
 import OrdersPage from '@/pages/business/OrdersPage'
 import OrderDetailPage from '@/pages/business/OrderDetailPage'
 import MechanicsPage from '@/pages/business/MechanicsPage'
@@ -115,6 +116,7 @@ export default function App() {
           <Route element={<RoleGuard role="BUSINESS_OWNER" />}>
             <Route element={<BusinessLayout />}>
               <Route path="/business/dashboard" element={<DashboardPage />} />
+              <Route path="/business/activity" element={<ActivityPage />} />
               <Route path="/business/orders" element={<OrdersPage />} />
               <Route path="/business/orders/new" element={<OrderDetailPage />} />
               <Route path="/business/orders/:id" element={<OrderDetailPage />} />

@@ -2,16 +2,17 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, Link2, MessageCircle, Pencil, Printer, RefreshCw, Wallet, Wrench, X, XCircle } from 'lucide-react'
 import { useGoBack } from '@/lib/useGoBack'
-import { Order, OrderService, Mechanic, Product, Business, Store } from '@/types'
+import { Order, OrderService, Mechanic, Product, Business, Store, ServiceTemplate } from '@/types'
 import {
   getOrder, assignMechanic, changeOrderStatus,
   addProductToOrder, removeProductFromOrder, updateOrderProduct, purchaseProductForOrder, returnOrderProduct,
-  addServiceToOrder, updateOrderService, removeServiceFromOrder,
+  addServiceToOrder, updateOrderService, removeServiceFromOrder, getServiceTemplates,
   recordPayment, updateOrder, deleteOrder,
   uploadOrderImage, deleteOrderImage,
   resetOrderShare, shareOrder,
 } from '@/services/orders.service'
 import { getMechanics } from '@/services/mechanics.service'
+import ServiceTemplatePicker from '@/components/orders/ServiceTemplatePicker'
 import { getProducts } from '@/services/warehouse.service'
 import { getStores } from '@/services/stores.service'
 import { getBusinessProfile } from '@/services/auth.service'
@@ -45,13 +46,14 @@ function SectionCard({ title, action, children, tone }: { title: string; action?
   )
 }
 
-type ServiceValues = { name: string; price: string; mechanicId: string; mechanicAmount: string }
+type ServiceValues = { name: string; price: string; mechanicId: string; mechanicAmount: string; templateId: string }
 
 /** Add / edit one job: name, price, usta and usta payı (pre-filled from the
  * mechanic's percent, editable by the owner). */
-function ServiceForm({ initial, mechanics, submitLabel, loading, error, onSubmit, onCancel }: {
+function ServiceForm({ initial, mechanics, templates, submitLabel, loading, error, onSubmit, onCancel }: {
   initial: ServiceValues
   mechanics: Mechanic[]
+  templates: ServiceTemplate[]
   submitLabel: string
   loading: boolean
   error: string
@@ -63,14 +65,21 @@ function ServiceForm({ initial, mechanics, submitLabel, loading, error, onSubmit
     const mech = mechanics.find(m => m.id === parseInt(mechanicId))
     return mech && parseFloat(price) > 0 ? (parseFloat(price) * mech.work_percent / 100).toFixed(2) : null
   }
+  // A job picked from "Hazır işlər" keeps its fixed usta payı: changing the
+  // price or the mechanic never recalculates it from the mechanic's percent.
+  const fixedPay = v.templateId !== ''
   return (
     <form onSubmit={e => { e.preventDefault(); onSubmit(v) }} className="mb-3 border border-border rounded-lg p-3 flex flex-col gap-2 bg-paper">
+      <ServiceTemplatePicker
+        templates={templates}
+        onPick={t => setV({ ...v, name: t.name, price: String(t.price), mechanicAmount: String(t.mechanic_amount), templateId: String(t.id) })}
+      />
       <input value={v.name} onChange={e => setV({ ...v, name: e.target.value })} required placeholder="İş adı" aria-label="İş adı" className="input" autoFocus />
       <div className="flex gap-2 flex-wrap">
         <input
           value={v.price}
           onChange={e => {
-            const amount = percentAmount(e.target.value, v.mechanicId)
+            const amount = fixedPay ? null : percentAmount(e.target.value, v.mechanicId)
             setV({ ...v, price: e.target.value, mechanicAmount: amount ?? v.mechanicAmount })
           }}
           type="number" min="0" step="0.01" placeholder="Qiymət ₼" aria-label="Qiymət" className="input-mono flex-1 min-w-[120px]"
@@ -78,8 +87,8 @@ function ServiceForm({ initial, mechanics, submitLabel, loading, error, onSubmit
         <select
           value={v.mechanicId}
           onChange={e => {
-            const amount = percentAmount(v.price, e.target.value)
-            setV({ ...v, mechanicId: e.target.value, mechanicAmount: e.target.value ? (amount ?? v.mechanicAmount) : '' })
+            const amount = fixedPay ? null : percentAmount(v.price, e.target.value)
+            setV({ ...v, mechanicId: e.target.value, mechanicAmount: fixedPay ? v.mechanicAmount : e.target.value ? (amount ?? v.mechanicAmount) : '' })
           }}
           aria-label="Usta"
           className="input flex-1 min-w-[160px]"
@@ -88,10 +97,11 @@ function ServiceForm({ initial, mechanics, submitLabel, loading, error, onSubmit
           {mechanics.map(m => <option key={m.id} value={m.id}>{m.full_name || m.id} ({m.work_percent}%)</option>)}
         </select>
       </div>
-      {v.mechanicId && (
+      {(v.mechanicId || fixedPay) && (
         <div className="flex items-center gap-2">
           <span className="label !mb-0 shrink-0">Usta payı</span>
           <input value={v.mechanicAmount} onChange={e => setV({ ...v, mechanicAmount: e.target.value })} type="number" min="0" step="0.01" placeholder="0.00" aria-label="Usta payı" className="input-mono" />
+          {fixedPay && <span className="text-small text-text-3">Hazır iş — sabit pay</span>}
         </div>
       )}
       {error && <p className="text-small text-danger">{error}</p>}
@@ -134,6 +144,8 @@ export default function OrderDetailClient() {
   const [shareCopied, setShareCopied] = useState(false)
   const [shareError, setShareError] = useState('')
   const [mechanics, setMechanics] = useState<Mechanic[]>([])
+  const [templates, setTemplates] = useState<ServiceTemplate[]>([])
+  const [templatesLoaded, setTemplatesLoaded] = useState(false)
   const [mechanicsLoaded, setMechanicsLoaded] = useState(false)
   const [selectedMechanic, setSelectedMechanic] = useState('')
   const [assigningMechanic, setAssigningMechanic] = useState(false)
@@ -278,6 +290,12 @@ export default function OrderDetailClient() {
       getProducts().then(r => setWarehouseProducts(r.data)).catch(() => {})
     }
   }, [addProductOpen])
+
+  async function ensureTemplates() {
+    if (templatesLoaded) return
+    setTemplatesLoaded(true)
+    try { setTemplates((await getServiceTemplates()).data) } catch { /* picker stays hidden */ }
+  }
 
   async function ensureMechanics() {
     if (mechanicsLoaded) return
@@ -436,12 +454,13 @@ export default function OrderDetailClient() {
     setServiceError('')
     const price = parseFloat(v.price) || 0
     const mechanicId = v.mechanicId ? parseInt(v.mechanicId) : null
-    const mechanicAmt = mechanicId !== null && v.mechanicAmount !== '' ? parseFloat(v.mechanicAmount) || 0 : null
+    const mechanicAmt = (mechanicId !== null || v.templateId !== '') && v.mechanicAmount !== '' ? parseFloat(v.mechanicAmount) || 0 : null
     if (mechanicAmt !== null && mechanicAmt > price) { setServiceError('Usta payı işin qiymətindən çox ola bilməz.'); return }
+    const templateId = v.templateId ? parseInt(v.templateId) : null
     setAddingService(true)
     try {
-      if (serviceId !== undefined) await updateOrderService(order.id, serviceId, { name: v.name.trim(), price, mechanic: mechanicId, mechanic_amount: mechanicAmt })
-      else await addServiceToOrder(order.id, v.name.trim(), price, mechanicId, mechanicAmt)
+      if (serviceId !== undefined) await updateOrderService(order.id, serviceId, { name: v.name.trim(), price, mechanic: mechanicId, mechanic_amount: mechanicAmt, template: templateId })
+      else await addServiceToOrder(order.id, v.name.trim(), price, mechanicId, mechanicAmt, templateId)
       setAddServiceOpen(false); setEditingServiceId(null); loadOrder()
     } catch (err) {
       setServiceError(mapApiError(err))
@@ -583,13 +602,13 @@ export default function OrderDetailClient() {
           <SectionCard
             title="Xidmətlər"
             action={linesEditable && (
-              <button onClick={() => { setAddServiceOpen(v => !v); setEditingServiceId(null); setServiceError(''); ensureMechanics() }} className={LINK_BTN}>+ Əlavə et</button>
+              <button onClick={() => { setAddServiceOpen(v => !v); setEditingServiceId(null); setServiceError(''); ensureMechanics(); ensureTemplates() }} className={LINK_BTN}>+ Əlavə et</button>
             )}
           >
             {addServiceOpen && linesEditable && (
               <ServiceForm
-                initial={{ name: '', price: '', mechanicId: '', mechanicAmount: '' }}
-                mechanics={mechanics} submitLabel="Əlavə et" loading={addingService} error={serviceError}
+                initial={{ name: '', price: '', mechanicId: '', mechanicAmount: '', templateId: '' }}
+                mechanics={mechanics} templates={templates} submitLabel="Əlavə et" loading={addingService} error={serviceError}
                 onSubmit={v => submitService(v)} onCancel={() => setAddServiceOpen(false)}
               />
             )}
@@ -601,8 +620,8 @@ export default function OrderDetailClient() {
                   editingServiceId !== null && editingServiceId === svc.id ? (
                     <ServiceForm
                       key={svc.id}
-                      initial={{ name: svc.name, price: String(svc.price), mechanicId: svc.mechanic ? String(svc.mechanic) : '', mechanicAmount: svc.mechanic_amount != null ? String(svc.mechanic_amount) : '' }}
-                      mechanics={mechanics} submitLabel="Saxla" loading={addingService} error={serviceError}
+                      initial={{ name: svc.name, price: String(svc.price), mechanicId: svc.mechanic ? String(svc.mechanic) : '', mechanicAmount: svc.mechanic_amount != null ? String(svc.mechanic_amount) : '', templateId: svc.template ? String(svc.template) : '' }}
+                      mechanics={mechanics} templates={[]} submitLabel="Saxla" loading={addingService} error={serviceError}
                       onSubmit={v => submitService(v, svc.id)} onCancel={() => setEditingServiceId(null)}
                     />
                   ) : (

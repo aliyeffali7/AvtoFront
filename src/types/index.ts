@@ -186,8 +186,18 @@ export interface OrderService {
   mechanic?: number | null
   mechanic_name?: string | null
   mechanic_amount?: string | number | null
+  /** "Hazır iş" this job was picked from — its usta payı is then fixed. */
+  template?: number | null
   // Mechanic-role responses only: is this job assigned to the viewer.
   is_mine?: boolean
+}
+
+/** "Hazır iş": a ready-made job with a set price and a fixed usta payı. */
+export interface ServiceTemplate {
+  id: number
+  name: string
+  price: string | number
+  mechanic_amount: string | number
 }
 
 export interface Order {
@@ -279,6 +289,8 @@ export interface FinanceRecord {
   category?: FinanceCategory
   amount: number
   description: string
+  /** "Kim" — only on Sahibkar götürdü / qoydu. */
+  person?: string
   date: string
   order?: number | null
   purchase?: number | null
@@ -779,4 +791,19 @@ export interface ActivityEvent {
   /** SPA path to the source page. */
   link: string
   amount: number | string | null
+}
+
+/** Per-person owner draws (götürdü) and deposits (qoydu); person '' = not named. */
+export interface OwnerMove {
+  person: string
+  drew: number | string
+  deposited: number | string
+}
+
+/** One page of a single day's activity (Hərəkətlər page). */
+export interface ActivityDayPage {
+  count: number
+  page: number
+  total_pages: number
+  results: ActivityEvent[]
 }

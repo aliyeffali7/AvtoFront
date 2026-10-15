@@ -1,5 +1,5 @@
 import api from '@/lib/axios'
-import { Order, PaginatedResponse } from '@/types'
+import { Order, PaginatedResponse, ServiceTemplate } from '@/types'
 
 export const getOrders = (params?: {
   page?: number
@@ -63,10 +63,10 @@ export const removeProductFromOrder = (orderId: number, orderProductId: number) 
   api.delete<Order>(`/api/orders/${orderId}/products/${orderProductId}`)
 
 
-export const addServiceToOrder = (orderId: number, name: string, price: number, mechanic?: number | null, mechanic_amount?: number | null) =>
-  api.post<Order>(`/api/orders/${orderId}/services`, { name, price, mechanic: mechanic ?? null, mechanic_amount: mechanic_amount ?? null })
+export const addServiceToOrder = (orderId: number, name: string, price: number, mechanic?: number | null, mechanic_amount?: number | null, template?: number | null) =>
+  api.post<Order>(`/api/orders/${orderId}/services`, { name, price, mechanic: mechanic ?? null, mechanic_amount: mechanic_amount ?? null, template: template ?? null })
 
-export const updateOrderService = (orderId: number, serviceId: number, data: { name: string; price: number; mechanic: number | null; mechanic_amount: number | null }) =>
+export const updateOrderService = (orderId: number, serviceId: number, data: { name: string; price: number; mechanic: number | null; mechanic_amount: number | null; template?: number | null }) =>
   api.patch<Order>(`/api/orders/${orderId}/services/${serviceId}`, data)
 
 export const removeServiceFromOrder = (orderId: number, serviceId: number) =>
@@ -93,3 +93,18 @@ export const resetOrderShare = (orderId: number) =>
 
 export const getPublicOrder = (token: string) =>
   api.get<import('@/types').PublicOrder>(`/api/public/orders/${encodeURIComponent(token)}`)
+
+// "Hazır işlər" (owner only).
+export type ServiceTemplateInput = { name: string; price: number; mechanic_amount: number }
+
+export const getServiceTemplates = () =>
+  api.get<ServiceTemplate[]>('/api/orders/service-templates/')
+
+export const createServiceTemplate = (data: ServiceTemplateInput) =>
+  api.post<ServiceTemplate>('/api/orders/service-templates/', data)
+
+export const updateServiceTemplate = (id: number, data: ServiceTemplateInput) =>
+  api.patch<ServiceTemplate>(`/api/orders/service-templates/${id}/`, data)
+
+export const deleteServiceTemplate = (id: number) =>
+  api.delete(`/api/orders/service-templates/${id}/`)

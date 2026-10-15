@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { Order, OrderImage, Mechanic, OrderService, Product, Customer, Store } from '@/types'
-import { createOrder, updateOrder, uploadOrderImage, deleteOrderImage, purchaseProductForOrder } from '@/services/orders.service'
+import { Order, OrderImage, Mechanic, OrderService, Product, Customer, Store, ServiceTemplate } from '@/types'
+import { createOrder, updateOrder, uploadOrderImage, deleteOrderImage, purchaseProductForOrder, getServiceTemplates } from '@/services/orders.service'
 import { getStores } from '@/services/stores.service'
 import { getMechanics } from '@/services/mechanics.service'
+import ServiceTemplatePicker from '@/components/orders/ServiceTemplatePicker'
 import { getProducts } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
 import { formatCurrency, formatPhone, mapApiError, autoFormatSearch } from '@/lib/utils'
@@ -14,7 +15,7 @@ import ComboboxInput from '@/components/ui/ComboboxInput'
 import PlateInput from '@/components/ui/PlateInput'
 import CarBrandModelInputs from '@/components/ui/CarBrandModelInputs'
 
-type SvcRow = { name: string; price: string; mechanicId: string; mechanicAmount: string }
+type SvcRow = { name: string; price: string; mechanicId: string; mechanicAmount: string; templateId?: string }
 // A line already on the order (edit mode) has `lineId`: it keeps its product,
 // frozen sell price and cost; only the quantity can change or the line be removed.
 type ProdRow = { productId: string; qty: string; lineId?: number; name?: string; sellPrice?: number }
@@ -62,6 +63,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
   const [fuelType, setFuelType] = useState(order?.fuel_type ?? draft?.fuelType ?? '')
   const [description, setDescription] = useState(order?.description ?? draft?.description ?? '')
   const [mechanic, setMechanic] = useState(order?.mechanic ? String(order.mechanic) : draft?.mechanic ?? '')
+  const [templates, setTemplates] = useState<ServiceTemplate[]>([])
   const [services, setServices] = useState<SvcRow[]>(
     order
       ? (order.services ?? []).map((s: OrderService) => ({
@@ -69,6 +71,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
           price: String(s.price),
           mechanicId: s.mechanic ? String(s.mechanic) : '',
           mechanicAmount: s.mechanic_amount != null ? String(s.mechanic_amount) : '',
+          templateId: s.template ? String(s.template) : '',
         }))
       : draft?.services ?? []
   )
@@ -121,6 +124,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
 
   useEffect(() => {
     getMechanics().then(r => setMechanics(r.data)).catch(() => {})
+    getServiceTemplates().then(r => setTemplates(r.data)).catch(() => {})
     getProducts().then(r => setWarehouseItems(r.data)).catch(() => {})
     getStores().then(r => setStores(r.data)).catch(() => {})
     // Include paid-off debts too (true) — Kreditorlar's own combobox does the
@@ -218,12 +222,18 @@ export default function OrderForm({ order, onDone, onCancel }: {
   }
 
   function addServiceRow() { setServices(prev => [...prev, { name: '', price: '', mechanicId: '', mechanicAmount: '' }]) }
+  function pickTemplate(i: number, tpl: ServiceTemplate) {
+    setServices(prev => prev.map((t, idx) => idx === i
+      ? { ...t, name: tpl.name, price: String(tpl.price), mechanicAmount: String(tpl.mechanic_amount), templateId: String(tpl.id) }
+      : t))
+  }
   function removeServiceRow(i: number) { setServices(prev => prev.filter((_, idx) => idx !== i)) }
   function updateServiceRow(i: number, field: keyof SvcRow, value: string) {
     setServices(prev => prev.map((t, idx) => {
       if (idx !== i) return t
       const updated = { ...t, [field]: value }
-      if (field === 'mechanicId' || field === 'price') {
+      // A "Hazır iş" keeps its fixed usta payı - no recalculation from the percent.
+      if ((field === 'mechanicId' || field === 'price') && !t.templateId) {
         const mech = mechanics.find(m => m.id === parseInt(field === 'mechanicId' ? value : t.mechanicId))
         const price = parseFloat(field === 'price' ? value : t.price) || 0
         if (mech && price > 0) updated.mechanicAmount = (price * mech.work_percent / 100).toFixed(2)
@@ -262,6 +272,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
         price: t.price || '0',
         mechanic: t.mechanicId ? parseInt(t.mechanicId) : null,
         mechanic_amount: t.mechanicAmount !== '' ? t.mechanicAmount : null,
+        template: t.templateId ? parseInt(t.templateId) : null,
       }))
     const filledProducts = orderProducts
       .filter(p => p.lineId != null || p.productId)
@@ -489,6 +500,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
         <div className="flex flex-col gap-3">
           {services.map((svc, i) => (
             <div key={i} className="flex flex-col gap-2 border border-border rounded-lg p-3 bg-paper">
+              <ServiceTemplatePicker templates={templates} onPick={tpl => pickTemplate(i, tpl)} />
               <div className="flex gap-2">
                 <input value={svc.name} onChange={e => updateServiceRow(i, 'name', e.target.value)} placeholder="İş adı" aria-label="İş adı" className="input flex-1" />
                 <button type="button" onClick={() => removeServiceRow(i)} aria-label="Sil" className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
@@ -500,10 +512,11 @@ export default function OrderForm({ order, onDone, onCancel }: {
                   {mechanics.map(m => <option key={m.id} value={m.id}>{m.full_name || m.id} ({m.work_percent}%)</option>)}
                 </select>
               </div>
-              {svc.mechanicId && (
+              {(svc.mechanicId || svc.templateId) && (
                 <div className="flex items-center gap-2">
                   <span className="label !mb-0 shrink-0">Usta payı</span>
                   <input value={svc.mechanicAmount} onChange={e => updateServiceRow(i, 'mechanicAmount', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input-mono" />
+                  {svc.templateId && <span className="text-small text-text-3">Hazır iş — sabit pay</span>}
                 </div>
               )}
             </div>
