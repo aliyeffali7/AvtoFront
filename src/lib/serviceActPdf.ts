@@ -1,113 +1,22 @@
 import { Order, Business } from '@/types'
-import { pm, toDataUrl } from '@/lib/printOrderPDF'
 import { mediaUrl } from '@/lib/apiUrl'
 import { formatPhone } from '@/lib/utils'
-import { formatPlate } from '@/components/ui/Plate'
+import {
+  pm, toDataUrl, loadBrand, buildHeader, buildFooter, plateBox, tableCells, rowsLayout, sectionTitle, label, money,
+  INK, TEXT_2, TEXT_3, BORDER, PAGE_WIDTH, PAGE_MARGINS,
+} from '@/lib/pdfBrand'
 
 // The customer-facing "Servis aktı" for one order (pdfmake, A4 portrait) in the
 // Servo brand look: ink on white, hairline rules, grey table heads, numbers
 // right-aligned. Signal red appears only in the tiny Servo mark in the footer.
-// Blocks the shop has not filled in are left out.
-
-const INK = '#090909'
-const TEXT_2 = '#3D3D3D'
-const TEXT_3 = '#6B6B6B'
-const SURFACE_2 = '#EBEBEB'
-const BORDER = '#E0E0E0'
-const AZ_BLUE = '#1C4FA0'
-
-const SIDE = 45.35 // 16 mm
-const PAGE_WIDTH = 595.28 - SIDE * 2
-
-const MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avqust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr']
-
-const TEXT_FONT = 'SourceSans3'
-const HEAD_FONT = 'LibreFranklin'
-const MONO_FONT = 'JetBrainsMono'
-
-const FONT_FILES: Record<string, string> = {
-  'SourceSans3-Regular.ttf': '/fonts/SourceSans3-Regular.ttf',
-  'SourceSans3-SemiBold.ttf': '/fonts/SourceSans3-SemiBold.ttf',
-  'LibreFranklin-Bold.ttf': '/fonts/LibreFranklin-Bold.ttf',
-  'JetBrainsMono-SemiBold.ttf': '/fonts/JetBrainsMono-SemiBold.ttf',
-}
-
-let fontsLoaded = false
-
-async function fetchBase64(url: string): Promise<string> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`${url}: ${res.status}`)
-  const bytes = new Uint8Array(await res.arrayBuffer())
-  let bin = ''
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
-  return btoa(bin)
-}
-
-const family = (file: string) => ({ normal: file, bold: file, italics: file, bolditalics: file })
-
-// Registers the brand fonts (full Azerbaijani glyph coverage) in pdfmake.
-// Returns false when they cannot be loaded; the act then falls back to Roboto.
-async function ensureBrandFonts(): Promise<boolean> {
-  if (fontsLoaded) return true
-  try {
-    const entries = await Promise.all(Object.entries(FONT_FILES).map(async ([name, url]) => [name, await fetchBase64(url)] as const))
-    pm().addVirtualFileSystem(Object.fromEntries(entries))
-    pm().fonts = {
-      ...pm().fonts,
-      [TEXT_FONT]: { normal: 'SourceSans3-Regular.ttf', bold: 'SourceSans3-SemiBold.ttf', italics: 'SourceSans3-Regular.ttf', bolditalics: 'SourceSans3-SemiBold.ttf' },
-      [HEAD_FONT]: family('LibreFranklin-Bold.ttf'),
-      [MONO_FONT]: family('JetBrainsMono-SemiBold.ttf'),
-    }
-    fontsLoaded = true
-    return true
-  } catch {
-    return false
-  }
-}
-
-// The Servo mark, cropped to its artwork, as an SVG string pdfmake can draw.
-async function loadMark(): Promise<string> {
-  try {
-    const res = await fetch('/brand/servo_mark_ink_transparent.svg')
-    if (!res.ok) return ''
-    const svg = await res.text()
-    return svg
-      .replace(/width="\d+"/, 'width="224"')
-      .replace(/height="\d+"/, 'height="192"')
-      .replace(/viewBox="[^"]*"/, 'viewBox="56 56 224 192"')
-  } catch {
-    return ''
-  }
-}
-
-function money(n: number) {
-  const [int, dec] = Math.abs(n).toFixed(2).split('.')
-  return `${int.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')},${dec}`
-}
-
-// 'YYYY-MM-DD' (a date) or a full ISO timestamp → local calendar parts.
-function dateParts(value: string) {
-  const plain = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  if (plain) return { y: Number(plain[1]), m: Number(plain[2]), d: Number(plain[3]) }
-  const dt = new Date(value)
-  return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() }
-}
-
-function longDate(value: string) {
-  const { y, m, d } = dateParts(value)
-  return `${d} ${MONTHS[m - 1]} ${y}`
-}
+// Blocks the shop has not filled in are left out. Fonts, header, footer, plate
+// box and table styles are shared with the customer history (lib/pdfBrand.ts).
 
 function lines(text?: string) {
   return (text ?? '').split('\n').map(l => l.trim()).filter(Boolean)
 }
 
 const PAYMENT_WORD = { paid: 'Ödənilib', partial: 'Qismən ödənilib', unpaid: 'Ödənilməyib' } as const
-
-// Small uppercase letter-spaced label.
-function label(text: string, extra = {}) {
-  return { text, fontSize: 7, color: TEXT_3, characterSpacing: 1, margin: [0, 0, 0, 3], ...extra }
-}
 
 type LineNode = { table: { body: unknown[] } }
 
@@ -122,47 +31,25 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   const remaining = Math.max(total - paid, 0)
   const customerName = [order.customer_name, order.customer_surname].filter(Boolean).join(' ')
   const actDate = order.completed_on ?? order.created_at
-  const instagram = business?.instagram?.trim().replace(/^@/, '') ?? ''
   const shopName = business?.name ?? ''
   const actNo = order.number != null ? String(order.number) : ''
 
-  const [brand, logo, signature, mark] = await Promise.all([
-    ensureBrandFonts(),
+  const [brand, logo, signature] = await Promise.all([
+    loadBrand(),
     business?.logo ? toDataUrl(mediaUrl(business.logo)) : Promise.resolve(''),
     business?.signature ? toDataUrl(mediaUrl(business.signature)) : Promise.resolve(''),
-    loadMark(),
   ])
-  const textFont = brand ? TEXT_FONT : 'Roboto'
-  const headFont = brand ? HEAD_FONT : 'Roboto'
-  const monoFont = brand ? MONO_FONT : 'Roboto'
+  const { fonts } = brand
+  const textFont = fonts.text
+  const headFont = fonts.head
+  const monoFont = fonts.mono
   const f = (font: string) => ({ font })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const content: any[] = []
 
   // ── Header: logo + name + slogan | SERVİS AKTI № / date ──────────────
-  content.push({
-    columns: [
-      ...(logo ? [{ width: 52, image: logo, fit: [52, 52] }] : []),
-      {
-        width: '*',
-        stack: [
-          { text: shopName, ...f(headFont), fontSize: 20, bold: true, color: INK },
-          business?.slogan ? { text: business.slogan, fontSize: 9.5, color: TEXT_3, margin: [0, 3, 0, 0] } : null,
-        ].filter(Boolean),
-        margin: [logo ? 12 : 0, logo ? 6 : 0, 0, 0],
-      },
-      {
-        width: 'auto',
-        stack: [
-          { text: 'SERVİS AKTI', fontSize: 7.5, color: TEXT_3, characterSpacing: 1.6, alignment: 'right' },
-          ...(actNo ? [{ text: `№ ${actNo}`, ...f(monoFont), fontSize: 17, bold: true, color: INK, alignment: 'right', margin: [0, 4, 0, 0] }] : []),
-          { text: longDate(actDate), ...f(monoFont), fontSize: 8.5, color: TEXT_2, alignment: 'right', margin: [0, 3, 0, 0] },
-        ],
-      },
-    ],
-  })
-  content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: PAGE_WIDTH, y2: 0, lineWidth: 1, lineColor: INK }], margin: [0, 12, 0, 14] })
+  content.push(...buildHeader({ fonts, logo, shopName, slogan: business?.slogan, kind: 'SERVİS AKTI', number: actNo, date: actDate }))
 
   // ── Info: Müştəri | Avtomobil ────────────────────────────────────────
   const phone = formatPhone(order.customer_phone)
@@ -182,22 +69,10 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     order.mechanic_name ? { ...kv('Usta', order.mechanic_name), margin: [0, 6, 0, 0] } : null,
   ].filter(Boolean)
   const mileage = order.mileage != null ? `${money(order.mileage).slice(0, -3)} ${order.mileage_unit ?? 'km'}` : ''
-  const plateBox = order.plate_number
-    ? {
-        table: {
-          body: [[
-            { text: 'AZ', fontSize: 6.5, bold: true, color: '#FFFFFF', fillColor: AZ_BLUE, margin: [3, 3.5, 3, 0] },
-            { text: formatPlate(order.plate_number), ...f(monoFont), fontSize: 10.5, color: INK, margin: [5, 1.5, 5, 0] },
-          ]],
-        },
-        layout: { hLineWidth: () => 1, vLineWidth: () => 1, hLineColor: () => INK, vLineColor: () => INK, paddingLeft: () => 0, paddingRight: () => 0, paddingTop: () => 2, paddingBottom: () => 2 },
-        margin: [0, 5, 0, 3],
-      }
-    : null
   const carStack = [
     label('AVTOMOBİL'),
     carName ? { text: carName, fontSize: 12, bold: true, color: INK } : null,
-    plateBox,
+    order.plate_number ? plateBox(order.plate_number, fonts) : null,
     order.vin_code ? kv('VIN', order.vin_code, true) : null,
     mileage ? kv('Yürüş', mileage, true) : null,
   ].filter(Boolean)
@@ -212,24 +87,10 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   if (order.diagnosis) content.push(para('DİAQNOSTİKA', order.diagnosis))
 
   // ── Tables ───────────────────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const th = (text: string, alignment = 'left'): any => ({ text, fontSize: 6.8, color: TEXT_3, characterSpacing: 0.9, alignment, fillColor: SURFACE_2, margin: [6, 5, 6, 4] })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const td = (text: unknown, alignment = 'left', extra = {}): any => ({ text, fontSize: 9.5, color: INK, alignment, margin: [6, 5, 6, 4], ...extra })
-  const num = (text: string, extra = {}) => td(text, 'right', { ...f(monoFont), fontSize: 9, ...extra })
+  const { th, td, num } = tableCells(fonts)
   const index = (i: number) => td(String(i + 1), 'center', { ...f(monoFont), fontSize: 8, color: TEXT_3 })
-  // 1px #E0E0E0 line under every body row (none above the grey head row).
-  const rowsLayout = {
-    hLineWidth: (i: number) => (i <= 1 ? 0 : 1),
-    hLineColor: () => BORDER,
-    vLineWidth: () => 0,
-    paddingLeft: () => 0,
-    paddingRight: () => 0,
-    paddingTop: () => 0,
-    paddingBottom: () => 0,
-  }
   const section = (title: string, headRow: unknown[], rows: unknown[][], widths: (string | number)[]) => {
-    content.push({ text: title, ...f(headFont), fontSize: 8.5, bold: true, color: INK, characterSpacing: 1.2, margin: [0, 18, 0, 6] })
+    content.push(sectionTitle(title, fonts))
     content.push({ table: { headerRows: 1, dontBreakRows: true, widths, body: [headRow, ...rows] }, layout: rowsLayout })
   }
   if (services.length) {
@@ -357,27 +218,12 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     unbreakable: true,
   })
 
-  // ── Footer: contact line + "Servo ilə hazırlanıb" + page number ─────
-  const contactLine = [business?.phone ? formatPhone(business.phone) : '', business?.address, instagram ? `@${instagram}` : ''].filter(Boolean).join(' · ')
-  const footer = (currentPage: number, pageCount: number) => ({
-    margin: [SIDE, 14, SIDE, 0],
-    stack: [
-      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: PAGE_WIDTH, y2: 0, lineWidth: 1, lineColor: BORDER }] },
-      {
-        columns: [
-          { width: '*', text: contactLine, fontSize: 8, color: TEXT_3, margin: [0, 6, 0, 0] },
-          ...(pageCount > 1 ? [{ width: 'auto', text: `${currentPage} / ${pageCount}`, ...f(monoFont), fontSize: 7.5, color: TEXT_3, margin: [0, 6, 14, 0] }] : []),
-          ...(mark ? [{ width: 10, svg: mark, margin: [0, 5.5, 0, 0] }] : []),
-          { width: 'auto', text: 'Servo ilə hazırlanıb', fontSize: 7.5, color: TEXT_3, margin: [mark ? 4 : 0, 6.5, 0, 0] },
-        ],
-      },
-    ],
-  })
+  const footer = buildFooter(brand, business)
 
   const fileNo = actNo ? `${actNo}_` : ''
   await pm().createPdf({
     pageSize: 'A4',
-    pageMargins: [SIDE, 45, SIDE, 62],
+    pageMargins: PAGE_MARGINS,
     defaultStyle: { font: textFont, fontSize: 9.5, color: INK },
     info: { title: `Servis aktı${actNo ? ` № ${actNo}` : ''}` },
     content,

@@ -1,336 +1,248 @@
-import { Business, CustomerDetail } from '@/types'
+import { Business, CustomerDetail, Order } from '@/types'
 import { mediaUrl } from '@/lib/apiUrl'
+import { formatPhone, toLocalISODate } from '@/lib/utils'
+import { formatPlate } from '@/components/ui/Plate'
+import {
+  pm, toDataUrl, loadBrand, buildHeader, buildFooter, plateBox, tableCells, sectionTitle, label, money, shortDate, asciiSlug,
+  INK, TEXT_2, TEXT_3, BORDER, PAGE_MARGINS,
+} from '@/lib/pdfBrand'
 
-// pdfmake is loaded via CDN script tags in index.html to avoid Vite/Rollup
-// corrupting the large base64 font data inside vfs_fonts.js during production build.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function pm(): any { return (window as any).pdfMake }
+// "Müştəri tarixçəsi": every order of one customer in the Servo brand look
+// (same fonts, header, footer, plate box and table styles as the service act —
+// see lib/pdfBrand.ts). One table row per order, newest first, with the order's
+// lines (services, parts, discount) as small sub-rows underneath.
 
-let _playfairLoaded = false
+const STATUS_WORD = { done: 'Tamamlandı', in_progress: 'İcrada', pending: 'Gözləyir' } as const
+const PAYMENT_WORD = { paid: 'Ödənilib', partial: 'Qismən', unpaid: 'Ödənilməyib' } as const
 
-async function ensurePlayfair(): Promise<boolean> {
-  if (_playfairLoaded) return true
-  try {
-    const res = await fetch('/fonts/PlayfairDisplay-Bold.ttf')
-    if (!res.ok) return false
-    const blob = await res.blob()
-    const b64: string = await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve((reader.result as string).split(',')[1] ?? '')
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
-    if (!b64) return false
-    pm().addVirtualFileSystem({ 'PlayfairDisplay-Bold.ttf': b64 })
-    pm().fonts = {
-      ...pm().fonts,
-      PlayfairDisplay: { normal: 'PlayfairDisplay-Bold.ttf', bold: 'PlayfairDisplay-Bold.ttf' },
+interface Car {
+  brand: string
+  model: string
+  year: string
+  plate: string
+  vin: string
+}
+
+const plateKey = (plate?: string) => (plate ?? '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+const carName = (c: { brand?: string; model?: string; year?: string | number }) =>
+  [[c.brand, c.model].filter(Boolean).join(' '), c.year].filter(Boolean).join(' ')
+
+// The customer's own car first, then every other plate seen on an order.
+function collectCars(customer: CustomerDetail, orders: Order[]): Car[] {
+  const cars: Car[] = []
+  const add = (c: Car) => {
+    const key = plateKey(c.plate)
+    const existing = key ? cars.find(x => plateKey(x.plate) === key) : cars.find(x => !x.plate && carName(x) === carName(c))
+    if (existing) {
+      if (!existing.vin && c.vin) existing.vin = c.vin
+      return
     }
-    _playfairLoaded = true
-    return true
-  } catch { return false }
-}
-
-const MONTHS = ['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr']
-
-function fmt(n: number | string) {
-  return Number(n).toFixed(2) + ' ₼'
-}
-
-function fmtDate(iso: string) {
-  const d = new Date(iso)
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
-}
-
-export async function toDataUrl(url: string): Promise<string> {
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return ''
-    const blob = await res.blob()
-    if (!blob.type.startsWith('image/')) return ''
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
-  } catch {
-    return ''
+    if (c.plate || carName(c) || c.vin) cars.push(c)
   }
+  add({ brand: customer.car_brand, model: customer.car_model, year: customer.car_year, plate: customer.car_plate, vin: customer.vin_code ?? '' })
+  for (const o of orders) add({ brand: o.car_brand, model: o.car_model, year: o.car_year ?? '', plate: o.plate_number, vin: o.vin_code ?? '' })
+  return cars
 }
 
-const BLUE     = '#1F4D36'
-const BLUE_BG  = '#F7F5EF'
-const BLUE_MID = '#DCE8DF'
-const BLUE_TEXT = '#1F4D36'
-const GRAY     = '#6b7264'
-const DARK     = '#1F2A24'
-const GREEN    = '#1F4D36'
-const GREEN_BG = '#DCE8DF'
-const AMBER    = '#8a5a12'
-const AMBER_BG = '#FCEFD1'
-const RED      = '#A13D2B'
-const RED_BG   = '#F3DCD3'
-const LIGHT    = '#F7F5EF'
-const BORDER   = '#CBD3C7'
-const MUTED    = '#6b7264'
-const WHITE    = '#ffffff'
-const HEADER_BG = '#1F4D36'
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function tableHeader(cells: { text: string; width?: any; align?: string }[]) {
-  return cells.map(c => ({
-    text: c.text,
-    fontSize: 9,
-    bold: true,
-    color: BLUE_TEXT,
-    fillColor: BLUE_MID,
-    alignment: (c.align ?? 'left') as 'left' | 'right' | 'center',
-    margin: [6, 7, 6, 7],
-    border: [false, false, false, false],
-  }))
-}
-
-function tableRow(cells: { text: string; align?: string; bold?: boolean; color?: string }[], isLast: boolean, shade: boolean) {
-  return cells.map(c => ({
-    text: c.text,
-    fontSize: 10,
-    bold: c.bold ?? false,
-    color: c.color ?? DARK,
-    fillColor: shade ? LIGHT : WHITE,
-    alignment: (c.align ?? 'left') as 'left' | 'right' | 'center',
-    margin: [6, 6, 6, 6],
-    border: [false, false, false, !isLast],
-    borderColor: ['', '', '', BORDER],
-  }))
-}
+const short = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text)
 
 export async function printCustomerPDF(customer: CustomerDetail, business?: Business | null) {
-  const titleFont = (await ensurePlayfair()) ? 'PlayfairDisplay' : 'Roboto'
   const orders = [...(customer.orders ?? [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-  let logoDataUrl = ''
-  if (business?.logo) {
-    const fullUrl = mediaUrl(business.logo)
-    logoDataUrl = await toDataUrl(fullUrl)
-  }
+  const [brand, logo] = await Promise.all([loadBrand(), business?.logo ? toDataUrl(mediaUrl(business.logo)) : Promise.resolve('')])
+  const { fonts } = brand
+  const f = (font: string) => ({ font })
+  const { th, td, num } = tableCells(fonts)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const content: any[] = []
 
-  // ── Top accent bar ────────────────────────────────────────
-  content.push({
-    canvas: [{ type: 'rect', x: 0, y: 0, w: 515, h: 4, r: 2, color: BLUE }],
-    margin: [0, 0, 0, 20],
-  })
+  // ── Header: logo + name + slogan | MÜŞTƏRİ TARİXÇƏSİ / export date ───
+  content.push(...buildHeader({ fonts, logo, shopName: business?.name ?? '', slogan: business?.slogan, kind: 'MÜŞTƏRİ TARİXÇƏSİ', date: toLocalISODate() }))
 
-  // ── Header ────────────────────────────────────────────────
-  const bizStack = business ? [
-    { text: business.name, font: titleFont, fontSize: 26, bold: true, color: DARK, characterSpacing: 0.5 },
-    { canvas: [{ type: 'rect', x: 0, y: 0, w: 42, h: 3, r: 1, color: BLUE }], margin: [0, 5, 0, 6] },
-    business.phone   ? { text: business.phone,   fontSize: 10, color: GRAY, margin: [0, 0, 0, 0] } : null,
-    business.address ? { text: business.address, fontSize: 10, color: GRAY } : null,
-  ].filter(Boolean) : []
-
-  const docInfoStack = [
-    { text: 'Müştəri Hesabatı', font: titleFont, fontSize: 22, bold: true, color: HEADER_BG, alignment: 'right', characterSpacing: 0.5 },
-    { text: `Tarix: ${fmtDate(new Date().toISOString())}`, fontSize: 10, color: GRAY, alignment: 'right', margin: [0, 5, 0, 0] },
-  ]
-
-  if (logoDataUrl) {
-    content.push({
-      columns: [
-        { stack: [{ image: logoDataUrl, width: 70, margin: [0, 0, 0, 6] }, ...bizStack], width: '*' },
-        { stack: docInfoStack, width: 'auto' },
-      ],
-      margin: [0, 0, 0, 20],
-    })
-  } else {
-    content.push({ columns: [{ stack: bizStack, width: '*' }, { stack: docInfoStack, width: 'auto' }], margin: [0, 0, 0, 20] })
-  }
-
-  content.push({
-    canvas: [{ type: 'rect', x: 0, y: 0, w: 515, h: 1, color: BORDER }],
-    margin: [0, 0, 0, 16],
-  })
-
-  // ── Customer info card ────────────────────────────────────
-  content.push({ text: customer.full_name, fontSize: 20, bold: true, color: DARK })
-  const metaParts = [
-    customer.phone ? `Tel: ${customer.phone}` : null,
-    [customer.car_brand, customer.car_model, customer.car_year].filter(Boolean).join(' ')
-      ? `Avtomobil: ${[customer.car_brand, customer.car_model, customer.car_year].filter(Boolean).join(' ')}`
-      : null,
-    customer.car_plate ? `Nişan: ${customer.car_plate}` : null,
-    customer.vin_code ? `VIN: ${customer.vin_code}` : null,
+  // ── Customer | cars ──────────────────────────────────────────────────
+  const phone = formatPhone(customer.phone)
+  const customerStack = [
+    label('MÜŞTƏRİ'),
+    { text: customer.full_name, fontSize: 12, bold: true, color: INK },
+    phone ? { text: phone, ...f(fonts.mono), fontSize: 9.5, color: TEXT_2, margin: [0, 3, 0, 0] } : null,
   ].filter(Boolean)
-  if (metaParts.length) content.push({ text: metaParts.join('   ·   '), fontSize: 10, color: GRAY, margin: [0, 4, 0, 12] })
+  const cars = collectCars(customer, orders)
+  const carsStack = [
+    label(cars.length > 1 ? 'AVTOMOBİLLƏR' : 'AVTOMOBİL'),
+    ...cars.map((c, i) => ({
+      stack: [
+        carName(c) ? { text: carName(c), fontSize: 12, bold: true, color: INK } : null,
+        c.plate ? plateBox(c.plate, fonts, [0, 5, 0, c.vin ? 2 : 0]) : null,
+        c.vin ? { text: `VIN  ${c.vin}`, ...f(fonts.mono), fontSize: 8, color: TEXT_2, margin: [0, 2, 0, 0] } : null,
+      ].filter(Boolean),
+      margin: [0, i === 0 ? 0 : 9, 0, 0],
+    })),
+  ]
+  content.push({ columns: [{ width: '*', stack: customerStack }, { width: '*', stack: carsStack }], columnGap: 24 })
 
-  // Summary stats row
-  const totalPaid = customer.total_paid ?? 0
-  const totalDebt = customer.total_debt ?? 0
+  // ── Totals ───────────────────────────────────────────────────────────
+  const lineTotals = orders.map(o => {
+    const services = o.services ?? []
+    const products = o.products ?? []
+    const servicesTotal = services.reduce((s, t) => s + Number(t.price), 0)
+    const productsTotal = products.reduce((s, p) => s + (p.source === 'customer' ? 0 : Number(p.sell_price) * p.quantity), 0)
+    const discount = Number(o.discount_amount ?? 0)
+    const total = servicesTotal + productsTotal - discount
+    const paid = Number(o.paid_amount ?? 0)
+    return { services, products, discount, total, paid, remaining: Math.max(total - paid, 0) }
+  })
+  const grandTotal = lineTotals.reduce((s, t) => s + t.total, 0)
+  const tablePaid = lineTotals.reduce((s, t) => s + t.paid, 0)
+  const tableRemaining = lineTotals.reduce((s, t) => s + t.remaining, 0)
+  const totalPaid = Number(customer.total_paid ?? 0)
+  const totalDebt = Number(customer.total_debt ?? 0)
+
+  const stat = (title: string, value: string, strong = false) => ({
+    stack: [
+      label(title, { margin: [0, 0, 0, 4] }),
+      { text: value, ...f(fonts.mono), fontSize: strong ? 14 : 12, color: INK },
+    ],
+    margin: [10, 8, 10, 8],
+  })
   content.push({
     table: {
-      widths: ['*', '*', '*'],
+      widths: ['*', '*', '*', '*'],
       body: [[
-        { text: `${fmt(totalPaid)}\nÖdənilmiş`, fontSize: 12, bold: true, color: GREEN, fillColor: GREEN_BG, alignment: 'center', margin: [0, 12, 0, 12], border: [false,false,false,false] },
-        { text: `${fmt(totalDebt)}\nBorc`, fontSize: 12, bold: true, color: totalDebt > 0 ? RED : GRAY, fillColor: totalDebt > 0 ? RED_BG : LIGHT, alignment: 'center', margin: [0, 12, 0, 12], border: [false,false,false,false] },
-        { text: `${orders.length}\nSifariş`, fontSize: 12, bold: true, color: BLUE, fillColor: BLUE_BG, alignment: 'center', margin: [0, 12, 0, 12], border: [false,false,false,false] },
+        stat('SİFARİŞ SAYI', String(orders.length)),
+        stat('CƏMİ', `${money(grandTotal)} AZN`),
+        stat('ÖDƏNİLİB', `${money(totalPaid)} AZN`),
+        stat('BORC', `${money(totalDebt)} AZN`, true),
       ]],
     },
-    layout: 'noBorders',
-    margin: [0, 0, 0, 20],
+    layout: {
+      hLineWidth: () => 1,
+      hLineColor: (i: number) => (i === 0 ? INK : BORDER),
+      vLineWidth: (i: number) => (i === 0 || i === 4 ? 0 : 1),
+      vLineColor: () => BORDER,
+      paddingLeft: () => 0,
+      paddingRight: () => 0,
+      paddingTop: () => 0,
+      paddingBottom: () => 0,
+    },
+    margin: [0, 18, 0, 0],
+    unbreakable: true,
   })
 
-  content.push({
-    canvas: [{ type: 'rect', x: 0, y: 0, w: 515, h: 1, color: BORDER }],
-    margin: [0, 0, 0, 16],
+  // ── Orders table ─────────────────────────────────────────────────────
+  // Columns: № · Tarix · Avtomobil · Görülən işlər · Status · Məbləğ · Ödənilib · Qalıq
+  const widths = [26, 58, 82, '*', 58, 56, 56, 54]
+  const COLS = widths.length
+  const head = [
+    th('№', 'center'),
+    th('TARİX'),
+    th('AVTOMOBİL'),
+    th('GÖRÜLƏN İŞLƏR'),
+    th('STATUS'),
+    th('MƏBLƏĞ', 'right'),
+    th('ÖDƏNİLİB', 'right'),
+    th('QALIQ', 'right'),
+  ].map(c => ({ ...c, margin: [4, 5, 4, 4] }))
+  const pad = [4, 5, 4, 4]
+
+  // Each order is ONE table row (a colSpan cell laid out with the same column
+  // widths) so a row never splits across pages: the order line, then its lines.
+  const sub = (left: string, amount: string, extra = {}) => ({
+    columns: [
+      { width: widths[0] as number, text: '' },
+      { width: '*', text: left, fontSize: 8, color: TEXT_2, margin: [4, 0, 0, 0], ...extra },
+      { width: widths[5] as number, text: amount, ...f(fonts.mono), fontSize: 8, color: TEXT_2, alignment: 'right', margin: [0, 0, 4, 0], ...extra },
+      { width: (widths[6] as number) + (widths[7] as number), text: '' },
+    ],
+    columnGap: 0,
+    margin: [0, 0, 0, 2],
+  })
+  const cellIn = (width: number | string, cell: object) => ({ width, ...cell })
+
+  const body: unknown[][] = [head]
+  orders.forEach((o, i) => {
+    const t = lineTotals[i]
+    const serviceNames = t.services.map(s => s.name).join(', ')
+    const works = serviceNames ? short(serviceNames, 70) : t.products.length ? 'Ehtiyat hissələri' : '—'
+    const mileage = o.mileage != null ? `Yürüş ${money(o.mileage).slice(0, -3)} ${o.mileage_unit ?? 'km'}` : ''
+    const vin = o.vin_code ? `VIN ${o.vin_code}` : ''
+    const meta = [mileage, vin].filter(Boolean).join('   ·   ')
+
+    const details = [
+      ...t.services.map(s => sub(s.name, money(Number(s.price)))),
+      ...t.products.map(p =>
+        p.source === 'customer'
+          ? sub(`${p.product_name} × ${p.quantity}  ·  Müştəri gətirib`, '—', { color: TEXT_3 })
+          : sub(`${p.product_name} × ${p.quantity}  ·  ${money(Number(p.sell_price))}`, money(Number(p.sell_price) * p.quantity)),
+      ),
+      ...(t.discount > 0 ? [sub('Endirim', `− ${money(t.discount)}`)] : []),
+      ...(meta ? [{ text: meta, ...f(fonts.mono), fontSize: 7, color: TEXT_3, margin: [widths[0] as number + 4, 1, 0, 2] }] : []),
+    ]
+
+    const main = {
+      columns: [
+        cellIn(widths[0], td(o.number != null ? String(o.number) : '—', 'center', { ...f(fonts.mono), fontSize: 8, color: TEXT_3, margin: pad })),
+        cellIn(widths[1], td(shortDate(o.created_at), 'left', { ...f(fonts.mono), fontSize: 8, margin: pad })),
+        cellIn(widths[2], {
+          stack: [
+            { text: carName({ brand: o.car_brand, model: o.car_model }) || '—', fontSize: 9, color: INK },
+            o.plate_number ? { text: formatPlate(o.plate_number), ...f(fonts.mono), fontSize: 7.5, color: TEXT_2, margin: [0, 1, 0, 0] } : null,
+          ].filter(Boolean),
+          margin: pad,
+        }),
+        cellIn('*', td(works, 'left', { fontSize: 8.5, color: TEXT_2, margin: pad })),
+        cellIn(widths[4], {
+          stack: [
+            { text: STATUS_WORD[o.status] ?? '', fontSize: 8.5, color: INK },
+            { text: PAYMENT_WORD[o.payment_status] ?? '', fontSize: 7.5, color: TEXT_3, margin: [0, 1, 0, 0] },
+          ],
+          margin: pad,
+        }),
+        cellIn(widths[5], num(money(t.total), { margin: pad, fontSize: 8.5 })),
+        cellIn(widths[6], num(money(t.paid), { margin: pad, fontSize: 8.5 })),
+        cellIn(widths[7], num(money(t.remaining), { margin: pad, fontSize: 8.5, color: t.remaining > 0 ? INK : TEXT_3 })),
+      ],
+      columnGap: 0,
+    }
+    body.push([{ colSpan: COLS, stack: [main, ...(details.length ? [{ stack: details, margin: [0, 0, 0, 4] }] : [])] }, ...Array.from({ length: COLS - 1 }, () => ({}))])
   })
 
-  // ── Orders ────────────────────────────────────────────────
-  let grandTotal = 0
+  // Totals row: ink rule above, bold figures.
+  const totalsIndex = body.length
+  const tcell = (text: string, extra = {}) => num(text, { margin: [4, 6, 4, 6], fontSize: 9, ...extra })
+  body.push([
+    td('CƏMİ', 'left', { colSpan: 5, ...f(fonts.head), fontSize: 8.5, bold: true, characterSpacing: 1.2, margin: [4, 6, 4, 6] }),
+    {}, {}, {}, {},
+    tcell(money(grandTotal)),
+    tcell(money(tablePaid)),
+    tcell(money(tableRemaining)),
+  ])
 
-  for (let i = 0; i < orders.length; i++) {
-    const order = orders[i]
-    const services      = order.services  ?? []
-    const products      = order.products  ?? []
-    const servicesTotal  = services.reduce((s, t) => s + parseFloat(String(t.price)), 0)
-    const productsTotal  = products.reduce((s, p) => s + p.sell_price * p.quantity, 0)
-    const orderTotal     = servicesTotal + productsTotal
-    const discountAmount = Number(order.discount_amount ?? 0)
-    const effectiveTotal = orderTotal - discountAmount
-    grandTotal += effectiveTotal
-
-    const statusText  = order.status === 'done' ? 'Tamamlandı' : order.status === 'in_progress' ? 'İcrada' : 'Gözləyir'
-    const statusColor = order.status === 'done' ? GREEN : order.status === 'in_progress' ? BLUE : AMBER
-    const statusBg    = order.status === 'done' ? GREEN_BG : order.status === 'in_progress' ? BLUE_BG : AMBER_BG
-
-    // Order header row
+  content.push(sectionTitle('SİFARİŞLƏR', fonts))
+  if (orders.length) {
     content.push({
-      table: {
-        widths: ['*', 'auto'],
-        body: [[
-          {
-            stack: [
-              { text: order.plate_number, fontSize: 14, bold: true, color: WHITE, characterSpacing: 1 },
-              {
-                text: [
-                  `Avtomobil: ${[order.car_brand, order.car_model, order.car_year].filter(Boolean).join(' ')}`,
-                  order.mileage != null ? `Yürüş: ${order.mileage.toLocaleString()} km` : '',
-                  `Nişan: ${order.plate_number}`,
-                  order.vin_code ? `VIN: ${order.vin_code}` : '',
-                ].filter(Boolean).join(' · '),
-                fontSize: 10,
-                bold: true,
-                color: '#dbeafe',
-                margin: [0, 2, 0, 0],
-              },
-            ],
-            fillColor: HEADER_BG,
-            border: [false, false, false, false],
-            margin: [12, 8, 12, 8],
-          },
-          {
-            stack: [
-              { text: fmtDate(order.created_at), fontSize: 9, color: '#93c5fd', alignment: 'right' },
-              {
-                table: { body: [[{ text: statusText, fontSize: 8, bold: true, color: statusColor, fillColor: statusBg, margin: [8, 3, 8, 3], border: [false,false,false,false] }]] },
-                layout: 'noBorders',
-                margin: [0, 4, 0, 0],
-              },
-            ],
-            fillColor: HEADER_BG,
-            border: [false, false, false, false],
-            margin: [8, 8, 12, 8],
-          },
-        ]],
+      table: { headerRows: 1, dontBreakRows: true, widths, body },
+      layout: {
+        hLineWidth: (i: number, node: { table: { body: unknown[] } }) => (i === totalsIndex || i === node.table.body.length ? 1 : i > 1 ? 1 : 0),
+        hLineColor: (i: number, node: { table: { body: unknown[] } }) => (i === totalsIndex || i === node.table.body.length ? INK : BORDER),
+        vLineWidth: () => 0,
+        paddingLeft: () => 0,
+        paddingRight: () => 0,
+        paddingTop: () => 0,
+        paddingBottom: () => 0,
       },
-      layout: 'noBorders',
-      margin: [0, 0, 0, 0],
     })
-
-    // Services
-    if (services.length > 0) {
-      content.push({
-        table: {
-          widths: ['*', 90],
-          body: [
-            tableHeader([{ text: 'İşlər' }, { text: 'Qiymət', align: 'right' }]),
-            ...services.map((s, si) => tableRow([
-              { text: s.name },
-              { text: fmt(parseFloat(String(s.price))), align: 'right' },
-            ], si === services.length - 1, si % 2 === 1)),
-          ],
-        },
-        layout: { hLineColor: () => BORDER, vLineColor: () => BORDER, hLineWidth: () => 0.5, vLineWidth: () => 0.5 },
-        margin: [0, 0, 0, 0],
-      })
-    }
-
-    // Products
-    if (products.length > 0) {
-      content.push({
-        table: {
-          widths: [22, '*', 45, 55, 70],
-          body: [
-            tableHeader([{ text: '#' }, { text: 'Parça' }, { text: 'Ədəd', align: 'center' }, { text: 'Vahid', align: 'right' }, { text: 'Məbləğ', align: 'right' }]),
-            ...products.map((p, pi) => tableRow([
-              { text: String(pi + 1), color: MUTED },
-              { text: p.product_name },
-              { text: String(p.quantity), align: 'center' },
-              { text: fmt(p.sell_price), align: 'right', color: GRAY },
-              { text: fmt(p.sell_price * p.quantity), align: 'right', bold: true },
-            ], pi === products.length - 1, pi % 2 === 1)),
-          ],
-        },
-        layout: { hLineColor: () => BORDER, vLineColor: () => BORDER, hLineWidth: () => 0.5, vLineWidth: () => 0.5 },
-        margin: [0, 0, 0, 0],
-      })
-    }
-
-    // Order total + payment
-    const paidAmount = Number(order.paid_amount ?? 0)
-    const debt = effectiveTotal - paidAmount
-    const paymentColor = order.payment_status === 'paid' ? GREEN : order.payment_status === 'partial' ? AMBER : RED
-    const paymentBg    = order.payment_status === 'paid' ? GREEN_BG : order.payment_status === 'partial' ? AMBER_BG : RED_BG
-    const paymentText  = order.payment_status === 'paid' ? 'Tam ödənilib' : order.payment_status === 'partial' ? `Qismən · borc: ${fmt(debt)}` : 'Ödənilməyib'
-
-    content.push({
-      table: {
-        widths: ['*', 'auto', 'auto'],
-        body: [[
-          { text: paymentText, fontSize: 9, bold: true, color: paymentColor, fillColor: paymentBg, border: [false,false,false,false], margin: [10, 7, 10, 7] },
-          { text: discountAmount > 0 ? `Endirim: -${fmt(discountAmount)}  ·  Cəmi:` : 'Cəmi:', fontSize: 10, color: GRAY, fillColor: LIGHT, border: [false,false,false,false], alignment: 'right', margin: [10, 7, 6, 7] },
-          { text: fmt(effectiveTotal), fontSize: 11, bold: true, color: DARK, fillColor: LIGHT, border: [false,false,false,false], alignment: 'right', margin: [0, 7, 10, 7] },
-        ]],
-      },
-      layout: 'noBorders',
-      margin: [0, 0, 0, i < orders.length - 1 ? 20 : 0],
-    })
-
-    if (i < orders.length - 1) {
-      content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: BORDER }], margin: [0, 4, 0, 16] })
-    }
+  } else {
+    content.push({ text: 'Sifariş yoxdur.', fontSize: 9.5, color: TEXT_3 })
   }
 
-  // ── Grand total ───────────────────────────────────────────
-  content.push({ canvas: [{ type: 'rect', x: 0, y: 0, w: 515, h: 1, color: BORDER }], margin: [0, 16, 0, 12] })
-  content.push({
-    columns: [
-      { text: 'ÜMUMİ CƏMİ', fontSize: 14, bold: true, color: DARK },
-      { text: fmt(grandTotal), fontSize: 14, bold: true, color: DARK, alignment: 'right' },
-    ],
-    margin: [0, 0, 0, 24],
-  })
-
-  // ── Footer ────────────────────────────────────────────────
-  content.push({ canvas: [{ type: 'rect', x: 0, y: 0, w: 515, h: 1, color: BORDER }], margin: [0, 0, 0, 10] })
-  content.push({ text: `Bu sənəd avtomatik yaradılmışdır · ${fmtDate(new Date().toISOString())}`, fontSize: 9, color: MUTED, alignment: 'center' })
-
-  pm().createPdf({
+  const slug = asciiSlug(customer.full_name)
+  await pm().createPdf({
     pageSize: 'A4',
-    pageMargins: [40, 40, 40, 40],
-    defaultStyle: { font: 'Roboto', fontSize: 12, color: DARK },
+    pageMargins: PAGE_MARGINS,
+    defaultStyle: { font: fonts.text, fontSize: 9.5, color: INK },
+    info: { title: `Müştəri tarixçəsi — ${customer.full_name}` },
     content,
-  }).download(`Musteri_${customer.full_name.replace(/\s+/g, '_')}.pdf`)
+    footer: buildFooter(brand, business),
+  }).download(`Musteri_tarixcesi_${slug || 'musteri'}.pdf`)
 }
