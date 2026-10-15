@@ -11,6 +11,7 @@ import DashboardPage from '@/pages/business/DashboardPage'
 import OrdersPage from '@/pages/business/OrdersPage'
 import OrderDetailPage from '@/pages/business/OrderDetailPage'
 import MechanicsPage from '@/pages/business/MechanicsPage'
+import MechanicDetailPage from '@/pages/business/MechanicDetailPage'
 import WarehousePage from '@/pages/business/WarehousePage'
 import ProductsTab from '@/components/warehouse/ProductsTab'
 import PurchasesTab from '@/components/warehouse/PurchasesTab'
@@ -115,6 +116,7 @@ export default function App() {
               <Route path="/business/orders/new" element={<OrderDetailPage />} />
               <Route path="/business/orders/:id" element={<OrderDetailPage />} />
               <Route path="/business/mechanics" element={<MechanicsPage />} />
+              <Route path="/business/mechanics/:id" element={<MechanicDetailPage />} />
               <Route path="/business/warehouse" element={<WarehousePage />}>
                 <Route index element={<Navigate to="products" replace />} />
                 <Route path="products" element={<ProductsTab />} />

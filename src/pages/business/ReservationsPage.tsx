@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Ban, CalendarClock, CheckCircle2, Clock, Plus, UserX } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Reservation, ReservationStats, Mechanic } from '@/types'
 import {
   getReservations, getReservationStats,
@@ -8,21 +10,24 @@ import {
 } from '@/services/reservations.service'
 import { getMechanics } from '@/services/mechanics.service'
 import { mapApiError } from '@/lib/utils'
-import Badge, { BadgeVariant } from '@/components/ui/Badge'
+import BrandLogo from '@/components/ui/BrandLogo'
 import Button from '@/components/ui/Button'
-import Card from '@/components/ui/Card'
-import EmptyState from '@/components/ui/EmptyState'
-import Spinner from '@/components/ui/Spinner'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import EmptyState from '@/components/ui/EmptyState'
+import KpiCard from '@/components/ui/KpiCard'
+import Modal from '@/components/ui/Modal'
+import PageHeader from '@/components/ui/PageHeader'
+import Spinner from '@/components/ui/Spinner'
+import UiStatusBadge, { StatusTone } from '@/components/ui/StatusBadge'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-function formatScheduled(iso: string) {
-  const d = new Date(iso)
-  return d.toLocaleString('az-AZ', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
+function formatDay(iso: string) {
+  return new Date(iso).toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })
 }
 
 function formatDateGroup(iso: string) {
@@ -41,16 +46,16 @@ const STATUS_LABELS: Record<string, string> = {
   legv_edildi: 'Ləğv edildi',
 }
 
-const STATUS_BADGE: Record<string, BadgeVariant> = {
-  gozlenilir: 'warning',
-  sifarise_cevrildi: 'success',
-  gelmedi: 'danger',
-  legv_edildi: 'neutral',
+const STATUS_BADGE: Record<string, { tone: StatusTone; icon: LucideIcon }> = {
+  gozlenilir: { tone: 'info', icon: Clock },
+  sifarise_cevrildi: { tone: 'success', icon: CheckCircle2 },
+  gelmedi: { tone: 'warning', icon: UserX },
+  legv_edildi: { tone: 'danger', icon: Ban },
 }
 
-// ─── Create Panel (inline, expands above the list) ──────────────────────────
+// ─── Create modal ───────────────────────────────────────────────────────────
 
-function CreateReservationPanel({
+function CreateReservationModal({
   open, onClose, onCreated,
 }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const [customerName, setCustomerName] = useState('')
@@ -112,20 +117,20 @@ function CreateReservationPanel({
     }
   }
 
-  if (!open) return null
-
   return (
-    <Card className="px-6 py-6 mb-6">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="card-title">Yeni rezervasiya</h2>
-        <button onClick={handleClose} className="p-2 rounded text-ink-muted hover:bg-surface-alt hover:text-ink transition-colors">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {/* Date + Time — most important, at top */}
+    <Modal
+      open={open}
+      title="Yeni rezervasiya"
+      onClose={handleClose}
+      width="max-w-[560px]"
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={handleClose}>Ləğv et</Button>
+          <Button type="submit" form="reservation-form" loading={loading}>{loading ? 'Saxlanılır...' : 'Rezervasiya yarat'}</Button>
+        </>
+      }
+    >
+      <form id="reservation-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
         <div className="flex gap-3">
           <div className="flex-1">
             <label className="label">Tarix <span className="text-danger">*</span></label>
@@ -137,7 +142,7 @@ function CreateReservationPanel({
           </div>
         </div>
 
-        <div className="border-t border-rule" />
+        <div className="border-t border-border" />
 
         <div>
           <label className="label">Müştəri adı</label>
@@ -148,7 +153,7 @@ function CreateReservationPanel({
           <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input-mono" />
         </div>
 
-        <div className="border-t border-rule" />
+        <div className="border-t border-border" />
 
         <div className="flex gap-3">
           <div className="flex-1">
@@ -174,130 +179,92 @@ function CreateReservationPanel({
           </select>
         </div>
 
-        {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
-
-        <div className="flex gap-3 pt-2">
-          <Button type="submit" disabled={loading} loading={loading} className="flex-1">
-            {loading ? 'Saxlanılır...' : 'Rezervasiya yarat'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">Ləğv et</Button>
-        </div>
+        {error && <p className="text-body text-danger bg-danger-subtle rounded px-3 py-2">{error}</p>}
       </form>
-    </Card>
+    </Modal>
   )
 }
 
-// ─── Reservation Card ────────────────────────────────────────────────────────
+// ─── Reservation table ──────────────────────────────────────────────────────
 
-function ReservationCard({
-  res, onAction,
-}: { res: Reservation; onAction: () => void }) {
+function ReservationTable({
+  rows, onAction, onDelete, showDate = false,
+}: { rows: Reservation[]; onAction: () => void; onDelete: (r: Reservation) => void; showDate?: boolean }) {
   const navigate = useNavigate()
-  const [actioning, setActioning] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const isDue = res.status === 'gozlenilir'
+  const [busyId, setBusyId] = useState<number | null>(null)
 
-  async function handle(fn: () => Promise<unknown>) {
-    setActioning(true)
-    try { await fn(); onAction() } finally { setActioning(false) }
+  async function handle(id: number, fn: () => Promise<unknown>) {
+    setBusyId(id)
+    try { await fn(); onAction() } finally { setBusyId(null) }
   }
 
+  const convert = (r: Reservation) =>
+    handle(r.id, () => convertReservation(r.id).then(res => navigate(`/business/orders/${res.data.order_id}`)))
+
   return (
-    <Card className="px-5 py-4">
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <div className="min-w-0 flex-1">
-          {(res.car_brand || res.car_model) && (
-            <p className="text-sm font-semibold text-ink mb-1">{res.car_brand} {res.car_model}</p>
-          )}
-          {res.customer_name && (
-            <p className="text-sm text-ink-soft font-medium">{res.customer_name}</p>
-          )}
-          {res.customer_phone && (
-            <a href={`tel:${res.customer_phone}`} className="text-sm font-mono text-accent hover:underline">{res.customer_phone}</a>
-          )}
-          {res.description && (
-            <p className="text-xs text-ink-muted mt-1">{res.description}</p>
-          )}
-          {res.mechanic_name && (
-            <p className="text-xs text-accent mt-0.5">Usta: {res.mechanic_name}</p>
-          )}
-        </div>
-        <div className="text-right shrink-0">
-          <p className="text-sm font-mono font-semibold text-ink">{formatScheduled(res.scheduled_at)}</p>
-          {res.status !== 'gozlenilir' && (
-            <div className="mt-1">
-              <Badge variant={STATUS_BADGE[res.status]}>{STATUS_LABELS[res.status]}</Badge>
-            </div>
-          )}
-        </div>
+    <div className="card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="ledger-table">
+          <thead>
+            <tr>
+              {showDate && <th className="ledger-th">Tarix</th>}
+              <th className="ledger-th">Saat</th>
+              <th className="ledger-th">Müştəri</th>
+              <th className="ledger-th">Avtomobil</th>
+              <th className="ledger-th">İş təsviri</th>
+              <th className="ledger-th">Usta</th>
+              <th className="ledger-th">Status</th>
+              <th className="ledger-th text-right">Əməliyyat</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => {
+              const badge = STATUS_BADGE[r.status]
+              const busy = busyId === r.id
+              const car = [r.car_brand, r.car_model].filter(Boolean).join(' ')
+              return (
+                <tr key={r.id}>
+                  {showDate && <td className="ledger-td font-mono text-text-2">{formatDay(r.scheduled_at)}</td>}
+                  <td className="ledger-td font-mono font-semibold">{formatTime(r.scheduled_at)}</td>
+                  <td className="ledger-td">
+                    {r.customer_name ? <span className="font-semibold">{r.customer_name}</span> : <span className="text-text-3">—</span>}
+                    {r.customer_phone && (
+                      <a href={`tel:${r.customer_phone}`} className="block font-mono text-small text-text-3 hover:underline underline-offset-2">{r.customer_phone}</a>
+                    )}
+                  </td>
+                  <td className="ledger-td">
+                    {car ? <span className="flex items-center gap-2"><BrandLogo brand={r.car_brand} className="w-6 h-6" />{car}</span> : <span className="text-text-3">—</span>}
+                  </td>
+                  <td className="ledger-td max-w-[260px] truncate" title={r.description}>{r.description || <span className="text-text-3">—</span>}</td>
+                  <td className="ledger-td">{r.mechanic_name || <span className="text-text-3">—</span>}</td>
+                  <td className="ledger-td"><UiStatusBadge status={STATUS_LABELS[r.status]} tone={badge.tone} icon={badge.icon} /></td>
+                  <td className="ledger-td">
+                    <div className="flex items-center justify-end gap-2">
+                      {r.status === 'gozlenilir' && (
+                        <>
+                          <Button size="sm" onClick={() => convert(r)} disabled={busy}>Sifarişə çevir</Button>
+                          <Button size="sm" variant="danger" onClick={() => handle(r.id, () => updateReservationStatus(r.id, 'gelmedi'))} disabled={busy}>Gəlmədi</Button>
+                          <Button size="sm" variant="secondary" onClick={() => handle(r.id, () => updateReservationStatus(r.id, 'legv_edildi'))} disabled={busy}>Ləğv et</Button>
+                        </>
+                      )}
+                      {r.status === 'sifarise_cevrildi' && r.order && (
+                        <Button size="sm" variant="secondary" onClick={() => navigate(`/business/orders/${r.order}`)}>Sifarişə bax →</Button>
+                      )}
+                      {(r.status === 'legv_edildi' || r.status === 'gelmedi') && (
+                        <Button size="sm" variant="secondary" onClick={() => convert(r)} disabled={busy}>Sifarişə çevir</Button>
+                      )}
+                      {r.status !== 'gozlenilir' && (
+                        <Button size="sm" variant="ghost" onClick={() => onDelete(r)} disabled={busy} className="!text-danger">Sil</Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
-
-      {/* Actions — only for pending */}
-      {isDue && (
-        <div className="pt-3 border-t border-rule flex flex-wrap gap-2">
-          <Button
-            onClick={() => handle(() => convertReservation(res.id).then(r => navigate(`/business/orders/${r.data.order_id}`)))}
-            disabled={actioning}
-            className="flex-1 min-w-0 !py-2 !text-sm"
-          >
-            Sifarişə çevir
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => handle(() => updateReservationStatus(res.id, 'gelmedi'))}
-            disabled={actioning}
-            className="flex-1 min-w-0 !py-2 !text-sm"
-          >
-            Gəlmədi
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => handle(() => updateReservationStatus(res.id, 'legv_edildi'))}
-            disabled={actioning}
-            className="flex-1 min-w-0 !py-2 !text-sm"
-          >
-            Ləğv et
-          </Button>
-        </div>
-      )}
-
-      {/* Converted — link to order */}
-      {res.status === 'sifarise_cevrildi' && res.order && (
-        <div className="pt-3 border-t border-rule flex items-center justify-between">
-          <button
-            onClick={() => navigate(`/business/orders/${res.order}`)}
-            className="text-sm text-accent hover:underline font-medium"
-          >
-            Sifarişə bax →
-          </button>
-          <button onClick={() => setConfirmDelete(true)} className="text-xs text-ink-muted hover:text-danger transition-colors">Sil</button>
-        </div>
-      )}
-
-      {/* Cancelled / no-show — convert still allowed + delete */}
-      {(res.status === 'legv_edildi' || res.status === 'gelmedi') && (
-        <div className="pt-3 border-t border-rule flex items-center justify-between gap-2 flex-wrap">
-          <button
-            onClick={() => handle(() => convertReservation(res.id).then(r => navigate(`/business/orders/${r.data.order_id}`)))}
-            disabled={actioning}
-            className="text-xs font-mono font-semibold uppercase tracking-wide text-accent bg-surface-alt hover:bg-rule px-3 py-2 rounded transition-colors"
-          >
-            Sifarişə çevir
-          </button>
-          <button onClick={() => setConfirmDelete(true)} className="text-xs text-ink-muted hover:text-danger transition-colors">Sil</button>
-        </div>
-      )}
-
-      <ConfirmDialog
-        open={confirmDelete}
-        title="Rezervasiyanı sil"
-        message="Bu rezervasiya silinsin? Bu əməliyyat geri qaytarıla bilməz."
-        confirmLabel="Bəli, sil"
-        danger
-        onConfirm={() => { handle(() => deleteReservation(res.id)); setConfirmDelete(false) }}
-        onCancel={() => setConfirmDelete(false)}
-      />
-    </Card>
+    </div>
   )
 }
 
@@ -309,6 +276,7 @@ export default function ReservationsPage() {
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Reservation | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -345,56 +313,29 @@ export default function ReservationsPage() {
     upcomingGroups[key].push(r)
   }
 
-  return (
-    <div className="p-6 lg:p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="page-title">Rezervasiyalar</h1>
-          <p className="text-sm text-ink-muted mt-0.5">Müştəri görüşlərini idarə edin</p>
-        </div>
-        {!createOpen && (
-          <Button onClick={() => setCreateOpen(true)}>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Yeni rezervasiya
-          </Button>
-        )}
-      </div>
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    const id = deleteTarget.id
+    setDeleteTarget(null)
+    await deleteReservation(id)
+    load()
+  }
 
-      <CreateReservationPanel
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={load}
+  return (
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Rezervasiyalar"
+        subtitle="Müştəri görüşlərini idarə edin"
+        actions={<Button icon={Plus} onClick={() => setCreateOpen(true)}>Yeni rezervasiya</Button>}
       />
 
-      {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-          <Card className="px-4 py-4 text-center">
-            <p className="text-2xl font-mono font-semibold text-ink">{stats.total}</p>
-            <p className="section-label mt-0.5">Ümumi</p>
-          </Card>
-          <Card className="px-4 py-4 text-center">
-            <p className="text-2xl font-mono font-semibold text-success">{stats.converted}</p>
-            <p className="section-label mt-0.5">Sifarişə çevrildi</p>
-            {stats.conversion_rate !== null && (
-              <p className="text-xs font-mono font-semibold text-success mt-0.5">{stats.conversion_rate}%</p>
-            )}
-          </Card>
-          <Card className="px-4 py-4 text-center">
-            <p className="text-2xl font-mono font-semibold text-danger">{stats.no_show}</p>
-            <p className="section-label mt-0.5">Gəlmədi</p>
-          </Card>
-          <Card className="px-4 py-4 text-center">
-            <p className="text-2xl font-mono font-semibold text-ink-muted">{stats.cancelled}</p>
-            <p className="section-label mt-0.5">Ləğv edildi</p>
-          </Card>
-          <Card className="px-4 py-4 text-center">
-            <p className="text-2xl font-mono font-semibold text-warning">{stats.pending}</p>
-            <p className="section-label mt-0.5">Gözlənilir</p>
-          </Card>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <KpiCard label="Ümumi" value={stats.total} />
+          <KpiCard label="Gözlənilir" value={stats.pending} />
+          <KpiCard label="Sifarişə çevrildi" value={stats.converted} note={stats.conversion_rate !== null ? `${stats.conversion_rate}%` : undefined} />
+          <KpiCard label="Gəlmədi" value={stats.no_show} />
+          <KpiCard label="Ləğv edildi" value={stats.cancelled} />
         </div>
       )}
 
@@ -405,63 +346,69 @@ export default function ReservationsPage() {
 
           {/* Due now */}
           {due.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2.5 h-2.5 bg-danger rounded-full animate-pulse" />
-                <h2 className="section-label text-danger">Vaxtı çatıb — {due.length} rezervasiya</h2>
-              </div>
-              <div className="flex flex-col gap-3">
-                {due.map(r => <ReservationCard key={r.id} res={r} onAction={load} />)}
-              </div>
+            <div className="flex flex-col gap-2">
+              <h2 className="section-label !text-danger-strong flex items-center gap-2">
+                <CalendarClock size={16} strokeWidth={1.75} />
+                Vaxtı çatıb — {due.length} rezervasiya
+              </h2>
+              <ReservationTable rows={due} showDate onAction={load} onDelete={setDeleteTarget} />
             </div>
           )}
 
           {/* Upcoming */}
           {upcoming.length > 0 ? (
-            <div>
-              <h2 className="section-label mb-3">Gələcək rezervasiyalar</h2>
-              <div className="flex flex-col gap-5">
-                {Object.entries(upcomingGroups).map(([dateKey, group]) => (
-                  <div key={dateKey}>
-                    <p className="text-xs font-mono font-semibold text-ink-muted uppercase tracking-wide mb-2">
-                      {formatDateGroup(group[0].scheduled_at)}
-                    </p>
-                    <div className="flex flex-col gap-3">
-                      {group.map(r => <ReservationCard key={r.id} res={r} onAction={load} />)}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="flex flex-col gap-4">
+              <h2 className="section-label">Gələcək rezervasiyalar</h2>
+              {Object.entries(upcomingGroups).map(([dateKey, group]) => (
+                <div key={dateKey} className="flex flex-col gap-2">
+                  <p className="font-display font-semibold text-h3 text-ink">
+                    {formatDateGroup(group[0].scheduled_at)}
+                    <span className="ml-2 font-mono text-small font-normal text-text-3">{formatDay(group[0].scheduled_at)}</span>
+                  </p>
+                  <ReservationTable rows={group} onAction={load} onDelete={setDeleteTarget} />
+                </div>
+              ))}
             </div>
           ) : due.length === 0 && (
             <EmptyState
               title="Gözləyən rezervasiya yoxdur"
-              subtitle="Yeni rezervasiya əlavə etmək üçün + düyməsini basın."
+              subtitle="Yeni rezervasiya əlavə etmək üçün “Yeni rezervasiya” düyməsini basın."
+              action={<Button icon={Plus} onClick={() => setCreateOpen(true)}>Yeni rezervasiya</Button>}
             />
           )}
 
           {/* History toggle */}
           {history.length > 0 && (
-            <div>
+            <div className="flex flex-col gap-3">
               <button
+                type="button"
                 onClick={() => setShowHistory(v => !v)}
-                className="flex items-center gap-2 text-sm text-ink-muted hover:text-ink font-medium transition-colors mb-3"
+                aria-expanded={showHistory}
+                className="flex items-center gap-2 text-body text-text-3 hover:text-ink font-semibold transition-colors w-fit"
               >
-                <svg className={`w-4 h-4 transition-transform ${showHistory ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <svg className={`w-4 h-4 transition-transform duration-[160ms] ${showHistory ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
                 Tarixçə ({history.length})
               </button>
-              {showHistory && (
-                <div className="flex flex-col gap-3">
-                  {history.map(r => <ReservationCard key={r.id} res={r} onAction={load} />)}
-                </div>
-              )}
+              {showHistory && <ReservationTable rows={history} showDate onAction={load} onDelete={setDeleteTarget} />}
             </div>
           )}
 
         </div>
       )}
+
+      <CreateReservationModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={load} />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Rezervasiyanı sil"
+        message="Bu rezervasiya silinsin? Bu əməliyyat geri qaytarıla bilməz."
+        confirmLabel="Bəli, sil"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }

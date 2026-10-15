@@ -5,6 +5,8 @@ import { mapApiError } from '@/lib/utils'
 import { loadDraft, saveDraft, clearDraft, CUSTOMER_DRAFT_KEY } from '@/lib/formDraft'
 import PlateInput from '@/components/ui/PlateInput'
 import CarBrandModelInputs from '@/components/ui/CarBrandModelInputs'
+import Modal from '@/components/ui/Modal'
+import Button from '@/components/ui/Button'
 
 type CustomerDraft = {
   fullName: string; phone: string; carBrand: string; carModel: string
@@ -12,8 +14,8 @@ type CustomerDraft = {
 }
 
 /**
- * Single-column customer create/edit form, rendered inline in the master-detail
- * right panel (no drawer) — mirrors OrderForm's create/edit unification.
+ * Customer create/edit form in a Modal. Mount it while open (state and the
+ * new-customer draft are initialised on mount).
  */
 export default function CustomerForm({ customer, onDone, onCancel }: {
   customer?: CustomerDetail | null
@@ -82,37 +84,43 @@ export default function CustomerForm({ customer, onDone, onCancel }: {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
-      <p className="font-serif font-semibold text-lg text-ink">{isEdit ? 'Müştəri redaktəsi' : 'Yeni müştəri'}</p>
-
-      {draftRestored && (
-        <div className="flex items-center justify-between gap-2 bg-surface-alt border border-rule rounded px-3 py-2 text-xs">
-          <span className="text-ink-muted">Yarımçıq qalmış qaralama bərpa edildi.</span>
-          <button type="button" onClick={discardDraft} className="font-semibold text-danger hover:underline shrink-0">Təmizlə</button>
-        </div>
-      )}
-
-      <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder="Ad Soyad" className="input" />
-      <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
-
-      <div className="border-t border-rule pt-1">
-        <p className="section-label mb-2">Avtomobil</p>
-        <div className="flex flex-col gap-2.5">
-          <CarBrandModelInputs brand={carBrand} model={carModel} onBrandChange={setCarBrand} onModelChange={setCarModel} />
-          <div className="flex gap-2.5">
-            <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="İl" maxLength={4} className="input flex-1" />
-            <PlateInput value={carPlate} onChange={setCarPlate} className="input-mono tracking-wider flex-1" />
+    <Modal
+      open
+      title={isEdit ? 'Müştəri redaktəsi' : 'Yeni müştəri'}
+      onClose={handleCancel}
+      width="max-w-[560px]"
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={handleCancel}>Ləğv et</Button>
+          <Button type="submit" form="customer-form" loading={loading}>{loading ? 'Saxlanılır...' : isEdit ? 'Saxla' : 'Müştəri əlavə et'}</Button>
+        </>
+      }
+    >
+      <form id="customer-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
+        {draftRestored && (
+          <div className="flex items-center justify-between gap-2 bg-surface-2 border border-border rounded px-3 py-2 text-small">
+            <span className="text-text-3">Yarımçıq qalmış qaralama bərpa edildi.</span>
+            <button type="button" onClick={discardDraft} className="font-semibold text-danger hover:underline shrink-0">Təmizlə</button>
           </div>
-          <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="VIN kod" maxLength={17} className="input-mono text-sm" />
+        )}
+
+        <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder="Ad Soyad" className="input" />
+        <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input-mono" />
+
+        <div className="border-t border-border pt-3">
+          <p className="section-label mb-2">Avtomobil</p>
+          <div className="flex flex-col gap-2.5">
+            <CarBrandModelInputs brand={carBrand} model={carModel} onBrandChange={setCarBrand} onModelChange={setCarModel} />
+            <div className="flex gap-2.5">
+              <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="İl" maxLength={4} className="input-mono flex-1" />
+              <PlateInput value={carPlate} onChange={setCarPlate} className="input-mono tracking-wider flex-1" />
+            </div>
+            <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="VIN kod" maxLength={17} className="input-mono" />
+          </div>
         </div>
-      </div>
 
-      {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
-
-      <div className="flex flex-col gap-2.5 pt-1">
-        <button type="submit" disabled={loading} className="btn-primary">{loading ? 'Saxlanılır...' : isEdit ? 'Saxla' : 'Müştəri əlavə et'}</button>
-        <button type="button" onClick={handleCancel} className="btn-secondary">Ləğv et</button>
-      </div>
-    </form>
+        {error && <p className="text-body text-danger bg-danger-subtle rounded px-3 py-2">{error}</p>}
+      </form>
+    </Modal>
   )
 }

@@ -9,7 +9,7 @@ export interface InkBandItem {
 }
 
 /** Dark summary band: uppercase label + grid of big mono numbers. */
-export default function InkBand({ label, items, className = '' }: { label?: string; items: InkBandItem[]; className?: string }) {
+export default function InkBand({ label, items, footer, className = '' }: { label?: string; items: InkBandItem[]; footer?: ReactNode; className?: string }) {
   return (
     <div className={`bg-ink rounded-lg px-7 py-6 ${className}`}>
       {label && <p className="font-sans text-label uppercase text-text-4 mb-3">{label}</p>}
@@ -28,6 +28,7 @@ export default function InkBand({ label, items, className = '' }: { label?: stri
           </div>
         ))}
       </div>
+      {footer && <div className="mt-5">{footer}</div>}
     </div>
   )
 }
