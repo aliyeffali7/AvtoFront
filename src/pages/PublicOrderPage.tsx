@@ -175,7 +175,7 @@ export default function PublicOrderPage() {
 
         <footer className="flex flex-col items-center gap-1.5 pt-4 pb-2 text-small text-text-3">
           <span>Servo ilə hazırlanıb</span>
-          <ServoLogo variant="ink" className="h-5" />
+          <ServoLogo variant="ink" className="h-3.5" />
         </footer>
       </div>
     </main>

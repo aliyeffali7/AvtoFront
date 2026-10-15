@@ -91,7 +91,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
   return (
     <aside className="w-[232px] bg-ink border-r border-ink-up h-screen flex flex-col shrink-0">
       {/* Business (the shop's own brand on top) */}
-      <div className="px-4 pt-5 pb-4 flex items-start justify-between gap-2">
+      <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-2">
         <Link to="/business/dashboard" onClick={onClose} className="flex flex-col gap-3 min-w-0">
           {business?.logo && !logoError ? (
             <img
@@ -188,9 +188,9 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
       </nav>
 
       {/* Footer */}
-      <div className="shrink-0 p-4 border-t border-ink-up flex flex-col gap-3">
+      <div className="shrink-0 px-5 pt-5 pb-4 border-t border-ink-up flex flex-col gap-2">
         {/* Servo brand */}
-        <ServoLogo variant="white" className="w-full h-auto" />
+        <ServoLogo variant="white" className="w-[132px] h-auto mb-2" />
         <p className="text-small text-text-4 truncate">{user?.email}</p>
         <button
           onClick={handleLogout}

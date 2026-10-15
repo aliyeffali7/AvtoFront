@@ -51,7 +51,7 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="bg-sidebar px-6 py-4 flex items-center justify-between">
         <div className="max-w-6xl mx-auto w-full flex items-center justify-between">
-          <ServoLogo variant="white" className="h-6" />
+          <ServoLogo variant="white" className="h-4" />
           <button
             onClick={() => setTab('login')}
             className="text-sm text-text-4 hover:text-paper font-medium transition-colors"

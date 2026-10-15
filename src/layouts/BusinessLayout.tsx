@@ -46,7 +46,7 @@ export default function BusinessLayout() {
       </div>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden lg:pl-[232px]">
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen overflow-hidden lg:pl-[232px]">
 
         {/* Mobile top bar */}
         <div className="lg:hidden flex items-center gap-3 px-3 h-14 bg-ink sticky top-0 z-10">
@@ -57,7 +57,7 @@ export default function BusinessLayout() {
           >
             <Menu className="w-5 h-5" strokeWidth={1.75} />
           </button>
-          <ServoLogo variant="white" className="h-5" />
+          <ServoLogo variant="white" className="h-3.5" />
           <span className="ml-auto text-small text-text-4 truncate">{pageTitle}</span>
         </div>
 
