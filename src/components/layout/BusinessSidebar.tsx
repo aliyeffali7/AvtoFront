@@ -189,6 +189,8 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
 
       {/* Footer */}
       <div className="shrink-0 p-4 border-t border-ink-up flex flex-col gap-3">
+        {/* Servo brand */}
+        <ServoLogo variant="white" className="h-10 self-start" />
         <p className="text-small text-text-4 truncate">{user?.email}</p>
         <button
           onClick={handleLogout}
@@ -197,10 +199,6 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
           <LogOut className="w-4 h-4" strokeWidth={1.75} />
           Çıxış
         </button>
-        {/* Servo brand at the bottom */}
-        <div className="pt-3 border-t border-ink-up">
-          <ServoLogo variant="white" className="h-8" />
-        </div>
       </div>
     </aside>
   )
