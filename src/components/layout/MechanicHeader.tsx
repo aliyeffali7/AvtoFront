@@ -18,7 +18,10 @@ export default function MechanicHeader({
 }) {
   const navigate = useNavigate()
   const user = useCurrentUser()
-  const who = user?.email?.split('@')[0] ?? ''
+  // Mechanic accounts get a synthetic `{phone}+{id}@mechanic.local` email, so
+  // its local part is not a name — show the avatar only for real emails.
+  const email = user?.email ?? ''
+  const who = email && !email.endsWith('@mechanic.local') ? email.split('@')[0] : ''
   return (
     <header className="bg-ink px-4 py-3 flex items-center gap-3 min-h-[68px]">
       {back && (

@@ -1,4 +1,4 @@
-# CLAUDE.md — Avtoservis CRM Frontend
+# CLAUDE.md — Servo Frontend (repo: Avtoservis CRM)
 
 SaaS CRM for auto-service businesses in Azerbaijan. Roles: **BUSINESS_OWNER**, **MECHANIC**, **SUPER_ADMIN** — each gets its own layout.
 This repo is the SPA; the API is the Django backend in `avtoservisBack` (read its CLAUDE.md for the accounting rules the screens reflect).
@@ -21,12 +21,12 @@ src/
   lib/                 axios (interceptors), auth (CSRF token), utils, chartColors, formDraft
   types/index.ts       all API types
 ```
-Business navigation: Dashboard, Sifarişlər, Müştərilər, Ustalar, **Stok** (Məhsullar, Alışlar, Hərəkətlər, Tədarükçülər, Anbar hesabatı), **Maliyyə** (Kassa, Kreditorlar, Debitorlar, Hesabat), Rezervasiyalar, Mağazalar, Tənzimləmələr.
+Business navigation (dark sidebar, accordion groups): Ana səhifə, Sifarişlər, Rezervasiyalar, Müştərilər, Ustalar, **Stok** (Məhsullar, Alışlar, Hərəkətlər, Tədarükçülər, Anbar hesabatı), **Maliyyə** (Kassa, Kreditorlar, Debitorlar, Hesabat), Tənzimləmələr. "Mağazalar" was merged into Tədarükçülər (same `stores.Store` data); `/business/shops` redirects.
 
 ## Rules
 - **All UI text in Azerbaijani**; API errors go through `mapApiError` (Azerbaijani, human-readable).
 - Status = color + text (Badge), never color alone.
-- Master–detail screens use `MasterDetailShell`; forms are inline panels, not modals (modals only for confirmations).
+- Main records (order, customer, mechanic, product, purchase, supplier) open as their own full page with a "← Geri" link — not side panels. Short actions use `ui/Modal`; quick add/edit forms use a Modal or right drawer.
 - Loading and error states on every fetch; empty states explain what to do next.
 - Dates: use `toLocalISODate()` from `lib/utils`, never `toISOString().slice(0, 10)` (UTC → wrong day in Baku after midnight).
 - Money comes from the API as strings or numbers — wrap in `Number()` / `formatCurrency()` before math.
@@ -38,7 +38,7 @@ Business navigation: Dashboard, Sifarişlər, Müştərilər, Ustalar, **Stok** 
 Access/refresh JWTs live in httpOnly cookies set by the backend. `lib/auth.ts` reads the `csrf_token` cookie and axios sends it as `X-CSRF-Token` on writes; `lib/axios.ts` refreshes on 401 (queued requests are settled either way) and replays once on a stale-CSRF 403. Requests time out after 30 s (uploads 120 s).
 
 ## Visual style
-Tailwind tokens in `tailwind.config.ts` (`ink`, `surface`, `rule`, `accent` #1F4D36, `warning`, `danger`, `success`, …) and component classes in `index.css` (`card`, `input`, `btn-primary`, `ledger-table`, `section-label`, …). Fonts: IBM Plex Sans / Mono, Newsreader for headings. Chart colours live in `lib/chartColors.ts` (palette validated with the dataviz skill).
+Servo design system — brand book `design/brandbook/servo_brand-book_v1.pdf`, implementation spec `design/REDESIGN_SPEC.md` (both in the parent `avtoservis` folder). Tokens in `tailwind.config.ts`: ink `#090909`, paper `#F4F4F4`, surface `#FFFFFF`, surface-2 `#EBEBEB`, border `#E0E0E0`, text-1..4, signal red `#D1442F` (**accent only**: logo, active nav line, one highlighted number — never a background or status colour), semantic success/warning/danger/info (+subtle/strong). Old token names (`ink-muted`, `rule`, `accent`, …) are aliases kept for compatibility. Fonts: Libre Franklin (headings, `font-display`), Source Sans 3 (UI), JetBrains Mono (plates, numbers, money — tabular). Building blocks in `components/ui/`: Button, StatusBadge (9 fixed status words), Money (never colour-only: +/− or Alınacaq/Ödəniləcək), Plate (AZ plate), Avatar, KpiCard, InkBand, PageHeader, Modal, Segmented, ServoLogo. Global classes in `index.css` (`card`, `input`, `label`, `btn-*`, `ledger-*`). Chart colours in `lib/chartColors.ts`. PDF/print code (`serviceActPdf.ts`, `printOrderPDF.ts`, FinanceClient print HTML) keeps its own look.
 
 ## Commands
 ```bash
