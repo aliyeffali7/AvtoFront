@@ -68,6 +68,9 @@ export default function CreditorsPage() {
   const [showPaidGroups, setShowPaidGroups] = useState(false)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  // Detail list: only the latest debts first; search narrows by product or qaimə №.
+  const [itemSearch, setItemSearch] = useState('')
+  const [showAllItems, setShowAllItems] = useState(false)
 
   // Product-level selection across all of the supplier's debts: item id → qty to pay now.
   const [selectedItems, setSelectedItems] = useState<Record<number, number>>({})
@@ -109,6 +112,7 @@ export default function CreditorsPage() {
 
   function resetSelection() {
     setSelectedItems({}); setPayError(''); setPayNotice(''); setConfirmDeleteId(null)
+    setItemSearch(''); setShowAllItems(false)
   }
 
   function selectSupplier(key: string) {
@@ -145,6 +149,18 @@ export default function CreditorsPage() {
       return next
     })
   }
+
+  const searchTerm = itemSearch.trim().toLowerCase()
+  const matchesSearch = (debt: SupplierDebt) =>
+    !searchTerm ||
+    (debt.invoice_no ?? '').toLowerCase().includes(searchTerm) ||
+    debt.items.some(i => i.product_name.toLowerCase().includes(searchTerm))
+  // Newest first for browsing (the group is stored oldest-first).
+  const listedDebts = selectedGroup
+    ? [...selectedGroup.debts].reverse().filter(d => (showPaidGroups || !d.is_paid) && matchesSearch(d))
+    : []
+  const LATEST_COUNT = 10
+  const shownDebts = searchTerm || showAllItems ? listedDebts : listedDebts.slice(0, LATEST_COUNT)
 
   const allItems = selectedGroup ? selectedGroup.debts.flatMap(d => d.items) : []
   const chosen = allItems.filter(i => selectedItems[i.id] > 0)
@@ -255,8 +271,18 @@ export default function CreditorsPage() {
         </label>
       )}
 
+      <input
+        type="search"
+        value={itemSearch}
+        onChange={e => setItemSearch(e.target.value)}
+        placeholder="Məhsul adı və ya qaimə № ilə axtar"
+        aria-label="Borclarda axtar"
+        className="input mb-3 max-w-sm"
+      />
+
       <div className="flex flex-col gap-3">
-        {selectedGroup.debts.filter(d => showPaidGroups || !d.is_paid).map(debt => (
+        {shownDebts.length === 0 && <p className="text-body text-text-3">Heç nə tapılmadı.</p>}
+        {shownDebts.map(debt => (
           <div key={debt.id} className={`bg-surface border border-border rounded-md ${debt.is_paid ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between gap-3 px-4 pt-3 pb-2">
               <label className="flex items-start gap-2 min-w-0 cursor-pointer">
@@ -264,7 +290,9 @@ export default function CreditorsPage() {
                   <input type="checkbox" checked={debtFullySelected(debt)} onChange={e => toggleDebt(debt, e.target.checked)} className="w-4 h-4 mt-1 shrink-0" />
                 )}
                 <span className="min-w-0">
-                  <span className="block text-body font-semibold text-ink">{formatDate(debt.date)}{debt.description ? ` — ${debt.description}` : ''}</span>
+                  <span className="block text-body font-semibold text-ink">
+                    {formatDate(debt.date)}{debt.invoice_no ? ` · qaimə № ${debt.invoice_no}` : ''}{debt.description ? ` — ${debt.description}` : ''}
+                  </span>
                   {debt.purchase && (
                     <Link to={`/business/warehouse/purchases/${debt.purchase}`} className="text-small font-semibold text-ink underline underline-offset-2">Alışa bax →</Link>
                   )}
@@ -325,6 +353,9 @@ export default function CreditorsPage() {
             )}
           </div>
         ))}
+        {!searchTerm && !showAllItems && listedDebts.length > LATEST_COUNT && (
+          <Button variant="secondary" onClick={() => setShowAllItems(true)}>Hamısını göstər ({listedDebts.length})</Button>
+        )}
       </div>
 
       {chosen.length > 0 && (

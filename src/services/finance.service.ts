@@ -54,8 +54,10 @@ export const deleteManualDebt = (id: number) =>
 export const getFinanceReport = (from: string, to: string) =>
   api.get<FinanceReport>('/api/finance/report/', { params: { from, to } })
 
-export const getDebtors = () =>
-  api.get<DebtorGroup[]>('/api/finance/debtors/')
+export type DebtorStatus = 'open' | 'paid' | 'all'
+
+export const getDebtors = (status: DebtorStatus = 'open') =>
+  api.get<DebtorGroup[]>('/api/finance/debtors/', { params: { status } })
 
 export const getWeeklyIncome = (date: string) =>
   api.get<WeeklyIncome>('/api/finance/weekly-income/', { params: { date } })

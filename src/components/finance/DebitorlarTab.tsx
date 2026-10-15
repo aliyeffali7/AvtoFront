@@ -4,7 +4,7 @@ import { ChevronRight, MessageCircle, Plus, Trash2 } from 'lucide-react'
 import { Business, DebtorGroup, ManualDebt } from '@/types'
 import { getBusinessProfile } from '@/services/auth.service'
 import { debtReminderMessage, hasWhatsAppNumber, whatsappLink } from '@/lib/whatsapp'
-import { getDebtors } from '@/services/finance.service'
+import { DebtorStatus, getDebtors } from '@/services/finance.service'
 import { getManualDebts, createManualDebt, payManualDebt, deleteManualDebt } from '@/services/finance.service'
 import { recordPayment } from '@/services/orders.service'
 import { formatDate, formatCurrency, formatPhone } from '@/lib/utils'
@@ -36,7 +36,8 @@ export default function DebitorlarTab() {
   const [manualDebts, setManualDebts] = useState<ManualDebt[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
-  const [showPaid, setShowPaid] = useState(false)
+  const [openDebtors, setOpenDebtors] = useState<DebtorGroup[]>([])
+  const [statusFilter, setStatusFilter] = useState<DebtorStatus>('open')
 
   const [payingOrderId, setPayingOrderId] = useState<number | null>(null)
   const [orderPayInputs, setOrderPayInputs] = useState<Record<number, string>>({})
@@ -57,20 +58,26 @@ export default function DebitorlarTab() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [debtorsRes, manualRes] = await Promise.all([getDebtors(), getManualDebts()])
-      setDebtors(debtorsRes.data)
+      // The KPI always reflects what is still owed; the list follows the filter.
+      const [openRes, listRes, manualRes] = await Promise.all([
+        getDebtors('open'),
+        statusFilter === 'open' ? null : getDebtors(statusFilter),
+        getManualDebts(),
+      ])
+      setOpenDebtors(openRes.data)
+      setDebtors(listRes ? listRes.data : openRes.data)
       setManualDebts(manualRes.data.filter(d => !d.is_paid))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [statusFilter])
 
   useEffect(() => { load() }, [load])
   useEffect(() => { getBusinessProfile().then(res => setBusiness(res.data)).catch(() => {}) }, [])
 
-  const visible = showPaid ? debtors : debtors.filter(g => !g.is_paid)
-  const totalUnpaid = debtors.filter(g => !g.is_paid).reduce((s, g) => s + g.remaining, 0)
-  const unpaidCount = debtors.filter(g => !g.is_paid).length
+  const visible = debtors
+  const totalUnpaid = openDebtors.reduce((s, g) => s + g.remaining, 0)
+  const unpaidCount = openDebtors.length
 
   async function handleOrderPay(orderId: number, debt: number) {
     const amount = parseFloat(orderPayInputs[orderId] ?? debt.toFixed(2)) || 0
@@ -219,15 +226,26 @@ export default function DebitorlarTab() {
 
       <Segmented
         label="Filtr"
-        value={showPaid ? 'all' : 'unpaid'}
-        onChange={k => setShowPaid(k === 'all')}
-        options={[{ key: 'unpaid', label: 'Ödənilməmiş' }, { key: 'all', label: 'Bütün debitorlar' }]}
+        value={statusFilter}
+        onChange={setStatusFilter}
+        options={[
+          { key: 'open', label: 'Ödənilməyib' },
+          { key: 'paid', label: 'Ödənilib', title: 'Son 90 gündə tam ödənilmiş sifarişlər' },
+          { key: 'all', label: 'Hamısı' },
+        ]}
       />
+      {statusFilter !== 'open' && (
+        <p className="text-small text-text-3 -mt-2">Ödənilmiş sifarişlər üçün yalnız son 90 gün göstərilir.</p>
+      )}
 
       {loading && debtors.length === 0 ? (
         <Spinner />
       ) : visible.length === 0 ? (
-        <EmptyState title="Heç bir debitor borcu yoxdur" subtitle="Bütün sifarişlər ödənilib." />
+        statusFilter === 'paid' ? (
+          <EmptyState title="Son 90 gündə ödənilmiş sifariş yoxdur" subtitle="Tam ödənilmiş tamamlanmış sifarişlər burada görünəcək." />
+        ) : (
+          <EmptyState title="Heç bir debitor borcu yoxdur" subtitle="Bütün sifarişlər ödənilib." />
+        )
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">

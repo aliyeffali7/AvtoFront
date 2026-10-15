@@ -62,7 +62,7 @@ export default function StockReportTab() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Block label="Dövrün əvvəlinə qalıq" value={formatCurrency(report.totals.opening_value)} />
             <Block label="Daxil olan" value={`+${formatCurrency(report.totals.in_value)}`} />
-            <Block label="Çıxan (maya ilə)" value={`−${formatCurrency(report.totals.out_value)}`} />
+            <Block label="Çıxan (maya ilə)" value={signedOut(Number(report.totals.out_value), formatCurrency)} />
             <Block label="Dövrün sonuna qalıq" value={formatCurrency(report.totals.closing_value)} />
           </div>
           <p className="text-small text-text-3">
@@ -109,7 +109,7 @@ export default function StockReportTab() {
                         </td>
                         <td className="ledger-td text-right font-mono tabular-nums">{r.opening_qty}</td>
                         <td className="ledger-td text-right font-mono tabular-nums">{r.in_qty ? `+${r.in_qty}` : '—'}</td>
-                        <td className="ledger-td text-right font-mono tabular-nums">{r.out_qty ? `−${r.out_qty}` : '—'}</td>
+                        <td className="ledger-td text-right font-mono tabular-nums">{r.out_qty ? signedOut(r.out_qty) : '—'}</td>
                         <td className="ledger-td text-right font-mono tabular-nums font-semibold">{r.closing_qty}</td>
                         <td className="ledger-td text-right"><Money value={r.closing_value} /></td>
                       </tr>
@@ -120,7 +120,7 @@ export default function StockReportTab() {
                       <td className="ledger-td font-semibold">Cəmi · {rows.length} məhsul</td>
                       <td className="ledger-td text-right font-mono font-bold tabular-nums">{totals.opening}</td>
                       <td className="ledger-td text-right font-mono font-bold tabular-nums">{totals.in ? `+${totals.in}` : '—'}</td>
-                      <td className="ledger-td text-right font-mono font-bold tabular-nums">{totals.out ? `−${totals.out}` : '—'}</td>
+                      <td className="ledger-td text-right font-mono font-bold tabular-nums">{totals.out ? signedOut(totals.out) : '—'}</td>
                       <td className="ledger-td text-right font-mono font-bold tabular-nums">{totals.closing}</td>
                       <td className="ledger-td text-right"><Money value={totals.closingValue} className="font-bold" /></td>
                     </tr>
@@ -130,10 +130,19 @@ export default function StockReportTab() {
               <Pagination page={page} totalPages={totalPages} onChange={setPage} />
             </div>
           )}
+          <p className="text-small text-text-3">
+            Daxil = alışlar + ilkin qalıq + sayımda artıq çıxan. Çıxan = satılan mal (sifarişə çıxış − sifarişdən qaytarma) +
+            silinmə/itki + mağazaya qaytarma + sayımda çatışan.
+          </p>
         </>
       )}
     </div>
   )
+}
+
+/** Net outflow shown with a minus; a negative net (more came back than left) shows as a plus. */
+function signedOut(n: number, fmt: (v: number) => string = String): string {
+  return n >= 0 ? `−${fmt(n)}` : `+${fmt(-n)}`
 }
 
 /** Number block: 3px ink left rule, mono label, big display number. */

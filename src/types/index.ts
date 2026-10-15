@@ -307,6 +307,7 @@ export interface FinanceReport {
     owner_deposits: number
   }
   balances: { stock_value: number; creditors: number; debtors: number }
+  stock: { stock_value: number; purchases: number; cogs: number; write_offs: number }
 }
 
 export interface DebtorOrder {
@@ -688,6 +689,7 @@ export interface SupplierDebt {
   paid_amount: number
   remaining: number
   is_paid: boolean
+  invoice_no: string
   items: SupplierDebtItem[]
   date: string
   created_at: string

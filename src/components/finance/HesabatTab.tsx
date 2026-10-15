@@ -3,7 +3,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { FinanceReport } from '@/types'
 import { getFinanceReport } from '@/services/finance.service'
 import { formatCurrency } from '@/lib/utils'
-import KpiCard from '@/components/ui/KpiCard'
 import Money from '@/components/ui/Money'
 import PageHeader from '@/components/ui/PageHeader'
 import PeriodFilter from '@/components/ui/PeriodFilter'
@@ -45,7 +44,7 @@ export default function HesabatTab() {
         <>
           <section className="flex flex-col gap-4">
             <div>
-              <h2 className="font-display font-bold text-h3 text-ink">1. Mənfəət</h2>
+              <h2 className="font-display font-bold text-h3 text-ink">Mənfəət</h2>
               <p className="text-body text-text-3 mt-1 max-w-3xl">
                 İş tamamlanan gün sayılır — müştəri ödəyib-ödəməməsindən asılı deyil. Mal alışı burada xərc deyil;
                 malın maya dəyəri satılanda (sifariş tamamlananda) xərcə düşür.
@@ -88,12 +87,12 @@ export default function HesabatTab() {
             {/* Each category shows once: as exact lists (the old expense bar chart repeated the same rows). */}
             <div className="grid lg:grid-cols-2 gap-3">
               <BreakdownCard
-                title="Gəlir — maddə üzrə"
+                title="Gəlir maddə üzrə"
                 rows={report.income_by_category.map(c => ({ label: INCOME_CATEGORY_LABELS[c.category] || EXPENSE_CATEGORY_LABELS[c.category] || c.category, amount: Number(c.amount) }))}
                 total={Number(report.total_income)}
               />
               <BreakdownCard
-                title="Xərc — maddə üzrə"
+                title="Xərc maddə üzrə"
                 rows={report.expense_by_category.map(c => ({ label: EXPENSE_CATEGORY_LABELS[c.category] || c.category, amount: Number(c.amount) }))}
                 total={Number(report.total_expense)}
               />
@@ -101,27 +100,14 @@ export default function HesabatTab() {
           </section>
 
           <section className="flex flex-col gap-3">
-            <h2 className="font-display font-bold text-h3 text-ink">2. Dövr ərzində hərəkətlər</h2>
-            <div className="card grid md:grid-cols-2 md:divide-x divide-border">
-              <div className="divide-y divide-border">
-                <MoveRow label="Nisyə alınan mal (kreditorlara borc əlavə olundu)" value={report.movements.purchases_credit} />
-                <MoveRow label="Nağd alınan mal (kassadan)" value={report.movements.purchases_cash} />
-                <MoveRow label="Kreditorlara ödənilən" value={report.movements.supplier_payments} />
-              </div>
-              <div className="divide-y divide-border border-t border-border md:border-t-0">
-                <MoveRow label="Müştərilərdən yığılan (sifariş ödənişləri)" value={report.movements.customer_payments} />
-                <MoveRow label="Kassaya daxil olan / çıxan" value={report.movements.cash_in} second={report.movements.cash_out} />
-                <MoveRow label="Sahibkar qoydu / götürdü (mənfəətə təsir etmir)" value={report.movements.owner_deposits} second={report.movements.owner_draws} />
-              </div>
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <h2 className="font-display font-bold text-h3 text-ink">3. Bu günə vəziyyət</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <KpiCard label="Anbarın dəyəri" value={Number(report.balances.stock_value)} money note="Rəfdəki malın alış (maya) dəyəri" />
-              <KpiCard label="Kreditorlara borc" value={Number(report.balances.creditors)} money meaning="payable" note="Ödəniləcək · Mağazalara ödənməli" />
-              <KpiCard label="Debitorlardan alınacaq" value={Number(report.balances.debtors)} money meaning="receivable" note="Alınacaq · Müştərilərin borcu" />
+            <h2 className="font-display font-bold text-h3 text-ink">Anbar</h2>
+            <div className="card divide-y divide-border">
+              <MoveRow label="Anbarın dəyəri (bu gün, alış qiymətilə)" value={Number(report.stock.stock_value)} />
+              <MoveRow label="Dövr ərzində alınan mal" value={Number(report.stock.purchases)} />
+              <MoveRow label="Dövr ərzində satılan malın maya dəyəri" value={Number(report.stock.cogs)} />
+              {Number(report.stock.write_offs) > 0 && (
+                <MoveRow label="Silinmə / itki" value={Number(report.stock.write_offs)} />
+              )}
             </div>
           </section>
         </>
@@ -161,21 +147,11 @@ function BreakdownCard({ title, rows, total }: { title: string; rows: { label: s
   )
 }
 
-function MoveRow({ label, value, second }: { label: string; value: number; second?: number }) {
+function MoveRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center justify-between gap-4 px-5 py-3.5 text-body">
       <span className="text-text-2">{label}</span>
-      <span className="shrink-0 inline-flex items-baseline gap-2">
-        {second === undefined ? (
-          <Money value={value} />
-        ) : (
-          <>
-            <Money value={value} meaning="income" />
-            <span className="text-text-3">/</span>
-            <Money value={second} meaning="expense" />
-          </>
-        )}
-      </span>
+      <Money value={value} className="shrink-0" />
     </div>
   )
 }
