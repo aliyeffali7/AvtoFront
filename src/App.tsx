@@ -112,6 +112,7 @@ export default function App() {
             <Route element={<BusinessLayout />}>
               <Route path="/business/dashboard" element={<DashboardPage />} />
               <Route path="/business/orders" element={<OrdersPage />} />
+              <Route path="/business/orders/new" element={<OrderDetailPage />} />
               <Route path="/business/orders/:id" element={<OrderDetailPage />} />
               <Route path="/business/mechanics" element={<MechanicsPage />} />
               <Route path="/business/warehouse" element={<WarehousePage />}>

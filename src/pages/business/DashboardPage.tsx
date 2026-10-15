@@ -1,15 +1,23 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
-import { ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronRight, ClipboardList, Package, Users, Wallet } from 'lucide-react'
-import { DashboardStats, FinanceReport, Order, WeeklyIncome } from '@/types'
+import { ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { Business, DashboardStats, FinanceReport, Order, WeeklyIncome } from '@/types'
 import { getDashboardStats, getFinanceReport, getWeeklyIncome } from '@/services/finance.service'
 import { getOrders } from '@/services/orders.service'
+import { getBusinessProfile } from '@/services/auth.service'
 import { formatCurrency, formatDate, toLocalISODate } from '@/lib/utils'
 import Spinner from '@/components/ui/Spinner'
-import BrandLogo from '@/components/ui/BrandLogo'
+import Plate from '@/components/ui/Plate'
+import Money from '@/components/ui/Money'
+import Button from '@/components/ui/Button'
+import PageHeader from '@/components/ui/PageHeader'
+import InkBand from '@/components/ui/InkBand'
+import KpiCard from '@/components/ui/KpiCard'
 import StatusBadge from '@/components/orders/StatusBadge'
 import { CHART_INCOME, CHART_EXPENSE, CHART_SEQUENTIAL } from '@/lib/chartColors'
+
+const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr']
 
 const AXIS_TICK = { fontSize: 11, fill: '#6B6B6B' }
 const TOOLTIP_STYLE = { background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: 10, fontSize: 12 }
@@ -21,39 +29,14 @@ function formatShort(iso: string) {
 
 const WEEKDAYS = ['B.e', 'Ç.a', 'Çər', 'C.a', 'Cüm', 'Şən', 'Baz']
 
-const PANEL = 'bg-surface border border-ink/20 rounded-[10px] shadow-[0_1px_2px_rgba(31,42,36,0.08)]'
-
-function StatTile({ label, value, extra, icon: Icon, tone, accent, to }: {
-  label: string
-  value: string
-  extra?: string
-  icon: typeof Wallet
-  tone: string
-  accent?: string
-  to: string
-}) {
-  return (
-    <Link to={to} className={`${PANEL} px-5 py-4 flex items-center gap-4 transition-colors hover:bg-surface-alt`}>
-      <span className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${tone}1F`, color: tone }}>
-        <Icon className="w-5 h-5" strokeWidth={2} />
-      </span>
-      <div className="min-w-0">
-        <p className="text-xs text-ink-muted mb-0.5">{label}</p>
-        <p className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-2xl font-bold font-mono leading-tight" style={accent ? { color: accent } : undefined}>{value}</span>
-          {extra && <span className="text-sm font-mono font-semibold text-ink-muted">{extra}</span>}
-        </p>
-      </div>
-    </Link>
-  )
-}
-
 export default function DashboardPage() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [report, setReport] = useState<FinanceReport | null>(null)
   const [shownWeek, setShownWeek] = useState<WeeklyIncome | null>(null)
   const [weekLoading, setWeekLoading] = useState(false)
-  const [todayOrders, setTodayOrders] = useState<Order[]>([])
+  const [recentOrders, setRecentOrders] = useState<Order[]>([])
+  const [business, setBusiness] = useState<Business | null>(null)
   const [todayOrdersCount, setTodayOrdersCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
@@ -65,16 +48,19 @@ export default function DashboardPage() {
       const fromDate = new Date(today)
       fromDate.setDate(fromDate.getDate() - 13)
       const from = toLocalISODate(fromDate)
-      const [statsRes, reportRes, ordersRes] = await Promise.all([
+      const [statsRes, reportRes, todayRes, recentRes, bizRes] = await Promise.all([
         getDashboardStats(),
         getFinanceReport(from, to),
         getOrders({ date_from: to, date_to: to }).catch(() => null),
+        getOrders({ page: 1 }).catch(() => null),
+        getBusinessProfile().catch(() => null),
       ])
       setStats(statsRes.data)
       setShownWeek(statsRes.data.weekly_income)
       setReport(reportRes.data)
-      setTodayOrders((ordersRes?.data.results ?? []).slice(0, 5))
-      setTodayOrdersCount(ordersRes?.data.count ?? 0)
+      setRecentOrders((recentRes?.data.results ?? []).slice(0, 8))
+      setTodayOrdersCount(todayRes?.data.count ?? 0)
+      setBusiness(bizRes?.data ?? null)
     } finally {
       setLoading(false)
     }
@@ -96,7 +82,7 @@ export default function DashboardPage() {
   }
 
   if (loading || !stats || !report || !shownWeek) {
-    return <div className="p-6 lg:p-8"><Spinner /></div>
+    return <Spinner />
   }
 
 
@@ -106,81 +92,136 @@ export default function DashboardPage() {
   const isCurrentWeek = weekly.days.some(d => d.is_today)
   const weekChart = weekly.days.map((d, i) => ({ ...d, label: WEEKDAYS[i] }))
 
+  const now = new Date()
+  const todayLabel = formatDate(toLocalISODate(now))
+  const subtitle = `${MONTHS[now.getMonth()]} ${now.getFullYear()}${business?.name ? ` · ${business.name}` : ''}`
+
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6">
-        <h1 className="page-title">Dashboard</h1>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Ana səhifə"
+        subtitle={subtitle}
+        actions={<Button icon={Plus} onClick={() => navigate('/business/orders/new')}>Yeni sifariş</Button>}
+      />
+
+      <InkBand
+        label={`Bu gün · ${todayLabel}`}
+        items={[
+          { label: 'Bugünkü xalis', value: formatCurrency(todayStats.net), highlight: true },
+          { label: 'Gəlir', value: formatCurrency(todayStats.income ?? 0) },
+          { label: 'Xərc', value: formatCurrency(todayStats.expense ?? 0) },
+          { label: 'Bugünkü sifarişlər', value: String(todayOrdersCount) },
+        ]}
+      />
+
+      {/* KPI row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Link to="/business/orders" className="block min-w-0">
+          <KpiCard label="Aktiv sifarişlər" value={stats.active_orders_count} note="Sifarişlərə keç" className="h-full hover:bg-surface-2 transition-colors" />
+        </Link>
+        <Link to="/business/finance/debitorlar" className="block min-w-0">
+          <KpiCard label="Borclu müştərilər" value={stats.debtor_customers_count} note={<>Alınacaq: <Money value={stats.debtors_remaining} showWord={false} className="text-small" /></>} className="h-full hover:bg-surface-2 transition-colors" />
+        </Link>
+        <Link to="/business/warehouse" className="block min-w-0">
+          <KpiCard label="Stokdakı məhsullar" value={stats.in_stock_count} note={`${stats.low_stock_count} az qalıb · ${stats.out_of_stock_count} bitib`} className="h-full hover:bg-surface-2 transition-colors" />
+        </Link>
+        <Link to="/business/finance/kassa" className="block min-w-0">
+          <KpiCard label="Son 14 gün xalis" value={report.net} money meaning="profit" note={`Gəlir ${formatCurrency(report.total_income)} · Xərc ${formatCurrency(report.total_expense)}`} className="h-full hover:bg-surface-2 transition-colors" />
+        </Link>
       </div>
 
-      {/* Stat tiles */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatTile
-          label="Bugünkü xalis"
-          value={formatCurrency(todayStats.net)}
-          icon={Wallet}
-          to="/business/finance/kassa"
-          tone={todayStats.net >= 0 ? CHART_INCOME : CHART_EXPENSE}
-          accent={todayStats.net >= 0 ? CHART_INCOME : CHART_EXPENSE}
-        />
-        <StatTile label="Aktiv sifarişlər" value={String(stats.active_orders_count)} icon={ClipboardList} tone="#2a78d6" to="/business/orders" />
-        <StatTile
-          label="Borclu müştərilər"
-          value={String(stats.debtor_customers_count)}
-          extra={formatCurrency(stats.debtors_remaining)}
-          icon={Users}
-          tone="#eb6834"
-          to="/business/finance/debitorlar"
-        />
-        <StatTile label="Stokdakı məhsullar" value={String(stats.in_stock_count)} icon={Package} tone="#1baf7a" to="/business/warehouse" />
-      </div>
+      {stats.out_of_stock_count > 0 && (
+        <Link
+          to="/business/warehouse/products?tab=out"
+          className="block bg-danger-subtle border border-danger/30 rounded-lg px-5 py-3 text-body text-danger-strong font-semibold hover:opacity-90 transition-opacity"
+        >
+          {stats.out_of_stock_count} məhsul stokda bitib — Bitənlərə bax →
+        </Link>
+      )}
 
-      {/* Həftəlik gəlir — 7 days, Monday to Sunday */}
-      <div className={`${PANEL} p-6 mb-6`}>
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-ink-muted">Həftəlik gəlir</p>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => shiftWeek(-1)}
-              disabled={weekLoading}
-              aria-label="Əvvəlki həftə"
-              className="w-8 h-8 flex items-center justify-center border border-ink/20 text-ink-muted hover:text-ink hover:bg-surface-alt disabled:opacity-40 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="px-2 text-sm font-mono text-ink min-w-[132px] text-center">
-              {formatShort(weekly.week_start)} – {formatShort(weekly.week_end)}
-            </span>
-            <button
-              type="button"
-              onClick={() => shiftWeek(1)}
-              disabled={weekLoading || isCurrentWeek}
-              aria-label="Növbəti həftə"
-              className="w-8 h-8 flex items-center justify-center border border-ink/20 text-ink-muted hover:text-ink hover:bg-surface-alt disabled:opacity-40 transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+      {/* Son sifarişlər */}
+      <section className="card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="card-title">Son sifarişlər</h2>
+          <Link to="/business/orders" className="text-small font-semibold text-ink hover:underline underline-offset-2">Hamısına bax →</Link>
         </div>
-        <div className="flex flex-col md:flex-row md:items-center gap-6">
-          <div className="md:w-64 shrink-0">
-            <p className="font-serif font-semibold text-[38px] leading-none text-ink">
-              {Number(weekly.total).toLocaleString('az-AZ', { maximumFractionDigits: 0 })} <span className="text-2xl text-ink-muted">₼</span>
-            </p>
-            <div className="mt-3 flex items-center gap-2 text-sm">
-              {weekly.change_percent != null && (
-                <span
-                  className="inline-flex items-center gap-0.5 font-semibold"
-                  style={{ color: weekly.change_percent >= 0 ? CHART_INCOME : CHART_EXPENSE }}
-                >
-                  {weekly.change_percent >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                  {weekly.change_percent >= 0 ? '+' : ''}{weekly.change_percent}%
-                </span>
-              )}
-              <span className="text-ink-muted">əvvəlki həftəyə görə</span>
+        {recentOrders.length === 0 ? (
+          <p className="text-body text-text-3 px-5 py-8 text-center">Hələ sifariş yoxdur.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="ledger-table">
+              <thead>
+                <tr>
+                  <th className="ledger-th">№</th>
+                  <th className="ledger-th">Müştəri</th>
+                  <th className="ledger-th">Nişan</th>
+                  <th className="ledger-th">Vəziyyət</th>
+                  <th className="ledger-th text-right">Məbləğ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentOrders.map(o => (
+                  <tr key={o.id} onClick={() => navigate(`/business/orders/${o.id}`)} className="ledger-row">
+                    <td className="ledger-td font-mono font-semibold">{o.number ?? o.id}</td>
+                    <td className="ledger-td">{[o.customer_name, o.customer_surname].filter(Boolean).join(' ') || <span className="text-text-3">—</span>}</td>
+                    <td className="ledger-td"><Plate value={o.plate_number} /></td>
+                    <td className="ledger-td"><StatusBadge status={o.status} /></td>
+                    <td className="ledger-td text-right">{o.total != null && o.total > 0 ? <Money value={o.total} /> : <span className="text-text-3">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* Həftəlik gəlir — 7 days, Monday to Sunday */}
+        <section className="card p-5">
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+            <h2 className="card-title">Həftəlik gəlir</h2>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => shiftWeek(-1)}
+                disabled={weekLoading}
+                aria-label="Əvvəlki həftə"
+                className="w-9 h-9 rounded flex items-center justify-center border border-border-strong text-text-2 hover:bg-surface-2 disabled:opacity-40 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="px-2 text-small font-mono text-ink min-w-[120px] text-center">
+                {formatShort(weekly.week_start)} – {formatShort(weekly.week_end)}
+              </span>
+              <button
+                type="button"
+                onClick={() => shiftWeek(1)}
+                disabled={weekLoading || isCurrentWeek}
+                aria-label="Növbəti həftə"
+                className="w-9 h-9 rounded flex items-center justify-center border border-border-strong text-text-2 hover:bg-surface-2 disabled:opacity-40 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className="font-mono font-semibold tabular-nums text-[34px] leading-10 text-ink">
+                {Number(weekly.total).toLocaleString('az-AZ', { maximumFractionDigits: 0 })} <span className="text-h3 text-text-3">₼</span>
+              </p>
+              <div className="mt-1 flex items-center gap-2 text-small">
+                {weekly.change_percent != null && (
+                  <span
+                    className="inline-flex items-center gap-0.5 font-semibold"
+                    style={{ color: weekly.change_percent >= 0 ? CHART_INCOME : CHART_EXPENSE }}
+                  >
+                    {weekly.change_percent >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                    {weekly.change_percent >= 0 ? '+' : ''}{weekly.change_percent}%
+                  </span>
+                )}
+                <span className="text-text-3">əvvəlki həftəyə görə</span>
+              </div>
+            </div>
             <ResponsiveContainer width="100%" height={170}>
               <BarChart data={weekChart} margin={{ top: 8, right: 0, left: 0, bottom: 0 }} barCategoryGap="22%">
                 <XAxis dataKey="label" tick={AXIS_TICK} tickLine={false} axisLine={false} />
@@ -193,68 +234,23 @@ export default function DashboardPage() {
                   }}
                   contentStyle={TOOLTIP_STYLE}
                 />
-                <Bar dataKey="total" radius={[8, 8, 0, 0]} minPointSize={6}>
+                <Bar dataKey="total" radius={[4, 4, 0, 0]} minPointSize={6}>
                   {weekChart.map(d => (
-                    <Cell key={d.date} fill={d.is_today ? CHART_SEQUENTIAL : d.is_future ? '#E6EBE3' : '#B9CBBE'} />
+                    <Cell key={d.date} fill={d.is_today ? CHART_SEQUENTIAL : d.is_future ? '#E0E0E0' : '#A0A0A0'} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Bugünkü sifarişlər */}
-      <div className={`${PANEL} mb-8 overflow-hidden`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-ink/10">
-          <h2 className="card-title">
-            Bugünkü sifarişlər
-            {todayOrdersCount > 0 && <span className="text-ink-muted font-sans text-sm font-medium"> · {todayOrdersCount}</span>}
-          </h2>
-          <Link to="/business/orders" className="text-sm font-semibold text-accent hover:text-accent-hover">Hamısına bax →</Link>
-        </div>
-        {todayOrders.length === 0 ? (
-          <p className="text-sm text-ink-muted px-6 py-8 text-center">Bu gün hələ sifariş yoxdur.</p>
-        ) : (
-          <ul>
-            {todayOrders.map(o => (
-              <li key={o.id} className="border-b border-ink/10 last:border-0">
-                <Link to={`/business/orders/${o.id}`} className="flex items-center gap-4 px-6 py-3.5 hover:bg-surface-alt transition-colors">
-                  <BrandLogo brand={o.car_brand} className="w-8 h-8" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-mono font-semibold text-ink">{o.plate_number || '—'}</p>
-                    <p className="text-xs text-ink-muted truncate">
-                      {[o.customer_name, o.customer_surname].filter(Boolean).join(' ') || [o.car_brand, o.car_model].filter(Boolean).join(' ') || '—'}
-                    </p>
-                  </div>
-                  <StatusBadge status={o.status} />
-                  <span className="font-mono font-semibold text-ink w-24 text-right">
-                    {o.total != null && o.total > 0 ? formatCurrency(o.total) : '—'}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {stats.out_of_stock_count > 0 && (
-        <Link
-          to="/business/warehouse/products?tab=out"
-          className="block mb-8 bg-danger-bg border border-danger/30 rounded-[10px] px-6 py-3 text-sm text-danger font-medium hover:opacity-90 transition-opacity"
-        >
-          {stats.out_of_stock_count} məhsul stokda bitib — Bitənlərə bax →
-        </Link>
-      )}
-
-      <div className="mb-6">
         {/* Kassa: last 14 days */}
-        <div className={`${PANEL} p-6`}>
+        <section className="card p-5">
           <h2 className="card-title mb-4">Kassa — son 14 gün</h2>
           {dailyRows.length === 0 ? (
-            <p className="text-sm text-ink-muted">Bu dövrdə qeyd yoxdur.</p>
+            <p className="text-body text-text-3">Bu dövrdə qeyd yoxdur.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={240}>
+            <ResponsiveContainer width="100%" height={260}>
               <BarChart data={dailyRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#E0E0E0" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: '#E0E0E0' }} tickFormatter={(d: string) => d.slice(5)} />
@@ -266,7 +262,7 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           )}
-        </div>
+        </section>
       </div>
     </div>
   )

@@ -7,6 +7,8 @@ import { getProducts } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
 import { formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
 import { loadDraft, saveDraft, clearDraft, ORDER_DRAFT_KEY } from '@/lib/formDraft'
+import { X } from 'lucide-react'
+import Plate from '@/components/ui/Plate'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import PlateInput from '@/components/ui/PlateInput'
 import CarBrandModelInputs from '@/components/ui/CarBrandModelInputs'
@@ -30,9 +32,8 @@ type OrderDraft = {
 }
 
 /**
- * Single-column order create/edit form, rendered inline in the master-detail
- * right panel (no drawer). Shared by the "create" and "edit" panel states in
- * OrdersClient — the two previously diverged as CreateOrderDrawer/EditOrderDrawer.
+ * Order create/edit form, rendered as a full page (/business/orders/new, or in
+ * place of the detail page when editing). White section cards, sticky footer.
  */
 export default function OrderForm({ order, onDone, onCancel }: {
   order?: Order | null
@@ -327,23 +328,35 @@ export default function OrderForm({ order, onDone, onCancel }: {
     onCancel()
   }
 
+  const servicesSum = services.reduce((s, t) => s + (parseFloat(t.price) || 0), 0)
+  const warehouseSum = orderProducts.reduce((s, p) => {
+    const w = warehouseItems.find(x => String(x.id) === p.productId)
+    return s + (w ? Number(w.sell_price) * (parseInt(p.qty) || 1) : 0)
+  }, 0)
+  const newProductsSum = newProducts.reduce((s, p) => s + (p.name.trim() ? (parseFloat(p.sellPrice) || 0) * (parseInt(p.qty) || 1) : 0), 0)
+  const formTotal = servicesSum + warehouseSum + newProductsSum
+
+  const CLOSE_ICON = <X size={18} strokeWidth={1.75} />
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-5">
-      <p className="font-serif font-semibold text-lg text-ink">{isEdit ? 'Sifarişi düzəlt' : 'Yeni sifariş'}</p>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-3xl w-full mx-auto">
+      <h1 className="page-title">{isEdit ? 'Sifarişi düzəlt' : 'Yeni sifariş'}</h1>
 
       {draftRestored && (
-        <div className="flex items-center justify-between gap-2 bg-surface-alt border border-rule rounded px-3 py-2 text-xs">
-          <span className="text-ink-muted">Yarımçıq qalmış qaralama bərpa edildi.</span>
+        <div className="flex items-center justify-between gap-2 bg-surface-2 border border-border rounded-lg px-4 py-3 text-small">
+          <span className="text-text-3">Yarımçıq qalmış qaralama bərpa edildi.</span>
           <button type="button" onClick={discardDraft} className="font-semibold text-danger hover:underline shrink-0">Təmizlə</button>
         </div>
       )}
 
       {/* Customer */}
-      <div>
-        <p className="section-label mb-2">Müştəri</p>
-        <div className="flex flex-col gap-2.5">
+      <section className="card p-5">
+        <h2 className="section-label mb-3">Müştəri</h2>
+        <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1 relative">
+            <label className="label" htmlFor="order-customer-search">Axtar</label>
             <input
+              id="order-customer-search"
               value={customerSearch}
               onChange={e => { setCustomerSearch(autoFormatSearch(e.target.value)); setSelectedCustomerId(null) }}
               placeholder="Ad, telefon və ya nişan ilə axtar..."
@@ -351,137 +364,164 @@ export default function OrderForm({ order, onDone, onCancel }: {
               autoComplete="off"
             />
             {showCustomerDropdown && customerResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-surface border border-rule rounded shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-surface border border-border rounded shadow-md overflow-hidden max-h-48 overflow-y-auto">
                 {customerResults.map(c => (
-                  <button key={c.id} type="button" onClick={() => selectCustomer(c)} className="w-full px-3 py-2.5 text-left hover:bg-surface-alt border-b border-rule last:border-0">
+                  <button key={c.id} type="button" onClick={() => selectCustomer(c)} className="w-full px-3 py-2.5 text-left hover:bg-surface-2 border-b border-border last:border-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-ink">{c.full_name}</p>
-                      {(c.car_plate || c.plates[0]) && <span className="text-xs font-mono bg-surface-alt text-ink px-1.5 py-0.5 rounded">{c.car_plate || c.plates[0]}</span>}
+                      <p className="text-body font-medium text-text-1">{c.full_name}</p>
+                      {(c.car_plate || c.plates[0]) && <Plate value={c.car_plate || c.plates[0]} size={12} />}
                     </div>
-                    {c.phone && <p className="text-xs text-ink-muted">{c.phone}</p>}
+                    {c.phone && <p className="text-small text-text-3">{c.phone}</p>}
                   </button>
                 ))}
               </div>
             )}
-            {customerSearchLoading && <p className="text-xs text-ink-muted">Axtarılır...</p>}
+            {customerSearchLoading && <p className="text-small text-text-3">Axtarılır...</p>}
             {selectedCustomerId && (
-              <p className="text-xs text-accent">✓ Müştəri seçildi — məlumatlar dolduruldu</p>
+              <p className="text-small text-success-strong">✓ Müştəri seçildi — məlumatlar dolduruldu</p>
             )}
           </div>
           {selectedCustomerId && (
-            <button type="button" onClick={clearCustomer} className="self-start text-xs text-ink-muted hover:text-ink underline">Seçimi ləğv et</button>
+            <button type="button" onClick={clearCustomer} className="self-start text-small text-text-3 hover:text-ink underline">Seçimi ləğv et</button>
           )}
-          <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Ad Soyad" className="input" />
-          <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
-        </div>
-      </div>
-
-      <div className="border-t border-rule" />
-
-      {/* Car */}
-      <div>
-        <p className="section-label mb-2">Avtomobil</p>
-        <div className="flex flex-col gap-2.5">
-          <PlateInput value={plate} onChange={setPlate} className="input-mono tracking-wider" />
-          <CarBrandModelInputs brand={brand} model={model} onBrandChange={setBrand} onModelChange={setModel} />
-          <div className="flex gap-2.5">
-            <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="İl" maxLength={4} className="input flex-1" />
-            <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="VIN kod" maxLength={17} className="input-mono flex-[2] text-sm" />
-          </div>
-          <div className="flex">
-            <input value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="Yürüş" className="input rounded-r-none flex-1" />
-            <div className="flex border border-l-0 border-rule rounded-r overflow-hidden shrink-0">
-              <button type="button" onClick={() => setMileageUnit('km')} className={`px-2.5 text-xs font-semibold ${mileageUnit === 'km' ? 'bg-accent text-cream' : 'bg-surface text-ink-muted'}`}>km</button>
-              <button type="button" onClick={() => setMileageUnit('mil')} className={`px-2.5 text-xs font-semibold border-l border-rule ${mileageUnit === 'mil' ? 'bg-accent text-cream' : 'bg-surface text-ink-muted'}`}>mil</button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label" htmlFor="order-customer-name">Ad Soyad</label>
+              <input id="order-customer-name" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Ad Soyad" className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="order-customer-phone">Telefon</label>
+              <input id="order-customer-phone" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
             </div>
           </div>
-          <select value={fuelType} onChange={e => setFuelType(e.target.value)} className="input">
-            <option value="">Yanacaq növü — seçilməyib</option>
-            <option value="benzin">Benzin</option>
-            <option value="dizel">Dizel</option>
-            <option value="hybrid">Hibrid</option>
-            <option value="plug_in_hybrid">Plug-in Hibrid</option>
-            <option value="lpg">LPG</option>
-            <option value="electric">Tam elektrik</option>
-          </select>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Müştərinin müraciəti — nədən şikayətlənir" className="input resize-none" />
-          <textarea value={diagnosis} onChange={e => setDiagnosis(e.target.value)} rows={2} placeholder="Diaqnostika nəticəsi — nə aşkarlandı (könüllü)" className="input resize-none" />
         </div>
-      </div>
+      </section>
 
-      <div className="border-t border-rule" />
+      {/* Car */}
+      <section className="card p-5">
+        <h2 className="section-label mb-3">Avtomobil</h2>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="label">Nişan</label>
+            <PlateInput value={plate} onChange={setPlate} className="input-mono tracking-wider" />
+          </div>
+          <CarBrandModelInputs brand={brand} model={model} onBrandChange={setBrand} onModelChange={setModel} />
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="label" htmlFor="order-year">İl</label>
+              <input id="order-year" value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="İl" maxLength={4} className="input" />
+            </div>
+            <div className="col-span-2">
+              <label className="label" htmlFor="order-vin">VIN kod</label>
+              <input id="order-vin" value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="VIN kod" maxLength={17} className="input-mono" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label" htmlFor="order-mileage">Yürüş</label>
+              <div className="flex">
+                <input id="order-mileage" value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="Yürüş" className="input !rounded-r-none flex-1 min-w-0" />
+                <div className="flex border border-l-0 border-border-strong rounded-r overflow-hidden shrink-0">
+                  <button type="button" onClick={() => setMileageUnit('km')} className={`px-3 text-small font-semibold ${mileageUnit === 'km' ? 'bg-ink text-paper' : 'bg-surface text-text-3'}`}>km</button>
+                  <button type="button" onClick={() => setMileageUnit('mil')} className={`px-3 text-small font-semibold border-l border-border-strong ${mileageUnit === 'mil' ? 'bg-ink text-paper' : 'bg-surface text-text-3'}`}>mil</button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="label" htmlFor="order-fuel">Yanacaq növü</label>
+              <select id="order-fuel" value={fuelType} onChange={e => setFuelType(e.target.value)} className="input">
+                <option value="">Yanacaq növü — seçilməyib</option>
+                <option value="benzin">Benzin</option>
+                <option value="dizel">Dizel</option>
+                <option value="hybrid">Hibrid</option>
+                <option value="plug_in_hybrid">Plug-in Hibrid</option>
+                <option value="lpg">LPG</option>
+                <option value="electric">Tam elektrik</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Request + diagnosis */}
+      <section className="card p-5">
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="label" htmlFor="order-description">Müştərinin müraciəti</label>
+            <textarea id="order-description" value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Müştərinin müraciəti — nədən şikayətlənir" className="input resize-none" />
+          </div>
+          <div>
+            <label className="label" htmlFor="order-diagnosis">Diaqnostika nəticəsi</label>
+            <textarea id="order-diagnosis" value={diagnosis} onChange={e => setDiagnosis(e.target.value)} rows={2} placeholder="Diaqnostika nəticəsi — nə aşkarlandı (könüllü)" className="input resize-none" />
+          </div>
+        </div>
+      </section>
 
       {/* Services */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="section-label">Xidmətlər</p>
-          <button type="button" onClick={addServiceRow} className="text-xs font-semibold text-accent hover:text-accent-hover">+ Xidmət əlavə et</button>
+      <section className="card p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="section-label">Xidmətlər</h2>
+          <button type="button" onClick={addServiceRow} className="text-small font-semibold text-ink hover:underline underline-offset-2">+ Xidmət əlavə et</button>
         </div>
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-3">
           {services.map((svc, i) => (
-            <div key={i} className="flex flex-col gap-1.5 border border-rule rounded p-2.5">
-              <div className="flex gap-1.5">
-                <input value={svc.name} onChange={e => updateServiceRow(i, 'name', e.target.value)} placeholder="İş adı" className="input text-sm flex-1" />
-                <button type="button" onClick={() => removeServiceRow(i)} className="p-1 text-ink-muted hover:text-danger shrink-0">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+            <div key={i} className="flex flex-col gap-2 border border-border rounded-lg p-3 bg-paper">
+              <div className="flex gap-2">
+                <input value={svc.name} onChange={e => updateServiceRow(i, 'name', e.target.value)} placeholder="İş adı" aria-label="İş adı" className="input flex-1" />
+                <button type="button" onClick={() => removeServiceRow(i)} aria-label="Sil" className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
               </div>
-              <div className="flex gap-1.5">
-                <input value={svc.price} onChange={e => updateServiceRow(i, 'price', e.target.value)} type="number" min="0" step="0.01" placeholder="Qiymət ₼" className="input-mono text-sm flex-1" />
-                <select value={svc.mechanicId} onChange={e => updateServiceRow(i, 'mechanicId', e.target.value)} className="input text-sm flex-1">
+              <div className="flex gap-2 flex-wrap">
+                <input value={svc.price} onChange={e => updateServiceRow(i, 'price', e.target.value)} type="number" min="0" step="0.01" placeholder="Qiymət ₼" aria-label="Qiymət" className="input-mono flex-1 min-w-[120px]" />
+                <select value={svc.mechanicId} onChange={e => updateServiceRow(i, 'mechanicId', e.target.value)} aria-label="Usta" className="input flex-1 min-w-[160px]">
                   <option value="">— Usta yoxdur</option>
                   {mechanics.map(m => <option key={m.id} value={m.id}>{m.full_name || m.id} ({m.work_percent}%)</option>)}
                 </select>
               </div>
               {svc.mechanicId && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink-muted shrink-0">Usta payı:</span>
-                  <input value={svc.mechanicAmount} onChange={e => updateServiceRow(i, 'mechanicAmount', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input-mono text-sm" />
+                  <span className="label !mb-0 shrink-0">Usta payı</span>
+                  <input value={svc.mechanicAmount} onChange={e => updateServiceRow(i, 'mechanicAmount', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input-mono" />
                 </div>
               )}
             </div>
           ))}
         </div>
         {services.some(t => t.name && t.price) && (
-          <p className="text-right text-sm font-mono font-semibold text-ink mt-2">
-            Cəmi: {formatCurrency(services.reduce((s, t) => s + (parseFloat(t.price) || 0), 0))}
+          <p className="text-right text-body font-mono font-semibold text-text-1 mt-3">
+            Cəmi: {formatCurrency(servicesSum)}
           </p>
         )}
-      </div>
-
-      <div className="border-t border-rule" />
+      </section>
 
       {/* Products */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="section-label">Məhsullar</p>
-          <div className="flex gap-3">
-            <button type="button" onClick={addProductRow} className="text-xs font-semibold text-accent hover:text-accent-hover">+ Anbarda var</button>
-            <button type="button" onClick={addNewProductRow} className="text-xs font-semibold text-warning hover:text-ink">+ Anbarda yoxdur</button>
-            <button type="button" onClick={addCustomerProductRow} className="text-xs font-semibold text-ink-muted hover:text-ink">+ Müştəri gətirib</button>
+      <section className="card p-5">
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <h2 className="section-label">Məhsullar</h2>
+          <div className="flex gap-4 flex-wrap">
+            <button type="button" onClick={addProductRow} className="text-small font-semibold text-ink hover:underline underline-offset-2">+ Anbarda var</button>
+            <button type="button" onClick={addNewProductRow} className="text-small font-semibold text-warning-strong hover:underline underline-offset-2">+ Anbarda yoxdur</button>
+            <button type="button" onClick={addCustomerProductRow} className="text-small font-semibold text-text-3 hover:text-ink hover:underline underline-offset-2">+ Müştəri gətirib</button>
           </div>
         </div>
 
         {newProducts.length > 0 && (
-          <div className="flex flex-col gap-2 mb-2.5">
+          <div className="flex flex-col gap-3 mb-3">
             {newProducts.map((p, i) => (
-              <div key={i} className="flex flex-col gap-1.5 bg-warning-bg border border-warning/30 rounded p-2">
-                <div className="flex gap-1.5">
-                  <input value={p.name} onChange={e => updateNewProductRow(i, 'name', e.target.value)} placeholder="Məhsul adı" className="input text-sm flex-1" />
-                  <button type="button" onClick={() => removeNewProductRow(i)} className="p-1 text-ink-muted hover:text-danger shrink-0">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
+              <div key={i} className="flex flex-col gap-2 bg-warning-subtle border border-warning/30 rounded-lg p-3">
+                <div className="flex gap-2">
+                  <input value={p.name} onChange={e => updateNewProductRow(i, 'name', e.target.value)} placeholder="Məhsul adı" aria-label="Məhsul adı" className="input flex-1" />
+                  <button type="button" onClick={() => removeNewProductRow(i)} aria-label="Sil" className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
                 </div>
-                <div className="flex gap-1.5">
-                  <input value={p.purchasePrice} onChange={e => updateNewProductRow(i, 'purchasePrice', e.target.value)} type="number" min="0" step="0.01" placeholder="Alış ₼" className="input-mono text-sm flex-1" />
-                  <input value={p.sellPrice} onChange={e => updateNewProductRow(i, 'sellPrice', e.target.value)} type="number" min="0" step="0.01" placeholder="Satış ₼" className="input-mono text-sm flex-1" />
-                  <input value={p.qty} onChange={e => updateNewProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="Ədəd" className="input-mono text-sm w-16 shrink-0" />
+                <div className="flex gap-2">
+                  <input value={p.purchasePrice} onChange={e => updateNewProductRow(i, 'purchasePrice', e.target.value)} type="number" min="0" step="0.01" placeholder="Alış ₼" aria-label="Alış" className="input-mono flex-1 min-w-0" />
+                  <input value={p.sellPrice} onChange={e => updateNewProductRow(i, 'sellPrice', e.target.value)} type="number" min="0" step="0.01" placeholder="Satış ₼" aria-label="Satış" className="input-mono flex-1 min-w-0" />
+                  <input value={p.qty} onChange={e => updateNewProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="Ədəd" aria-label="Ədəd" className="input-mono w-20 shrink-0" />
                 </div>
-                <ComboboxInput value={p.supplierName} onChange={v => updateNewProductRow(i, 'supplierName', v)} options={stores.map(st => st.name)} placeholder="Mağaza (məcburi)" className="text-sm" />
-                <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
-                  <input type="checkbox" checked={!!p.onCredit} onChange={e => updateNewProductRow(i, 'onCredit', e.target.checked)} className="w-4 h-4" />
+                <ComboboxInput value={p.supplierName} onChange={v => updateNewProductRow(i, 'supplierName', v)} options={stores.map(st => st.name)} placeholder="Mağaza (məcburi)" />
+                <label className="flex items-center gap-2 text-body text-text-1 cursor-pointer">
+                  <input type="checkbox" checked={!!p.onCredit} onChange={e => updateNewProductRow(i, 'onCredit', e.target.checked)} className="w-4 h-4 accent-ink" />
                   Nisyə alınıb
-                  <span className="text-xs text-ink-muted">{p.onCredit ? '— kreditor borcu yaranacaq' : '— kassadan çıxacaq'}</span>
+                  <span className="text-small text-text-3">{p.onCredit ? '— kreditor borcu yaranacaq' : '— kassadan çıxacaq'}</span>
                 </label>
               </div>
             ))}
@@ -489,57 +529,51 @@ export default function OrderForm({ order, onDone, onCancel }: {
         )}
 
         {customerProducts.length > 0 && (
-          <div className="flex flex-col gap-2 mb-2.5">
-            <p className="text-xs text-ink-muted">Müştərinin özü gətirdiyi hissələr: qiyməti yoxdur, anbardan çıxmır, aktda "Müştəri" kimi göstərilir.</p>
+          <div className="flex flex-col gap-2 mb-3">
+            <p className="text-small text-text-3">Müştərinin özü gətirdiyi hissələr: qiyməti yoxdur, anbardan çıxmır, aktda "Müştəri" kimi göstərilir.</p>
             {customerProducts.map((p, i) => (
-              <div key={i} className="flex gap-1.5">
-                <input value={p.name} onChange={e => updateCustomerProductRow(i, 'name', e.target.value)} placeholder="Hissənin adı" className="input text-sm flex-1" />
-                <input value={p.qty} onChange={e => updateCustomerProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" className="input-mono text-sm w-16 shrink-0" />
-                <button type="button" onClick={() => removeCustomerProductRow(i)} className="p-1 text-ink-muted hover:text-danger shrink-0">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+              <div key={i} className="flex gap-2">
+                <input value={p.name} onChange={e => updateCustomerProductRow(i, 'name', e.target.value)} placeholder="Hissənin adı" aria-label="Hissənin adı" className="input flex-1" />
+                <input value={p.qty} onChange={e => updateCustomerProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" aria-label="Ədəd" className="input-mono w-20 shrink-0" />
+                <button type="button" onClick={() => removeCustomerProductRow(i)} aria-label="Sil" className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
               </div>
             ))}
           </div>
         )}
 
         {orderProducts.length === 0 && newProducts.length === 0 && customerProducts.length === 0 ? (
-          <p className="text-xs text-ink-muted italic">Məhsul seçilməyib</p>
+          <p className="text-body text-text-3">Məhsul seçilməyib</p>
         ) : (
           <div className="flex flex-col gap-2">
             {orderProducts.map((p, i) => (
-              <div key={i} className="flex gap-1.5">
-                <select value={p.productId} onChange={e => updateProductRow(i, 'productId', e.target.value)} className="input text-sm flex-1">
+              <div key={i} className="flex gap-2">
+                <select value={p.productId} onChange={e => updateProductRow(i, 'productId', e.target.value)} aria-label="Məhsul" className="input flex-1 min-w-0">
                   <option value="">Seçin...</option>
                   {warehouseItems.map(w => (
                     <option key={w.id} value={w.id} disabled={w.stock_quantity === 0}>{w.name} ({w.stock_quantity} ədəd){w.stock_quantity === 0 ? ' — stok yoxdur' : ''}</option>
                   ))}
                 </select>
-                <input value={p.qty} onChange={e => updateProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" className="input-mono text-sm w-16 shrink-0" />
-                <button type="button" onClick={() => removeProductRow(i)} className="p-1 text-ink-muted hover:text-danger shrink-0">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+                <input value={p.qty} onChange={e => updateProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" aria-label="Ədəd" className="input-mono w-20 shrink-0" />
+                <button type="button" onClick={() => removeProductRow(i)} aria-label="Sil" className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
               </div>
             ))}
           </div>
         )}
-      </div>
-
-      <div className="border-t border-rule" />
+      </section>
 
       {/* Images */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="section-label">Şəkillər</p>
-          <span className="text-xs text-ink-muted">{imageFiles.length}/3</span>
+      <section className="card p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="section-label">Şəkillər</h2>
+          <span className="text-small text-text-3 font-mono">{imageFiles.length}/3</span>
         </div>
         {imagePreviews.length > 0 && (
-          <div className="flex gap-2 mb-2.5 flex-wrap">
+          <div className="flex gap-3 mb-3 flex-wrap">
             {imagePreviews.map((src, i) => (
-              <div key={i} className="relative w-16 h-16 rounded overflow-hidden border border-rule shrink-0">
+              <div key={i} className="relative w-24 h-24 rounded-lg overflow-hidden border border-border shrink-0">
                 <img src={src} alt="" className="w-full h-full object-cover" />
-                <button type="button" onClick={() => removeImagePreview(i)} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-ink/70 text-cream flex items-center justify-center">
-                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <button type="button" onClick={() => removeImagePreview(i)} aria-label="Sil" className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink/80 text-paper flex items-center justify-center">
+                  <X size={14} strokeWidth={2} />
                 </button>
               </div>
             ))}
@@ -548,35 +582,41 @@ export default function OrderForm({ order, onDone, onCancel }: {
         {imageFiles.length < 3 && (
           <>
             <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImagePick} />
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full border border-dashed border-rule rounded py-2.5 text-sm text-ink-muted hover:border-accent hover:text-accent transition-colors">
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full border border-dashed border-border-strong rounded-lg py-3 text-body text-text-3 hover:border-ink hover:text-ink transition-colors">
               + Şəkil seç (maks. 3, hər biri 5 MB)
             </button>
           </>
         )}
-      </div>
+      </section>
 
-      <div className="border-t border-rule" />
+      {/* Notes */}
+      <section className="card p-5 flex flex-col gap-3">
+        <div>
+          <label className="label" htmlFor="order-notes">Əlavə qeydlər</label>
+          <textarea id="order-notes" value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Məs. maşına çirkli paltarla oturulmasın..." className="input resize-none" />
+        </div>
+        <div>
+          <label className="label" htmlFor="order-recommendations">Tövsiyə olunan işlər</label>
+          <textarea id="order-recommendations" value={recommendations} onChange={e => setRecommendations(e.target.value)} rows={2} placeholder={'Hər sətir ayrıca bənd. Məs:\nNövbəti 5 000 km-də yağ səviyyəsini yoxlamaq'} className="input resize-none" />
+        </div>
+        <label className="flex items-center gap-2.5 cursor-pointer select-none">
+          <input type="checkbox" checked={hasGuarantee} onChange={e => setHasGuarantee(e.target.checked)} className="w-4 h-4 accent-ink" />
+          <span className="text-body text-text-1">Bu sifarişə zəmanət verilib</span>
+        </label>
+      </section>
 
-      <div>
-        <p className="section-label mb-2">Əlavə qeydlər</p>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Məs. maşına çirkli paltarla oturulmasın..." className="input resize-none" />
-      </div>
+      {error && <p className="text-body text-danger bg-danger-subtle rounded-lg px-4 py-3">{error}</p>}
 
-      <div>
-        <p className="section-label mb-2">Tövsiyə olunan işlər</p>
-        <textarea value={recommendations} onChange={e => setRecommendations(e.target.value)} rows={2} placeholder={'Hər sətir ayrıca bənd. Məs:\nNövbəti 5 000 km-də yağ səviyyəsini yoxlamaq'} className="input resize-none" />
-      </div>
-
-      <label className="flex items-center gap-2.5 cursor-pointer select-none">
-        <input type="checkbox" checked={hasGuarantee} onChange={e => setHasGuarantee(e.target.checked)} className="w-4 h-4 accent-accent" />
-        <span className="text-sm text-ink">Bu sifarişə zəmanət verilib</span>
-      </label>
-
-      {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
-
-      <div className="flex flex-col gap-2.5 pt-1">
-        <button type="submit" disabled={loading} className="btn-primary">{loading ? 'Saxlanılır...' : isEdit ? 'Saxla' : 'Sifarişi yarat'}</button>
-        <button type="button" onClick={handleCancel} className="btn-secondary">Ləğv et</button>
+      {/* Sticky footer */}
+      <div className="sticky bottom-0 -mx-4 lg:-mx-8 px-4 lg:px-8 py-3 bg-paper/95 backdrop-blur border-t border-border flex items-center justify-between gap-3 flex-wrap z-10">
+        <div className="flex items-baseline gap-3">
+          <span className="section-label">Cəmi</span>
+          <span className="font-mono font-semibold tabular-nums text-h3 text-text-1">{formatCurrency(formTotal)}</span>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={handleCancel} className="btn-secondary">Ləğv et</button>
+          <button type="submit" disabled={loading} className="btn-primary">{loading ? 'Saxlanılır...' : isEdit ? 'Saxla' : 'Sifarişi yarat'}</button>
+        </div>
       </div>
     </form>
   )
