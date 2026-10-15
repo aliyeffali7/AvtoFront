@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { Order, Mechanic, OrderService, Product, Customer, Store } from '@/types'
-import { createOrder, updateOrder, uploadOrderImage, purchaseProductForOrder } from '@/services/orders.service'
+import { Order, OrderImage, Mechanic, OrderService, Product, Customer, Store } from '@/types'
+import { createOrder, updateOrder, uploadOrderImage, deleteOrderImage, purchaseProductForOrder } from '@/services/orders.service'
 import { getStores } from '@/services/stores.service'
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
 import { formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
+import { mediaUrl } from '@/lib/apiUrl'
 import { loadDraft, saveDraft, clearDraft, ORDER_DRAFT_KEY } from '@/lib/formDraft'
 import { X } from 'lucide-react'
 import Plate from '@/components/ui/Plate'
@@ -14,7 +15,9 @@ import PlateInput from '@/components/ui/PlateInput'
 import CarBrandModelInputs from '@/components/ui/CarBrandModelInputs'
 
 type SvcRow = { name: string; price: string; mechanicId: string; mechanicAmount: string }
-type ProdRow = { productId: string; qty: string }
+// A line already on the order (edit mode) has `lineId`: it keeps its product,
+// frozen sell price and cost; only the quantity can change or the line be removed.
+type ProdRow = { productId: string; qty: string; lineId?: number; name?: string; sellPrice?: number }
 type NewProdRow = { name: string; purchasePrice: string; sellPrice: string; qty: string; supplierName: string; onCredit?: boolean }
 // A part the customer brought in: no price, no stock — listed on the act only.
 type CustProdRow = { name: string; qty: string }
@@ -72,8 +75,14 @@ export default function OrderForm({ order, onDone, onCancel }: {
   const [orderProducts, setOrderProducts] = useState<ProdRow[]>(
     order
       ? (order.products ?? [])
-          .filter(p => p.source !== 'customer' && p.product != null)
-          .map(p => ({ productId: String(p.product), qty: String(p.quantity) }))
+          .filter(p => p.source !== 'customer')
+          .map(p => ({
+            productId: p.product != null ? String(p.product) : '',
+            qty: String(p.quantity),
+            lineId: p.id,
+            name: p.product_name,
+            sellPrice: Number(p.sell_price) || 0,
+          }))
       : draft?.orderProducts ?? []
   )
   const [newProducts, setNewProducts] = useState<NewProdRow[]>(order ? [] : draft?.newProducts ?? [])
@@ -96,6 +105,9 @@ export default function OrderForm({ order, onDone, onCancel }: {
   const [notes, setNotes] = useState(order?.notes ?? draft?.notes ?? '')
   const [hasGuarantee, setHasGuarantee] = useState(order?.has_guarantee ?? draft?.hasGuarantee ?? false)
   const [stores, setStores] = useState<Store[]>([])
+  // Photos already saved on the order; removing one is applied on "Saxla".
+  const [existingImages, setExistingImages] = useState<OrderImage[]>(order?.images ?? [])
+  const [removedImageIds, setRemovedImageIds] = useState<number[]>([])
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -186,7 +198,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
     const picked = Array.from(e.target.files ?? [])
     if (!picked.length) return
     const MAX = 5 * 1024 * 1024
-    const combined = [...imageFiles, ...picked].slice(0, 3)
+    const combined = [...imageFiles, ...picked].slice(0, Math.max(0, 3 - existingImages.length))
     const valid = combined.filter(f => f.size <= MAX)
     const tooLarge = combined.filter(f => f.size > MAX)
     setError(tooLarge.length ? `${tooLarge.length} fayl 5 MB limitini aşır və əlavə edilmədi.` : '')
@@ -198,6 +210,11 @@ export default function OrderForm({ order, onDone, onCancel }: {
   function removeImagePreview(i: number) {
     setImageFiles(prev => prev.filter((_, idx) => idx !== i))
     setImagePreviews(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  function removeExistingImage(img: OrderImage) {
+    setExistingImages(prev => prev.filter(x => x.id !== img.id))
+    setRemovedImageIds(prev => [...prev, img.id])
   }
 
   function addServiceRow() { setServices(prev => [...prev, { name: '', price: '', mechanicId: '', mechanicAmount: '' }]) }
@@ -247,8 +264,10 @@ export default function OrderForm({ order, onDone, onCancel }: {
         mechanic_amount: t.mechanicAmount !== '' ? t.mechanicAmount : null,
       }))
     const filledProducts = orderProducts
-      .filter(p => p.productId)
-      .map(p => ({ product: parseInt(p.productId), quantity: parseInt(p.qty) || 1 }))
+      .filter(p => p.lineId != null || p.productId)
+      .map(p => (p.lineId != null
+        ? { id: p.lineId, quantity: parseInt(p.qty) || 1 }
+        : { product: parseInt(p.productId), quantity: parseInt(p.qty) || 1 }))
     const filledCustomerProducts = customerProducts
       .filter(p => p.name.trim())
       .map(p => ({ name: p.name.trim(), quantity: parseInt(p.qty) || 1 }))
@@ -300,6 +319,9 @@ export default function OrderForm({ order, onDone, onCancel }: {
           on_credit: !!np.onCredit,
         })
       }
+      for (const imageId of removedImageIds) {
+        try { await deleteOrderImage(orderId, imageId) } catch { /* ignore per-image errors */ }
+      }
       for (const file of imageFiles) {
         try { await uploadOrderImage(orderId, file) } catch { /* ignore per-image errors */ }
       }
@@ -330,6 +352,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
 
   const servicesSum = services.reduce((s, t) => s + (parseFloat(t.price) || 0), 0)
   const warehouseSum = orderProducts.reduce((s, p) => {
+    if (p.lineId != null) return s + (p.sellPrice ?? 0) * (parseInt(p.qty) || 1)
     const w = warehouseItems.find(x => String(x.id) === p.productId)
     return s + (w ? Number(w.sell_price) * (parseInt(p.qty) || 1) : 0)
   }, 0)
@@ -547,12 +570,19 @@ export default function OrderForm({ order, onDone, onCancel }: {
           <div className="flex flex-col gap-2">
             {orderProducts.map((p, i) => (
               <div key={i} className="flex gap-2">
+                {p.lineId != null ? (
+                  <div className="input flex-1 min-w-0 flex flex-col justify-center !h-auto min-h-[44px] bg-surface-2">
+                    <span className="truncate text-text-1">{p.name || '(silinib)'}</span>
+                    <span className="text-small text-text-3 font-mono">{formatCurrency(p.sellPrice ?? 0)} / ədəd</span>
+                  </div>
+                ) : (
                 <select value={p.productId} onChange={e => updateProductRow(i, 'productId', e.target.value)} aria-label="Məhsul" className="input flex-1 min-w-0">
                   <option value="">Seçin...</option>
                   {warehouseItems.map(w => (
                     <option key={w.id} value={w.id} disabled={w.stock_quantity === 0}>{w.name} ({w.stock_quantity} ədəd){w.stock_quantity === 0 ? ' — stok yoxdur' : ''}</option>
                   ))}
                 </select>
+                )}
                 <input value={p.qty} onChange={e => updateProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" aria-label="Ədəd" className="input-mono w-20 shrink-0" />
                 <button type="button" onClick={() => removeProductRow(i)} aria-label="Sil" className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
               </div>
@@ -565,8 +595,20 @@ export default function OrderForm({ order, onDone, onCancel }: {
       <section className="card p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="section-label">Şəkillər</h2>
-          <span className="text-small text-text-3 font-mono">{imageFiles.length}/3</span>
+          <span className="text-small text-text-3 font-mono">{existingImages.length + imageFiles.length}/3</span>
         </div>
+        {existingImages.length > 0 && (
+          <div className="flex gap-3 mb-3 flex-wrap">
+            {existingImages.map(img => (
+              <div key={img.id} className="relative w-24 h-24 rounded-lg overflow-hidden border border-border shrink-0">
+                <img src={mediaUrl(img.image)} alt="Şəkil" className="w-full h-full object-cover" />
+                <button type="button" onClick={() => removeExistingImage(img)} aria-label="Şəkli sil" className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink/80 text-paper flex items-center justify-center">
+                  <X size={14} strokeWidth={2} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         {imagePreviews.length > 0 && (
           <div className="flex gap-3 mb-3 flex-wrap">
             {imagePreviews.map((src, i) => (
@@ -579,7 +621,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
             ))}
           </div>
         )}
-        {imageFiles.length < 3 && (
+        {existingImages.length + imageFiles.length < 3 && (
           <>
             <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImagePick} />
             <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full border border-dashed border-border-strong rounded-lg py-3 text-body text-text-3 hover:border-ink hover:text-ink transition-colors">

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, ReactNode } from 'react'
-import { Play, CheckCircle2, Plus, Minus, X, PartyPopper } from 'lucide-react'
-import { Order, Product } from '@/types'
+import { Play, CheckCircle2, Plus, Minus, X, PartyPopper, User } from 'lucide-react'
+import { Order, OrderImage, Product } from '@/types'
 import { getOrder, changeOrderStatus, addProductToOrder } from '@/services/orders.service'
 import { getProducts } from '@/services/warehouse.service'
-import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
+import { formatDate, mapApiError } from '@/lib/utils'
+import { mediaUrl } from '@/lib/apiUrl'
 import StatusBadge from './StatusBadge'
 import Spinner from '@/components/ui/Spinner'
 import Button from '@/components/ui/Button'
@@ -53,6 +54,7 @@ export default function MechanicOrderDetailClient({ id }: { id: string }) {
   const [qty, setQty] = useState('1')
   const [addingProduct, setAddingProduct] = useState(false)
   const [productError, setProductError] = useState('')
+  const [zoomImage, setZoomImage] = useState<OrderImage | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -120,6 +122,8 @@ export default function MechanicOrderDetailClient({ id }: { id: string }) {
   }
 
   const products = order.products ?? []
+  const services = order.services ?? []
+  const images = order.images ?? []
   const qtyNum = Math.max(1, parseInt(qty) || 1)
   const stockProduct = warehouseProducts.find(p => String(p.id) === selectedProduct)
 
@@ -168,6 +172,32 @@ export default function MechanicOrderDetailClient({ id }: { id: string }) {
           </div>
         )}
 
+        {/* Services: names and who does them — no prices */}
+        <div className="bg-surface border border-border rounded-lg overflow-hidden">
+          <div className="p-4 border-b border-border">
+            <p className="font-display text-h3 text-ink">İşlər</p>
+          </div>
+          {services.length === 0 ? (
+            <p className="px-4 py-8 text-center text-body text-text-3">İş qeyd edilməyib.</p>
+          ) : (
+            <div className="flex flex-col divide-y divide-border">
+              {services.map((svc, i) => (
+                <div key={svc.id ?? i} className="flex items-center justify-between px-4 py-3 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-body-l font-medium text-text-1">{svc.name}</p>
+                    {!svc.is_mine && svc.mechanic_name && <p className="text-small text-text-3">{svc.mechanic_name}</p>}
+                  </div>
+                  {svc.is_mine && (
+                    <span className="inline-flex items-center gap-1 h-7 px-2 rounded-sm bg-info-subtle text-info-strong text-small font-semibold shrink-0">
+                      <User size={14} strokeWidth={1.75} /> Sənin işin
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Products */}
         <div className="bg-surface border border-border rounded-lg overflow-hidden">
           <div className="flex items-center justify-between gap-3 p-4 border-b border-border">
@@ -184,13 +214,41 @@ export default function MechanicOrderDetailClient({ id }: { id: string }) {
                     <p className="text-body-l font-medium text-text-1">{p.product_name}</p>
                     <p className="font-mono text-small text-text-3">{p.quantity} ədəd</p>
                   </div>
-                  <span className="font-mono font-semibold tabular-nums text-text-1 shrink-0">{formatCurrency(p.sell_price * p.quantity)}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
+
+        {/* Photos: read-only, tap to enlarge */}
+        {images.length > 0 && (
+          <div className="bg-surface border border-border rounded-lg p-4 flex flex-col gap-3">
+            <p className="font-display text-h3 text-ink">Şəkillər</p>
+            <div className="grid grid-cols-3 gap-2">
+              {images.map(img => (
+                <button
+                  key={img.id}
+                  type="button"
+                  onClick={() => setZoomImage(img)}
+                  aria-label="Şəkli böyüt"
+                  className="aspect-square rounded-lg overflow-hidden border border-border bg-surface-2"
+                >
+                  <img src={mediaUrl(img.image)} alt="Sifariş şəkli" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {zoomImage && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(9,9,9,.85)] p-4" onClick={() => setZoomImage(null)} role="dialog" aria-modal="true" aria-label="Şəkil">
+          <button type="button" onClick={() => setZoomImage(null)} aria-label="Bağla" className="absolute top-3 right-3 w-11 h-11 flex items-center justify-center rounded-full bg-ink/80 text-paper">
+            <X size={22} strokeWidth={1.75} />
+          </button>
+          <img src={mediaUrl(zoomImage.image)} alt="Sifariş şəkli" className="max-w-full max-h-full object-contain rounded" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
 
       {/* Sticky main action */}
       {order.status !== 'done' && (

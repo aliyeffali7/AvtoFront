@@ -186,6 +186,8 @@ export interface OrderService {
   mechanic?: number | null
   mechanic_name?: string | null
   mechanic_amount?: string | number | null
+  // Mechanic-role responses only: is this job assigned to the viewer.
+  is_mine?: boolean
 }
 
 export interface Order {

@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, Link2, MessageCircle, Pencil, Printer, RefreshCw, Wallet, Wrench, X, XCircle } from 'lucide-react'
 import { useGoBack } from '@/lib/useGoBack'
-import { Order, Mechanic, Product, Business, Store } from '@/types'
+import { Order, OrderService, Mechanic, Product, Business, Store } from '@/types'
 import {
   getOrder, assignMechanic, changeOrderStatus,
   addProductToOrder, removeProductFromOrder, updateOrderProduct, purchaseProductForOrder, returnOrderProduct,
-  addServiceToOrder, removeServiceFromOrder,
+  addServiceToOrder, updateOrderService, removeServiceFromOrder,
   recordPayment, updateOrder, deleteOrder,
   uploadOrderImage, deleteOrderImage,
   resetOrderShare, shareOrder,
@@ -42,6 +42,76 @@ function SectionCard({ title, action, children, tone }: { title: string; action?
       </div>
       {children}
     </section>
+  )
+}
+
+type ServiceValues = { name: string; price: string; mechanicId: string; mechanicAmount: string }
+
+/** Add / edit one job: name, price, usta and usta payı (pre-filled from the
+ * mechanic's percent, editable by the owner). */
+function ServiceForm({ initial, mechanics, submitLabel, loading, error, onSubmit, onCancel }: {
+  initial: ServiceValues
+  mechanics: Mechanic[]
+  submitLabel: string
+  loading: boolean
+  error: string
+  onSubmit: (v: ServiceValues) => void
+  onCancel: () => void
+}) {
+  const [v, setV] = useState<ServiceValues>(initial)
+  const percentAmount = (price: string, mechanicId: string) => {
+    const mech = mechanics.find(m => m.id === parseInt(mechanicId))
+    return mech && parseFloat(price) > 0 ? (parseFloat(price) * mech.work_percent / 100).toFixed(2) : null
+  }
+  return (
+    <form onSubmit={e => { e.preventDefault(); onSubmit(v) }} className="mb-3 border border-border rounded-lg p-3 flex flex-col gap-2 bg-paper">
+      <input value={v.name} onChange={e => setV({ ...v, name: e.target.value })} required placeholder="İş adı" aria-label="İş adı" className="input" autoFocus />
+      <div className="flex gap-2 flex-wrap">
+        <input
+          value={v.price}
+          onChange={e => {
+            const amount = percentAmount(e.target.value, v.mechanicId)
+            setV({ ...v, price: e.target.value, mechanicAmount: amount ?? v.mechanicAmount })
+          }}
+          type="number" min="0" step="0.01" placeholder="Qiymət ₼" aria-label="Qiymət" className="input-mono flex-1 min-w-[120px]"
+        />
+        <select
+          value={v.mechanicId}
+          onChange={e => {
+            const amount = percentAmount(v.price, e.target.value)
+            setV({ ...v, mechanicId: e.target.value, mechanicAmount: e.target.value ? (amount ?? v.mechanicAmount) : '' })
+          }}
+          aria-label="Usta"
+          className="input flex-1 min-w-[160px]"
+        >
+          <option value="">— Usta yoxdur</option>
+          {mechanics.map(m => <option key={m.id} value={m.id}>{m.full_name || m.id} ({m.work_percent}%)</option>)}
+        </select>
+      </div>
+      {v.mechanicId && (
+        <div className="flex items-center gap-2">
+          <span className="label !mb-0 shrink-0">Usta payı</span>
+          <input value={v.mechanicAmount} onChange={e => setV({ ...v, mechanicAmount: e.target.value })} type="number" min="0" step="0.01" placeholder="0.00" aria-label="Usta payı" className="input-mono" />
+        </div>
+      )}
+      {error && <p className="text-small text-danger">{error}</p>}
+      <div className="flex gap-2 justify-end">
+        <Button type="button" variant="secondary" size="sm" onClick={onCancel}>Ləğv</Button>
+        <Button type="submit" size="sm" loading={loading}>{submitLabel}</Button>
+      </div>
+    </form>
+  )
+}
+
+/** Owner view: who does the job and the mechanic's share. */
+function ServiceMechanicLine({ svc }: { svc: OrderService }) {
+  if (!svc.mechanic) return <p className="text-small text-text-3">Usta təyin edilməyib</p>
+  return (
+    <p className="text-small text-text-3 flex flex-wrap items-center gap-x-1.5">
+      <span>Usta: <span className="text-text-2 font-medium">{svc.mechanic_name || '—'}</span></span>
+      <span aria-hidden>·</span>
+      <span>Usta payı: <Money value={Number(svc.mechanic_amount ?? 0)} className="!text-small !font-medium" /></span>
+    </p>
   )
 }
 
@@ -108,10 +178,7 @@ export default function OrderDetailClient() {
   const [stores, setStores] = useState<Store[]>([])
 
   const [addServiceOpen, setAddServiceOpen] = useState(false)
-  const [newServiceName, setNewServiceName] = useState('')
-  const [newServicePrice, setNewServicePrice] = useState('')
-  const [newServiceMechanicId, setNewServiceMechanicId] = useState('')
-  const [newServiceMechanicAmount, setNewServiceMechanicAmount] = useState('')
+  const [editingServiceId, setEditingServiceId] = useState<number | null>(null)
   const [addingService, setAddingService] = useState(false)
   const [serviceError, setServiceError] = useState('')
   const [removingServiceId, setRemovingServiceId] = useState<number | null>(null)
@@ -364,19 +431,18 @@ export default function OrderDetailClient() {
     }
   }
 
-  async function handleAddService(e: React.FormEvent) {
-    e.preventDefault()
+  async function submitService(v: ServiceValues, serviceId?: number) {
     if (!order) return
     setServiceError('')
-    const price = parseFloat(newServicePrice) || 0
-    const mechanicId = newServiceMechanicId ? parseInt(newServiceMechanicId) : null
-    const mechanicAmt = newServiceMechanicAmount !== '' ? parseFloat(newServiceMechanicAmount) || 0 : null
+    const price = parseFloat(v.price) || 0
+    const mechanicId = v.mechanicId ? parseInt(v.mechanicId) : null
+    const mechanicAmt = mechanicId !== null && v.mechanicAmount !== '' ? parseFloat(v.mechanicAmount) || 0 : null
     if (mechanicAmt !== null && mechanicAmt > price) { setServiceError('Usta payı işin qiymətindən çox ola bilməz.'); return }
     setAddingService(true)
     try {
-      await addServiceToOrder(order.id, newServiceName.trim(), price, mechanicId, mechanicAmt)
-      setNewServiceName(''); setNewServicePrice(''); setNewServiceMechanicId(''); setNewServiceMechanicAmount('')
-      setAddServiceOpen(false); loadOrder()
+      if (serviceId !== undefined) await updateOrderService(order.id, serviceId, { name: v.name.trim(), price, mechanic: mechanicId, mechanic_amount: mechanicAmt })
+      else await addServiceToOrder(order.id, v.name.trim(), price, mechanicId, mechanicAmt)
+      setAddServiceOpen(false); setEditingServiceId(null); loadOrder()
     } catch (err) {
       setServiceError(mapApiError(err))
     } finally {
@@ -517,57 +583,51 @@ export default function OrderDetailClient() {
           <SectionCard
             title="Xidmətlər"
             action={linesEditable && (
-              <button onClick={() => { setAddServiceOpen(v => !v); setServiceError(''); ensureMechanics() }} className={LINK_BTN}>+ Əlavə et</button>
+              <button onClick={() => { setAddServiceOpen(v => !v); setEditingServiceId(null); setServiceError(''); ensureMechanics() }} className={LINK_BTN}>+ Əlavə et</button>
             )}
           >
             {addServiceOpen && linesEditable && (
-              <form onSubmit={handleAddService} className="mb-3 border border-border rounded-lg p-3 flex flex-col gap-2 bg-paper">
-                <input value={newServiceName} onChange={e => setNewServiceName(e.target.value)} required placeholder="İş adı" className="input" autoFocus />
-                <div className="flex gap-2 flex-wrap">
-                  <input
-                    value={newServicePrice}
-                    onChange={e => {
-                      setNewServicePrice(e.target.value)
-                      const mech = mechanics.find(m => m.id === parseInt(newServiceMechanicId))
-                      if (mech) setNewServiceMechanicAmount(((parseFloat(e.target.value) || 0) * mech.work_percent / 100).toFixed(2))
-                    }}
-                    type="number" min="0" step="0.01" placeholder="Qiymət ₼" className="input-mono flex-1 min-w-[120px]"
-                  />
-                  <select
-                    value={newServiceMechanicId}
-                    onChange={e => {
-                      setNewServiceMechanicId(e.target.value)
-                      const mech = mechanics.find(m => m.id === parseInt(e.target.value))
-                      if (mech && newServicePrice) setNewServiceMechanicAmount(((parseFloat(newServicePrice) || 0) * mech.work_percent / 100).toFixed(2))
-                      else if (!e.target.value) setNewServiceMechanicAmount('')
-                    }}
-                    className="input flex-1 min-w-[160px]"
-                  >
-                    <option value="">— Usta yoxdur</option>
-                    {mechanics.map(m => <option key={m.id} value={m.id}>{m.full_name || m.id} ({m.work_percent}%)</option>)}
-                  </select>
-                </div>
-                {serviceError && <p className="text-small text-danger">{serviceError}</p>}
-                <div className="flex gap-2 justify-end">
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setAddServiceOpen(false)}>Ləğv</Button>
-                  <Button type="submit" size="sm" loading={addingService}>Əlavə et</Button>
-                </div>
-              </form>
+              <ServiceForm
+                initial={{ name: '', price: '', mechanicId: '', mechanicAmount: '' }}
+                mechanics={mechanics} submitLabel="Əlavə et" loading={addingService} error={serviceError}
+                onSubmit={v => submitService(v)} onCancel={() => setAddServiceOpen(false)}
+              />
             )}
             {!order.services || order.services.length === 0 ? (
               <p className="text-body text-text-3">İş qeyd edilməyib.</p>
             ) : (
               <div>
                 {order.services.map((svc, i) => (
-                  <div key={svc.id ?? i} className="flex items-center justify-between py-2.5 gap-3 border-b border-border">
-                    <span className="text-body text-text-1 flex-1 min-w-0">{svc.name}</span>
-                    <Money value={parseFloat(String(svc.price))} />
-                    {linesEditable && (
-                      <button onClick={() => svc.id && handleRemoveService(svc.id)} disabled={removingServiceId === svc.id} aria-label="Sil" className="text-text-3 hover:text-danger shrink-0">
-                        <X size={16} strokeWidth={1.75} />
-                      </button>
-                    )}
-                  </div>
+                  editingServiceId !== null && editingServiceId === svc.id ? (
+                    <ServiceForm
+                      key={svc.id}
+                      initial={{ name: svc.name, price: String(svc.price), mechanicId: svc.mechanic ? String(svc.mechanic) : '', mechanicAmount: svc.mechanic_amount != null ? String(svc.mechanic_amount) : '' }}
+                      mechanics={mechanics} submitLabel="Saxla" loading={addingService} error={serviceError}
+                      onSubmit={v => submitService(v, svc.id)} onCancel={() => setEditingServiceId(null)}
+                    />
+                  ) : (
+                    <div key={svc.id ?? i} className="flex items-center justify-between py-2.5 gap-3 border-b border-border">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-body text-text-1">{svc.name}</p>
+                        <ServiceMechanicLine svc={svc} />
+                      </div>
+                      <Money value={parseFloat(String(svc.price))} />
+                      {linesEditable && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            aria-label="Düzəlt"
+                            onClick={() => { setEditingServiceId(svc.id ?? null); setServiceError(''); setAddServiceOpen(false); ensureMechanics() }}
+                            className="text-text-3 hover:text-ink"
+                          >
+                            <Pencil size={16} strokeWidth={1.75} />
+                          </button>
+                          <button onClick={() => svc.id && handleRemoveService(svc.id)} disabled={removingServiceId === svc.id} aria-label="Sil" className="text-text-3 hover:text-danger">
+                            <X size={16} strokeWidth={1.75} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
                 ))}
                 <div className="flex items-center justify-between pt-3">
                   <span className="section-label">Cəmi</span>
@@ -664,7 +724,15 @@ export default function OrderDetailClient() {
                           <p className="text-body text-text-1">{p.product_name}</p>
                           {p.source === 'customer'
                             ? <p className="text-small text-text-3 font-mono">{p.quantity} ədəd</p>
-                            : <p className="text-small text-text-3 font-mono">{p.quantity} × {formatCurrency(p.sell_price)}</p>}
+                            : (
+                              <p className="text-small text-text-3 font-mono">
+                                {p.quantity} × {formatCurrency(Number(p.sell_price))}
+                                <span className="font-sans"> satış</span>
+                                <span aria-hidden> · </span>
+                                {formatCurrency(Number(p.purchase_price ?? 0))}
+                                <span className="font-sans"> alış</span>
+                              </p>
+                            )}
                         </div>
                         {p.source === 'customer'
                           ? <span className="text-small font-semibold text-text-2 bg-surface-2 border border-border rounded-sm px-2 py-0.5 shrink-0">Müştəri gətirib</span>

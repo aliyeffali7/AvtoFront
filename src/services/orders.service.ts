@@ -13,10 +13,10 @@ export const getOrders = (params?: {
 
 export const getOrder = (id: number) => api.get<Order>(`/api/orders/${id}`)
 
-export const createOrder = (data: Omit<Partial<Order>, 'products'> & { products?: { product: number; quantity: number }[]; customer_products?: { name: string; quantity: number }[]; expense_record_ids?: number[] }) =>
+export const createOrder = (data: Omit<Partial<Order>, 'products'> & { products?: { id?: number; product?: number; quantity: number }[]; customer_products?: { name: string; quantity: number }[]; expense_record_ids?: number[] }) =>
   api.post<Order>('/api/orders', data)
 
-export const updateOrder = (id: number, data: Omit<Partial<Order>, 'products' | 'services'> & { products?: { product: number; quantity: number }[]; customer_products?: { name: string; quantity: number }[]; services?: import('@/types').OrderService[] }) =>
+export const updateOrder = (id: number, data: Omit<Partial<Order>, 'products' | 'services'> & { products?: { id?: number; product?: number; quantity: number }[]; customer_products?: { name: string; quantity: number }[]; services?: import('@/types').OrderService[] }) =>
   api.patch<Order>(`/api/orders/${id}`, data)
 
 export const deleteOrder = (id: number) =>
@@ -65,6 +65,9 @@ export const removeProductFromOrder = (orderId: number, orderProductId: number) 
 
 export const addServiceToOrder = (orderId: number, name: string, price: number, mechanic?: number | null, mechanic_amount?: number | null) =>
   api.post<Order>(`/api/orders/${orderId}/services`, { name, price, mechanic: mechanic ?? null, mechanic_amount: mechanic_amount ?? null })
+
+export const updateOrderService = (orderId: number, serviceId: number, data: { name: string; price: number; mechanic: number | null; mechanic_amount: number | null }) =>
+  api.patch<Order>(`/api/orders/${orderId}/services/${serviceId}`, data)
 
 export const removeServiceFromOrder = (orderId: number, serviceId: number) =>
   api.delete<Order>(`/api/orders/${orderId}/services/${serviceId}`)
