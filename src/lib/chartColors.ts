@@ -1,5 +1,5 @@
 // Validated against dataviz skill's palette validator (scripts/validate_palette.js)
-// against this app's actual chart surface (#F7F5EF). Both sets PASS all hard gates;
+// against this app's actual chart surface (#F4F4F4). Both sets PASS all hard gates;
 // the CVD/contrast checks that land in the WARN band require direct labels or a
 // legend rather than color alone — components using these must always label.
 
@@ -34,4 +34,4 @@ export const INCOME_CATEGORY_LABELS: Record<string, string> = {
   other: 'Digər gəlir',
 }
 
-export const CHART_SEQUENTIAL = '#1F4D36' // brand accent — single-series magnitude only
+export const CHART_SEQUENTIAL = '#090909' // brand accent — single-series magnitude only

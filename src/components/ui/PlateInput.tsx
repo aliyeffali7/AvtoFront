@@ -22,18 +22,28 @@ export default function PlateInput({
     onChange(formatPlate(clean))
   }
 
+  // Callers size the field with className (e.g. flex-1); the AZ strip sits inside the left padding.
+  const wrapperClass = className?.includes('flex-1') ? 'relative flex-1 min-w-0' : 'relative'
   return (
-    <input
+    <div className={wrapperClass}>
+      <span
+        aria-hidden="true"
+        className="absolute left-px top-px bottom-px w-9 rounded-l-[5px] bg-info text-paper font-sans font-bold text-small flex items-center justify-center pointer-events-none"
+      >
+        AZ
+      </span>
+      <input
       value={value}
       onChange={handleChange}
       required={required}
       autoFocus={autoFocus}
       placeholder="90-RK-641"
-      className={className}
+      className={`${className ?? ''} w-full !pl-12`}
       inputMode="text"
       autoCapitalize="characters"
       autoComplete="off"
       spellCheck={false}
-    />
+      />
+    </div>
   )
 }

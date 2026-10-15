@@ -2,16 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --ink: 31, 42, 36;
-  --bg: 222, 219, 208;
+body {
+  color: #090909;
+  background: #F4F4F4;
+  font-family: 'Source Sans 3', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 23px;
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  color: rgb(var(--ink));
-  background: rgb(var(--bg));
-  font-family: 'IBM Plex Sans', 'Noto Sans', sans-serif;
-  -webkit-font-smoothing: antialiased;
+:focus-visible {
+  outline: 2px solid #090909;
+  outline-offset: 2px;
 }
 
 ::-webkit-scrollbar {
@@ -19,70 +21,76 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD3C7;
+  background: #CFCFCF;
   border-radius: 5px;
 }
 
 @layer components {
   /* Forms */
   .input {
-    @apply w-full bg-white border border-rule rounded px-3 py-2.5 text-sm text-ink placeholder-ink-muted
-      focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent
-      transition-colors;
+    @apply w-full h-11 bg-white border border-border-strong rounded px-3 text-body text-text-1 placeholder:text-text-4
+      outline-none focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-ink focus:border-ink
+      disabled:opacity-40 disabled:cursor-not-allowed
+      transition-colors duration-[120ms] ease-servo;
+  }
+
+  textarea.input {
+    @apply h-auto py-2.5;
   }
 
   .input-mono {
-    @apply input font-mono font-semibold;
+    @apply input font-mono font-semibold tabular-nums;
   }
 
   .label {
-    @apply block font-mono font-semibold text-[11px] uppercase tracking-[.06em] text-ink-muted mb-1.5;
+    @apply block font-sans font-medium text-label uppercase text-text-3 mb-1.5;
   }
 
   /* Buttons */
   .btn-primary {
-    @apply bg-accent hover:bg-accent-hover active:bg-accent-hover
-      disabled:opacity-50 disabled:cursor-not-allowed
-      text-cream font-semibold rounded px-4 py-2.5 text-sm
-      transition-colors min-h-[44px] flex items-center justify-center gap-2;
+    @apply bg-ink hover:bg-ink-up active:bg-black text-paper font-semibold rounded px-4 text-body
+      disabled:opacity-40 disabled:cursor-not-allowed
+      transition-colors duration-[120ms] ease-servo min-h-[44px] flex items-center justify-center gap-2;
   }
 
   .btn-secondary {
-    @apply bg-transparent hover:bg-surface-alt text-ink font-semibold rounded px-4 py-2.5 text-sm
-      transition-colors min-h-[44px] flex items-center justify-center gap-2
-      border border-ink;
+    @apply bg-white hover:bg-surface-2 active:bg-surface-2 text-ink font-semibold rounded px-4 text-body
+      border border-border-strong disabled:opacity-40 disabled:cursor-not-allowed
+      transition-colors duration-[120ms] ease-servo min-h-[44px] flex items-center justify-center gap-2;
   }
 
   .btn-ghost {
-    @apply btn-secondary;
+    @apply bg-transparent hover:bg-surface-2 active:bg-surface-2 text-ink font-semibold rounded px-4 text-body
+      disabled:opacity-40 disabled:cursor-not-allowed
+      transition-colors duration-[120ms] ease-servo min-h-[44px] flex items-center justify-center gap-2;
   }
 
   .btn-danger {
-    @apply bg-transparent hover:bg-danger-bg text-danger font-semibold rounded px-4 py-2.5 text-sm
-      transition-colors min-h-[44px] flex items-center justify-center gap-2
-      border border-danger disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-danger hover:bg-danger-strong active:bg-danger-strong text-paper font-semibold rounded px-4 text-body
+      disabled:opacity-40 disabled:cursor-not-allowed
+      transition-colors duration-[120ms] ease-servo min-h-[44px] flex items-center justify-center gap-2;
   }
 
   /* Typography */
   .page-title {
-    @apply font-serif font-semibold text-[26px] text-ink;
+    @apply font-display text-h2 text-ink;
   }
 
   .card-title {
-    @apply font-serif font-semibold text-[19px] text-ink;
+    @apply font-display text-h3 text-ink;
   }
 
   .section-label {
-    @apply font-mono font-semibold text-[10px] text-ink-muted uppercase tracking-[.06em];
+    @apply font-sans font-medium text-label uppercase text-text-3;
   }
 
   /* Surfaces */
   .card {
-    @apply bg-surface border border-rule rounded;
+    @apply bg-surface border border-border rounded-lg;
   }
 
   .badge {
-    @apply inline-flex items-center gap-1.5 px-2 py-1 rounded font-mono font-semibold text-[11px] uppercase tracking-wide;
+    @apply inline-flex items-center gap-1.5 h-7 px-2.5 rounded-sm font-sans font-semibold text-small whitespace-nowrap;
   }
 
   /* Ledger tables */
@@ -91,19 +99,19 @@ body {
   }
 
   .ledger-th {
-    @apply px-3 py-2.5 font-mono font-semibold text-[10px] uppercase tracking-[.06em] text-ink-muted
-      border-b-2 border-ink text-left whitespace-nowrap;
+    @apply px-3 py-3 bg-surface-2 font-sans font-medium text-label uppercase text-text-3
+      border-b border-border text-left whitespace-nowrap;
   }
 
   .ledger-td {
-    @apply px-3 py-3 text-sm text-ink border-b border-rule whitespace-nowrap;
+    @apply px-3 py-3 text-body text-ink border-b border-border whitespace-nowrap;
   }
 
   .ledger-row {
-    @apply transition-colors hover:bg-surface-alt cursor-pointer;
+    @apply transition-colors duration-[120ms] ease-servo hover:bg-[#F9F9F9] cursor-pointer;
   }
 
   .ledger-row-selected {
-    @apply bg-surface-alt;
+    @apply bg-[#F9F9F9] shadow-[inset_3px_0_0_#090909];
   }
 }

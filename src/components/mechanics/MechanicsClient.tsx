@@ -248,10 +248,10 @@ function MechanicDetail({
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={earnings.daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke="#CBD3C7" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={{ stroke: '#CBD3C7' }} />
-                  <YAxis tick={{ fontSize: 11, fill: '#6b7264' }} tickLine={false} axisLine={false} width={56} />
-                  <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 10, fontSize: 12 }} />
+                  <CartesianGrid stroke="#E0E0E0" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6B6B6B' }} tickLine={false} axisLine={{ stroke: '#E0E0E0' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#6B6B6B' }} tickLine={false} axisLine={false} width={56} />
+                  <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: 10, fontSize: 12 }} />
                   <Bar dataKey="amount" name="Qazanc" fill={CHART_SEQUENTIAL} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

@@ -25,22 +25,22 @@ export default function Pagination({ page, totalPages, onChange }: { page: numbe
   if (totalPages <= 1) return null
 
   return (
-    <div className="flex items-center justify-center gap-1.5 py-3 border-t border-rule">
-      <button onClick={() => onChange(Math.max(1, page - 1))} disabled={page === 1} className="w-8 h-8 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40">‹</button>
+    <div className="flex items-center justify-center gap-1.5 py-3 border-t border-border">
+      <button onClick={() => onChange(Math.max(1, page - 1))} disabled={page === 1} className="w-9 h-9 rounded border border-border-strong bg-white text-text-2 hover:bg-surface-2 disabled:opacity-40 transition-colors duration-[120ms]">‹</button>
       {pageList(page, totalPages).map((n, i) =>
         n === '...' ? (
-          <span key={`dots-${i}`} className="w-8 h-8 flex items-center justify-center text-sm text-ink-muted select-none">…</span>
+          <span key={`dots-${i}`} className="w-9 h-9 flex items-center justify-center text-body text-text-3 select-none">…</span>
         ) : (
           <button
             key={n}
             onClick={() => onChange(n)}
-            className={`w-8 h-8 rounded text-sm font-mono ${n === page ? 'bg-accent text-cream' : 'border border-rule text-ink-muted hover:bg-surface-alt'}`}
+            className={`w-9 h-9 rounded text-small font-mono font-medium tabular-nums transition-colors duration-[120ms] ${n === page ? 'bg-ink text-paper' : 'border border-border-strong bg-white text-text-2 hover:bg-surface-2'}`}
           >
             {n}
           </button>
         )
       )}
-      <button onClick={() => onChange(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="w-8 h-8 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40">›</button>
+      <button onClick={() => onChange(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="w-9 h-9 rounded border border-border-strong bg-white text-text-2 hover:bg-surface-2 disabled:opacity-40 transition-colors duration-[120ms]">›</button>
     </div>
   )
 }

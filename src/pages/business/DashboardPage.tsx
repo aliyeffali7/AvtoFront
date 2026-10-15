@@ -11,8 +11,8 @@ import BrandLogo from '@/components/ui/BrandLogo'
 import StatusBadge from '@/components/orders/StatusBadge'
 import { CHART_INCOME, CHART_EXPENSE, CHART_SEQUENTIAL } from '@/lib/chartColors'
 
-const AXIS_TICK = { fontSize: 11, fill: '#6b7264' }
-const TOOLTIP_STYLE = { background: '#FFFFFF', border: '1px solid #CBD3C7', borderRadius: 10, fontSize: 12 }
+const AXIS_TICK = { fontSize: 11, fill: '#6B6B6B' }
+const TOOLTIP_STYLE = { background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: 10, fontSize: 12 }
 
 function formatShort(iso: string) {
   const [, m, d] = iso.split('-')
@@ -256,8 +256,8 @@ export default function DashboardPage() {
           ) : (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={dailyRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#CBD3C7" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: '#CBD3C7' }} tickFormatter={(d: string) => d.slice(5)} />
+                <CartesianGrid stroke="#E0E0E0" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: '#E0E0E0' }} tickFormatter={(d: string) => d.slice(5)} />
                 <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={56} />
                 <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} contentStyle={TOOLTIP_STYLE} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
