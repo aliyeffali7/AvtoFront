@@ -9,7 +9,8 @@ import {
   convertReservation, deleteReservation,
 } from '@/services/reservations.service'
 import { getMechanics } from '@/services/mechanics.service'
-import { mapApiError } from '@/lib/utils'
+import { formatPhone, mapApiError } from '@/lib/utils'
+import CarBrandModelInputs from '@/components/ui/CarBrandModelInputs'
 import BrandLogo from '@/components/ui/BrandLogo'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -155,14 +156,10 @@ function CreateReservationModal({
 
         <div className="border-t border-border" />
 
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <label className="label">Marka</label>
-            <input value={brand} onChange={e => setBrand(e.target.value)} placeholder="Toyota" className="input" />
-          </div>
-          <div className="flex-1">
-            <label className="label">Model</label>
-            <input value={model} onChange={e => setModel(e.target.value)} placeholder="Prado" className="input" />
+        <div>
+          <label className="label">Marka və model</label>
+          <div className="flex flex-col gap-2.5">
+            <CarBrandModelInputs brand={brand} model={model} onBrandChange={setBrand} onModelChange={setModel} />
           </div>
         </div>
         <div>
@@ -229,7 +226,7 @@ function ReservationTable({
                   <td className="ledger-td">
                     {r.customer_name ? <span className="font-semibold">{r.customer_name}</span> : <span className="text-text-3">—</span>}
                     {r.customer_phone && (
-                      <a href={`tel:${r.customer_phone}`} className="block font-mono text-small text-text-3 hover:underline underline-offset-2">{r.customer_phone}</a>
+                      <a href={`tel:${r.customer_phone}`} className="block font-mono text-small text-text-3 hover:underline underline-offset-2">{formatPhone(r.customer_phone)}</a>
                     )}
                   </td>
                   <td className="ledger-td">

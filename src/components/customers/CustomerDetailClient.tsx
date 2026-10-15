@@ -4,7 +4,7 @@ import { ArrowLeft, Download, MessageCircle, MoreVertical, Pencil, Phone, Plus, 
 import { CustomerDetail, Business, Order } from '@/types'
 import { getCustomer, updateCustomer, deleteCustomer } from '@/services/customers.service'
 import { getBusinessProfile } from '@/services/auth.service'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatPhone } from '@/lib/utils'
 import { useGoBack } from '@/lib/useGoBack'
 import { printCustomerPDF } from '@/lib/printOrderPDF'
 import { printOrderPDF } from '@/lib/serviceActPdf'
@@ -174,7 +174,7 @@ export default function CustomerDetailClient() {
         <Avatar name={customer.full_name} tone="ink" size={48} />
         <div className="flex-1 min-w-[200px]">
           <h1 className="page-title">{customer.full_name}</h1>
-          {customer.phone && <p className="font-mono text-body text-text-3">{customer.phone}</p>}
+          {customer.phone && <p className="font-mono text-body text-text-3">{formatPhone(customer.phone)}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {customer.phone && (

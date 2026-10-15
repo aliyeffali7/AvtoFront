@@ -5,7 +5,7 @@ import { getStores } from '@/services/stores.service'
 import { getMechanics } from '@/services/mechanics.service'
 import { getProducts } from '@/services/warehouse.service'
 import { getCustomers } from '@/services/customers.service'
-import { formatCurrency, mapApiError, autoFormatSearch } from '@/lib/utils'
+import { formatCurrency, formatPhone, mapApiError, autoFormatSearch } from '@/lib/utils'
 import { mediaUrl } from '@/lib/apiUrl'
 import { loadDraft, saveDraft, clearDraft, ORDER_DRAFT_KEY } from '@/lib/formDraft'
 import { X } from 'lucide-react'
@@ -394,7 +394,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
                       <p className="text-body font-medium text-text-1">{c.full_name}</p>
                       {(c.car_plate || c.plates[0]) && <Plate value={c.car_plate || c.plates[0]} size={12} />}
                     </div>
-                    {c.phone && <p className="text-small text-text-3">{c.phone}</p>}
+                    {c.phone && <p className="text-small text-text-3">{formatPhone(c.phone)}</p>}
                   </button>
                 ))}
               </div>

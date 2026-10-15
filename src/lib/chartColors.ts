@@ -5,6 +5,8 @@
 
 export const CHART_INCOME = '#008300'
 export const CHART_EXPENSE = '#e34948'
+// Cash spent on goods (anbar purchases + kreditor payments) — not an operating expense
+export const CHART_GOODS = '#2a78d6'
 
 export const EXPENSE_CATEGORY_COLORS: Record<string, string> = {
   parts: '#2a78d6',

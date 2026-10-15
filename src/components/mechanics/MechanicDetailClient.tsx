@@ -6,7 +6,7 @@ import { Mechanic, Order, MechanicEarnings } from '@/types'
 import { getMechanics, deactivateMechanic, activateMechanic, getMechanicOrders, getMechanicEarnings } from '@/services/mechanics.service'
 import MechanicPayPanel from './MechanicPayPanel'
 import { EditMechanicModal, MechanicAvatar } from './MechanicForms'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, formatPhone } from '@/lib/utils'
 import { useGoBack } from '@/lib/useGoBack'
 import { CHART_SEQUENTIAL } from '@/lib/chartColors'
 import { Period, makePeriod, periodRange } from '@/lib/period'
@@ -136,7 +136,7 @@ export default function MechanicDetailClient() {
         <MechanicAvatar mechanic={mechanic} size={48} />
         <div className="flex-1 min-w-[200px]">
           <h1 className="page-title">{mechanic.full_name ?? '—'}</h1>
-          {mechanic.phone && <p className="font-mono text-body text-text-3">{mechanic.phone}</p>}
+          {mechanic.phone && <p className="font-mono text-body text-text-3">{formatPhone(mechanic.phone)}</p>}
         </div>
         <UiStatusBadge status={mechanic.is_active ? 'Aktiv' : 'Deaktiv'} tone={mechanic.is_active ? 'success' : 'danger'} icon={mechanic.is_active ? UserCheck : UserX} />
         <div className="flex flex-wrap items-center gap-2">

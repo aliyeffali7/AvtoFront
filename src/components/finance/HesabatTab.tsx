@@ -60,7 +60,7 @@ export default function HesabatTab() {
                 <Money value={report.total_expense} meaning="expense" sign="none" showWord={false} className="!justify-start text-[30px] leading-10" />
               </NumberBlock>
               <NumberBlock label="Xalis">
-                <span className="font-mono font-semibold tabular-nums text-[30px] leading-10 text-signal">
+                <span className="font-mono font-semibold tabular-nums text-[30px] leading-10 text-ink">
                   {report.net < 0 ? '−' : report.net > 0 ? '+' : ''}{formatCurrency(Math.abs(report.net))}
                 </span>
               </NumberBlock>

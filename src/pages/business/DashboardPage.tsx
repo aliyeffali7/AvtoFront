@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
-import { ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { Business, DashboardStats, FinanceReport, Order, WeeklyIncome } from '@/types'
-import { getDashboardStats, getFinanceReport, getWeeklyIncome } from '@/services/finance.service'
+import { ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
+import { Business, DashboardStats, Order, WeeklyIncome } from '@/types'
+import { getDashboardStats, getWeeklyIncome } from '@/services/finance.service'
 import { getOrders } from '@/services/orders.service'
 import { getBusinessProfile } from '@/services/auth.service'
 import { formatCurrency, formatDate, toLocalISODate } from '@/lib/utils'
@@ -15,7 +15,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import InkBand from '@/components/ui/InkBand'
 import KpiCard from '@/components/ui/KpiCard'
 import StatusBadge from '@/components/orders/StatusBadge'
-import { CHART_INCOME, CHART_EXPENSE, CHART_SEQUENTIAL } from '@/lib/chartColors'
+import { CHART_INCOME, CHART_EXPENSE, CHART_SEQUENTIAL, CHART_GOODS } from '@/lib/chartColors'
 
 const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr']
 
@@ -27,12 +27,22 @@ function formatShort(iso: string) {
   return `${d}.${m}`
 }
 
+const ALERT_KEY = 'servo.dashboard.stockAlertDismissed'
+
+function alertDismissedToday(): boolean {
+  try {
+    return localStorage.getItem(ALERT_KEY) === toLocalISODate(new Date())
+  } catch {
+    return false
+  }
+}
+
 const WEEKDAYS = ['B.e', 'Ç.a', 'Çər', 'C.a', 'Cüm', 'Şən', 'Baz']
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [report, setReport] = useState<FinanceReport | null>(null)
+  const [alertDismissed, setAlertDismissed] = useState(alertDismissedToday)
   const [shownWeek, setShownWeek] = useState<WeeklyIncome | null>(null)
   const [weekLoading, setWeekLoading] = useState(false)
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
@@ -43,21 +53,15 @@ export default function DashboardPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const today = new Date()
-      const to = toLocalISODate(today)
-      const fromDate = new Date(today)
-      fromDate.setDate(fromDate.getDate() - 13)
-      const from = toLocalISODate(fromDate)
-      const [statsRes, reportRes, todayRes, recentRes, bizRes] = await Promise.all([
+      const to = toLocalISODate(new Date())
+      const [statsRes, todayRes, recentRes, bizRes] = await Promise.all([
         getDashboardStats(),
-        getFinanceReport(from, to),
         getOrders({ date_from: to, date_to: to }).catch(() => null),
         getOrders({ page: 1 }).catch(() => null),
         getBusinessProfile().catch(() => null),
       ])
       setStats(statsRes.data)
       setShownWeek(statsRes.data.weekly_income)
-      setReport(reportRes.data)
       setRecentOrders((recentRes?.data.results ?? []).slice(0, 8))
       setTodayOrdersCount(todayRes?.data.count ?? 0)
       setBusiness(bizRes?.data ?? null)
@@ -81,12 +85,14 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading || !stats || !report || !shownWeek) {
+  if (loading || !stats || !shownWeek) {
     return <Spinner />
   }
 
 
-  const dailyRows = report.daily ?? []
+  const kassa = stats.kassa_14d
+  const dailyRows = kassa.daily
+  const hasKassa = dailyRows.some(d => Number(d.income) || Number(d.expense) || Number(d.goods))
   const todayStats = stats.today ?? { net: 0 }
   const weekly = shownWeek
   const isCurrentWeek = weekly.days.some(d => d.is_today)
@@ -126,17 +132,35 @@ export default function DashboardPage() {
           <KpiCard label="Stokdakı məhsullar" value={stats.in_stock_count} note={`${stats.low_stock_count} az qalıb · ${stats.out_of_stock_count} bitib`} className="h-full hover:bg-surface-2 transition-colors" />
         </Link>
         <Link to="/business/finance/kassa" className="block min-w-0">
-          <KpiCard label="Son 14 gün xalis" value={report.net} money meaning="profit" note={`Gəlir ${formatCurrency(report.total_income)} · Xərc ${formatCurrency(report.total_expense)}`} className="h-full hover:bg-surface-2 transition-colors" />
+          <KpiCard label="Kassa — son 14 gün xalis" value={kassa.net} money meaning="profit" note={`Gəlir ${formatCurrency(kassa.income)} · Xərc ${formatCurrency(kassa.expense)} · Mal alışı ${formatCurrency(kassa.goods)}`} className="h-full hover:bg-surface-2 transition-colors" />
         </Link>
       </div>
 
-      {stats.out_of_stock_count > 0 && (
-        <Link
-          to="/business/warehouse/products?tab=out"
-          className="block bg-danger-subtle border border-danger/30 rounded-lg px-5 py-3 text-body text-danger-strong font-semibold hover:opacity-90 transition-opacity"
-        >
-          {stats.out_of_stock_count} məhsul stokda bitib — Bitənlərə bax →
-        </Link>
+      {stats.out_of_stock_count > 0 && !alertDismissed && (
+        <div className="flex items-center bg-danger-subtle border border-danger/30 rounded-lg text-danger-strong">
+          <Link
+            to="/business/warehouse/products?tab=out"
+            className="flex-1 min-w-0 px-5 py-3 text-body font-semibold hover:opacity-90 transition-opacity"
+          >
+            {stats.out_of_stock_count} məhsul stokda bitib — Bitənlərə bax →
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setAlertDismissed(true)
+              try {
+                localStorage.setItem(ALERT_KEY, toLocalISODate(new Date()))
+              } catch {
+                /* storage unavailable — dismissal lasts until reload */
+              }
+            }}
+            aria-label="Xəbərdarlığı bağla"
+            title="Bu gün üçün bağla"
+            className="w-10 h-10 mr-1 shrink-0 inline-flex items-center justify-center rounded hover:bg-danger/10 transition-colors"
+          >
+            <X size={18} strokeWidth={1.75} />
+          </button>
+        </div>
       )}
 
       {/* Son sifarişlər */}
@@ -247,7 +271,7 @@ export default function DashboardPage() {
         {/* Kassa: last 14 days */}
         <section className="card p-5">
           <h2 className="card-title mb-4">Kassa — son 14 gün</h2>
-          {dailyRows.length === 0 ? (
+          {!hasKassa ? (
             <p className="text-body text-text-3">Bu dövrdə qeyd yoxdur.</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
@@ -259,6 +283,7 @@ export default function DashboardPage() {
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="income" name="Gəlir" fill={CHART_INCOME} radius={[3, 3, 0, 0]} />
                 <Bar dataKey="expense" name="Xərc" fill={CHART_EXPENSE} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="goods" name="Anbar alışı (mal)" fill={CHART_GOODS} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

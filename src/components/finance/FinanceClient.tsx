@@ -223,15 +223,15 @@ function EndDayModal({ onClose }: { onClose: () => void }) {
         <div className="grid grid-cols-3 gap-3 mb-5">
           <div className="border border-border rounded-md px-4 py-3">
             <p className="font-sans text-label uppercase text-text-3">Gəlir</p>
-            <p className="text-body-l font-mono font-semibold text-success">{formatCurrency(income)}</p>
+            <p className="text-body-l font-mono font-semibold text-success">+{formatCurrency(income)}</p>
           </div>
           <div className="border border-border rounded-md px-4 py-3">
             <p className="font-sans text-label uppercase text-text-3">Xərc</p>
-            <p className="text-body-l font-mono font-semibold text-danger">{formatCurrency(expense)}</p>
+            <p className="text-body-l font-mono font-semibold text-danger">−{formatCurrency(expense)}</p>
           </div>
           <div className="border border-border rounded-md px-4 py-3">
             <p className="font-sans text-label uppercase text-text-3">Xalis</p>
-            <p className={`text-body-l font-mono font-semibold ${net >= 0 ? 'text-success' : 'text-danger'}`}>{net >= 0 ? '+' : '−'}{formatCurrency(Math.abs(net))}</p>
+            <p className={`text-body-l font-mono font-semibold ${net >= 0 ? 'text-success' : 'text-danger'}`}>{net > 0 ? '+' : net < 0 ? '−' : ''}{formatCurrency(Math.abs(net))}</p>
           </div>
         </div>
 
@@ -255,7 +255,7 @@ function EndDayModal({ onClose }: { onClose: () => void }) {
                     <Badge variant={r.type === 'income' ? 'success' : 'danger'}>{r.type === 'income' ? 'Gəlir' : 'Xərc'}</Badge>
                   </td>
                   <td className="ledger-td text-right">
-                    <Money value={Number(r.amount)} meaning={r.type === 'income' ? 'income' : 'expense'} />
+                    <Money value={r.type === 'income' ? Number(r.amount) : -Number(r.amount)} meaning={r.type === 'income' ? 'income' : 'expense'} />
                   </td>
                 </tr>
               ))}
@@ -385,7 +385,7 @@ export default function FinanceClient() {
         <td>${r.date.slice(0, 10)}</td>
         <td>${r.description || '—'}</td>
         <td><span class="${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? 'Gəlir' : 'Xərc'}</span></td>
-        <td class="amount ${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? '+' : '-'}${Number(r.amount).toFixed(2)} ₼</td>
+        <td class="amount ${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? '+' : '−'}${Number(r.amount).toFixed(2)} ₼</td>
       </tr>`).join('')
 
     const noteHtml = singleDate && pageNote
@@ -415,7 +415,7 @@ export default function FinanceClient() {
       .note-text{font-family:'IBM Plex Sans','Noto Sans',sans-serif;font-size:13px;color:#1F2A24;line-height:1.6}
     </style></head><body>
     <h1>Maliyyə Hesabatı</h1>
-    <p class="sub">${periodLabel} · Gəlir: ${income.toFixed(2)} ₼ · Xərc: ${expense.toFixed(2)} ₼ · Xalis: ${net >= 0 ? '+' : ''}${net.toFixed(2)} ₼</p>
+    <p class="sub">${periodLabel} · Gəlir: ${income.toFixed(2)} ₼ · Xərc: −${expense.toFixed(2)} ₼ · Xalis: ${net >= 0 ? '+' : ''}${net.toFixed(2)} ₼</p>
     <div class="summary">
       <div class="card"><p class="card-label green">Gəlir</p><p class="card-value green">${income.toFixed(2)} ₼</p></div>
       <div class="card"><p class="card-label red">Xərc</p><p class="card-value red">${expense.toFixed(2)} ₼</p></div>
@@ -527,7 +527,7 @@ export default function FinanceClient() {
                       </span>
                     </td>
                     <td className="ledger-td text-right">
-                      <Money value={Number(r.amount)} meaning={r.type === 'income' ? 'income' : 'expense'} />
+                      <Money value={r.type === 'income' ? Number(r.amount) : -Number(r.amount)} meaning={r.type === 'income' ? 'income' : 'expense'} />
                     </td>
                     <td className="ledger-td text-right" onClick={e => e.stopPropagation()}>
                       {(!r.source || r.source === 'manual') && (

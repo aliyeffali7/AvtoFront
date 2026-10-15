@@ -15,7 +15,7 @@ import { getMechanics } from '@/services/mechanics.service'
 import { getProducts } from '@/services/warehouse.service'
 import { getStores } from '@/services/stores.service'
 import { getBusinessProfile } from '@/services/auth.service'
-import { formatDate, formatCurrency, mapApiError } from '@/lib/utils'
+import { formatDate, formatCurrency, formatPhone, mapApiError } from '@/lib/utils'
 import { printOrderPDF } from '@/lib/serviceActPdf'
 import { carReadyMessage, debtReminderMessage, hasWhatsAppNumber, orderLinkMessage, whatsappLink } from '@/lib/whatsapp'
 import { mediaUrl } from '@/lib/apiUrl'
@@ -881,7 +881,7 @@ export default function OrderDetailClient() {
                   {order.customer
                     ? <Link to={`/business/customers/${order.customer}`} className="hover:underline underline-offset-2">{customerName || 'Müştəri'}</Link>
                     : (customerName || '—')}
-                  {order.customer_phone && <span className="font-mono"> · {order.customer_phone}</span>}
+                  {order.customer_phone && <span className="font-mono"> · {formatPhone(order.customer_phone)}</span>}
                 </p>
               </div>
             </div>
@@ -1014,7 +1014,7 @@ export default function OrderDetailClient() {
           { label: 'Mətnsiz yaz', text: undefined },
         ].filter((o): o is { label: string; text: string | undefined } => !!o)
         return (
-          <Modal open={waMenuOpen} title="WhatsApp" subtitle={phone} onClose={() => setWaMenuOpen(false)}>
+          <Modal open={waMenuOpen} title="WhatsApp" subtitle={formatPhone(phone)} onClose={() => setWaMenuOpen(false)}>
             <div className="flex flex-col gap-2 pb-2">
               {options.map(o => (
                 <a

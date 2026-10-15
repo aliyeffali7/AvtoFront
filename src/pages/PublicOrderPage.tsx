@@ -4,7 +4,7 @@ import { CheckCircle2, Clock, Wrench } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { PublicOrder } from '@/types'
 import { getPublicOrder } from '@/services/orders.service'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, formatPhone } from '@/lib/utils'
 import StatusBadge, { StatusTone } from '@/components/ui/StatusBadge'
 import Spinner from '@/components/ui/Spinner'
 import Plate from '@/components/ui/Plate'
@@ -165,7 +165,7 @@ export default function PublicOrderPage() {
         {/* Contact */}
         {(business.phone || business.address || business.instagram) && (
           <section className="card p-4 flex flex-col gap-1.5 text-body">
-            {business.phone && <a href={`tel:${business.phone.replace(/[^\d+]/g, '')}`} className="text-ink font-semibold underline underline-offset-2">{business.phone}</a>}
+            {business.phone && <a href={`tel:${business.phone.replace(/[^\d+]/g, '')}`} className="text-ink font-semibold underline underline-offset-2">{formatPhone(business.phone)}</a>}
             {business.address && <p className="text-text-2">{business.address}</p>}
             {business.instagram && (
               <a href={`https://instagram.com/${business.instagram}`} target="_blank" rel="noreferrer" className="text-ink underline underline-offset-2">@{business.instagram}</a>

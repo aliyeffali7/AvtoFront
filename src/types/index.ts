@@ -351,6 +351,8 @@ export interface DashboardStats {
   debtor_customers_count: number
   in_stock_count: number
   weekly_income: WeeklyIncome
+  /** Real Kassa (all cash records), goods spend as its own series */
+  kassa_14d: { daily: { date: string; income: number; expense: number; goods: number }[]; income: number; expense: number; goods: number; net: number }
   low_stock_count: number
   out_of_stock_count: number
   reservations: { total: number; converted: number; no_show: number; conversion_rate: number | null }

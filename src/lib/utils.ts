@@ -100,3 +100,19 @@ export function mapApiError(error: unknown): string {
 
   return genericMessage
 }
+
+/**
+ * Shows an Azerbaijan phone as "+994 50 123 45 67". Accepts "0501234567",
+ * "+994501234567", "994 50 123-45-67", "501234567"; anything that does not
+ * parse is returned as typed.
+ */
+export function formatPhone(value?: string | null): string {
+  if (!value) return ''
+  const digits = value.replace(/\D/g, '')
+  let national: string
+  if (digits.length === 12 && digits.startsWith('994')) national = digits.slice(3)
+  else if (digits.length === 10 && digits.startsWith('0')) national = digits.slice(1)
+  else if (digits.length === 9) national = digits
+  else return value
+  return `+994 ${national.slice(0, 2)} ${national.slice(2, 5)} ${national.slice(5, 7)} ${national.slice(7, 9)}`
+}

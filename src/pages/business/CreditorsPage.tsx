@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { SupplierDebt, SupplierDebtItem } from '@/types'
 import { getSupplierDebts, createSupplierDebt, paySupplierDebt, paySupplierItems, deleteSupplierDebt } from '@/services/warehouse.service'
-import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
+import { formatCurrency, formatDate, formatPhone, mapApiError } from '@/lib/utils'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -395,7 +395,7 @@ export default function CreditorsPage() {
                             <Link to={`/business/stores/${group.storeId}`} onClick={e => e.stopPropagation()} className="hover:underline underline-offset-2">{group.name}</Link>
                           ) : group.name}
                         </td>
-                        <td className="ledger-td font-mono text-text-2">{group.phone || '—'}</td>
+                        <td className="ledger-td font-mono text-text-2">{formatPhone(group.phone) || '—'}</td>
                         <td className="ledger-td"><StatusBadge status={statusWord(group)} /></td>
                         <td className="ledger-td text-right"><Money value={group.totalAmount} /></td>
                         <td className="ledger-td text-right"><Money value={group.totalPaid} meaning="income" sign="none" /></td>

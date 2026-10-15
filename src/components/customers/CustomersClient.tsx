@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { Customer } from '@/types'
 import { getCustomers } from '@/services/customers.service'
-import { formatDate, autoFormatSearch } from '@/lib/utils'
+import { formatDate, formatPhone, autoFormatSearch } from '@/lib/utils'
 import BrandLogo from '@/components/ui/BrandLogo'
 import Avatar from '@/components/ui/Avatar'
 import Plate from '@/components/ui/Plate'
@@ -105,7 +105,7 @@ export default function CustomersClient() {
                           <span className="font-semibold">{c.full_name}</span>
                         </span>
                       </td>
-                      <td className="ledger-td font-mono text-text-2">{c.phone || <span className="text-text-3">—</span>}</td>
+                      <td className="ledger-td font-mono text-text-2">{formatPhone(c.phone) || <span className="text-text-3">—</span>}</td>
                       <td className="ledger-td">
                         {car ? (
                           <span className="flex items-center gap-2"><BrandLogo brand={c.car_brand} className="w-6 h-6" />{car}</span>

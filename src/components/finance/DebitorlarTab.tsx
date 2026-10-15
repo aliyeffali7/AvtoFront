@@ -7,7 +7,7 @@ import { debtReminderMessage, hasWhatsAppNumber, whatsappLink } from '@/lib/what
 import { getDebtors } from '@/services/finance.service'
 import { getManualDebts, createManualDebt, payManualDebt, deleteManualDebt } from '@/services/finance.service'
 import { recordPayment } from '@/services/orders.service'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate, formatCurrency, formatPhone } from '@/lib/utils'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -263,7 +263,7 @@ export default function DebitorlarTab() {
                             ) : <span className="font-semibold">{g.customer_name}</span>}
                           </span>
                         </td>
-                        <td className="ledger-td font-mono text-text-2">{g.phone || '—'}</td>
+                        <td className="ledger-td font-mono text-text-2">{formatPhone(g.phone) || '—'}</td>
                         <td className="ledger-td"><StatusBadge status={statusWord(g)} /></td>
                         <td className="ledger-td text-right"><Money value={g.total_charged} /></td>
                         <td className="ledger-td text-right"><Money value={g.paid_amount} meaning="income" sign="none" /></td>

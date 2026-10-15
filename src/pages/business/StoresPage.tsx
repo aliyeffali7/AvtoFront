@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { MessageCircle, Phone, Plus, Search } from 'lucide-react'
 import { Store } from '@/types'
 import { getStores } from '@/services/stores.service'
+import { formatPhone } from '@/lib/utils'
 import { hasWhatsAppNumber, whatsappLink } from '@/lib/whatsapp'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
@@ -98,7 +99,7 @@ export default function StoresPage() {
                         </span>
                       </td>
                       <td className="ledger-td">{s.contact_person || <span className="text-text-3">—</span>}</td>
-                      <td className="ledger-td font-mono text-text-2">{s.phone || <span className="text-text-3">—</span>}</td>
+                      <td className="ledger-td font-mono text-text-2">{formatPhone(s.phone) || <span className="text-text-3">—</span>}</td>
                       <td className="ledger-td text-right"><Money value={s.total_purchased || 0} /></td>
                       <td className="ledger-td text-right">
                         {debt > 0 ? <Money value={debt} meaning="payable" /> : <span className="text-text-3">—</span>}

@@ -5,7 +5,7 @@ import { Mechanic } from '@/types'
 import { getMechanics } from '@/services/mechanics.service'
 import { PAY_TYPE_LABELS } from './MechanicPayPanel'
 import { AddMechanicModal, MechanicAvatar } from './MechanicForms'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatPhone } from '@/lib/utils'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import Money from '@/components/ui/Money'
@@ -93,7 +93,7 @@ export default function MechanicsClient() {
                         <span className="font-semibold">{m.full_name ?? '—'}</span>
                       </span>
                     </td>
-                    <td className="ledger-td font-mono text-text-2">{m.phone || <span className="text-text-3">—</span>}</td>
+                    <td className="ledger-td font-mono text-text-2">{formatPhone(m.phone) || <span className="text-text-3">—</span>}</td>
                     <td className="ledger-td">
                       {PAY_TYPE_LABELS[m.pay_type ?? 'percent']}
                       <span className="block text-small text-text-3 font-mono">

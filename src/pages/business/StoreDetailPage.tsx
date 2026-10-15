@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, GitMerge, MessageCircle, Pencil, Phone, Trash2 } from 'lucide-react'
 import { Store, StorePurchases } from '@/types'
 import { getStores, getStorePurchases, deleteStore, mergeStore } from '@/services/stores.service'
-import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
+import { formatCurrency, formatDate, formatPhone, mapApiError } from '@/lib/utils'
 import { useGoBack } from '@/lib/useGoBack'
 import { hasWhatsAppNumber, whatsappLink } from '@/lib/whatsapp'
 import Avatar from '@/components/ui/Avatar'
@@ -115,7 +115,7 @@ export default function StoreDetailPage() {
         <div className="flex-1 min-w-[200px]">
           <h1 className="page-title">{store.name}</h1>
           {store.contact_person && <p className="text-body text-text-3">{store.contact_person}</p>}
-          {store.phone && <p className="font-mono text-body text-text-3">{store.phone}</p>}
+          {store.phone && <p className="font-mono text-body text-text-3">{formatPhone(store.phone)}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {store.phone && (

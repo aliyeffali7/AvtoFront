@@ -119,7 +119,7 @@ export default function PurchasesTab() {
                     onClick={() => navigate(`/business/warehouse/purchases/${p.id}`)}
                     className={`ledger-row ${p.is_cancelled ? 'opacity-60' : ''}`}
                   >
-                    <td className="ledger-td font-mono font-semibold">{p.invoice_no || <span className="text-text-3 font-normal">—</span>}</td>
+                    <td className="ledger-td font-mono font-semibold">{p.invoice_no || <span className="text-text-3 font-normal" title="Qaimə nömrəsi daxil edilməyib">Alış #{p.id}</span>}</td>
                     <td className="ledger-td font-mono text-text-2">{formatDate(p.date)}</td>
                     <td className="ledger-td whitespace-normal font-semibold">{p.store_name}</td>
                     <td className="ledger-td">
