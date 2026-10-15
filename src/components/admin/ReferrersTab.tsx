@@ -46,7 +46,7 @@ export default function ReferrersTab({ onOpenLead }: { onOpenLead: (leadId: numb
         {referrers.map(r => (
           <tr key={r.id} onClick={() => { setCreating(false); setSelectedId(r.id) }}
             className={`ledger-row ${selectedId === r.id ? 'ledger-row-selected' : ''}`}>
-            <td className="ledger-td font-medium">{r.name}<span className="block text-xs text-ink-muted font-mono">{r.phone}</span></td>
+            <td className="ledger-td font-medium">{r.name}<span className="block text-xs text-text-3 font-mono">{r.phone}</span></td>
             <td className="ledger-td text-right font-mono">{r.lead_count}</td>
             <td className="ledger-td text-right font-mono">{formatCurrency(r.earned)}</td>
             <td className={`ledger-td text-right font-mono font-semibold ${Number(r.owed) > 0 ? 'text-danger' : ''}`}>{formatCurrency(r.owed)}</td>
@@ -59,7 +59,7 @@ export default function ReferrersTab({ onOpenLead }: { onOpenLead: (leadId: numb
   return (
     <div>
       <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-        <p className="text-sm text-ink-muted">
+        <p className="text-sm text-text-3">
           Tanışlarınıza borcunuz: <span className="font-mono font-semibold text-ink">{formatCurrency(totalOwed)}</span>
         </p>
         <Button onClick={() => { setSelectedId(null); setCreating(true) }}><Plus className="w-4 h-4" strokeWidth={2.5} /> Yeni referal</Button>
@@ -102,7 +102,7 @@ function CreateReferrer({ onDone, onCancel }: { onDone: (id: number) => void; on
       <input className="input" value={name} onChange={e => setName(e.target.value)} required autoFocus placeholder="Adı" />
       <input className="input-mono" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Telefon" />
       <input className="input" value={note} onChange={e => setNote(e.target.value)} placeholder="Qeyd (məs. kart nömrəsi)" />
-      <p className="text-xs text-ink-muted">Faiz hər servisin CRM kartında təyin olunur.</p>
+      <p className="text-xs text-text-3">Faiz hər servisin CRM kartında təyin olunur.</p>
       {error && <p className="text-sm text-danger">{error}</p>}
       <div className="flex gap-2"><Button type="submit" loading={saving}>Saxla</Button><Button type="button" variant="secondary" onClick={onCancel}>Ləğv et</Button></div>
     </form>
@@ -139,7 +139,7 @@ function ReferrerPanel({ id, onChanged, onOpenLead }: { id: number; onChanged: (
     <div className="px-5 pb-8 -mt-8">
       <div className="pr-10 mb-4">
         <h2 className="font-serif font-semibold text-xl text-ink">{data.name}</h2>
-        <p className="text-sm text-ink-muted font-mono">{data.phone}{data.note ? ` · ${data.note}` : ''}</p>
+        <p className="text-sm text-text-3 font-mono">{data.phone}{data.note ? ` · ${data.note}` : ''}</p>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-4">
         <Box label="Qazanıb" value={formatCurrency(data.earned)} />
@@ -159,34 +159,34 @@ function ReferrerPanel({ id, onChanged, onOpenLead }: { id: number; onChanged: (
       )}
 
       <p className="section-label mb-1.5">Gətirdiyi servislər ({data.leads.length})</p>
-      <div className="bg-surface border border-rule rounded divide-y divide-rule/60 mb-4">
-        {data.leads.length === 0 ? <p className="px-3 py-2 text-sm text-ink-muted">Hələ yoxdur.</p> : data.leads.map(l => (
-          <button key={l.id} onClick={() => onOpenLead(l.id)} className="w-full text-left flex items-center justify-between gap-2 px-3 py-2 hover:bg-surface-alt">
+      <div className="bg-surface border border-border rounded divide-y divide-border/60 mb-4">
+        {data.leads.length === 0 ? <p className="px-3 py-2 text-sm text-text-3">Hələ yoxdur.</p> : data.leads.map(l => (
+          <button key={l.id} onClick={() => onOpenLead(l.id)} className="w-full text-left flex items-center justify-between gap-2 px-3 py-2 hover:bg-surface-2">
             <span className="text-sm text-ink">{l.name} <Badge variant={stageOf(l.stage).variant}>{stageOf(l.stage).label}</Badge></span>
             <span className="text-right">
               <span className="font-mono text-sm">{Number(l.commission_percent)}%</span>
-              <span className="block text-xs text-ink-muted">{l.paid_until ? `ödənib: ${formatDate(l.paid_until)}-dək` : 'hələ ödəniş yoxdur'}</span>
+              <span className="block text-xs text-text-3">{l.paid_until ? `ödənib: ${formatDate(l.paid_until)}-dək` : 'hələ ödəniş yoxdur'}</span>
             </span>
           </button>
         ))}
       </div>
 
       <p className="section-label mb-1.5">Komissiyalar (hər ödənişdən)</p>
-      <p className="text-xs text-ink-muted mb-1.5">Borc yalnız servisin ödənişini qeyd edəndə yaranır: məs. 3 aylıq paket 180 ₼ × 20% = 36 ₼, növbəti borc növbəti ödənişdə.</p>
-      <div className="bg-surface border border-rule rounded divide-y divide-rule/60 mb-4">
-        {data.commissions.length === 0 ? <p className="px-3 py-2 text-sm text-ink-muted">Hələ ödəniş olmayıb.</p> : data.commissions.map(c => (
+      <p className="text-xs text-text-3 mb-1.5">Borc yalnız servisin ödənişini qeyd edəndə yaranır: məs. 3 aylıq paket 180 ₼ × 20% = 36 ₼, növbəti borc növbəti ödənişdə.</p>
+      <div className="bg-surface border border-border rounded divide-y divide-border/60 mb-4">
+        {data.commissions.length === 0 ? <p className="px-3 py-2 text-sm text-text-3">Hələ ödəniş olmayıb.</p> : data.commissions.map(c => (
           <div key={c.id} className="flex justify-between gap-2 px-3 py-1.5 text-sm">
-            <span className="text-ink-soft">{formatDate(c.payment_date)} · {c.lead_name} · {formatCurrency(c.payment_amount)}{c.payment_days ? ` (${c.payment_days} gün)` : ''} × {Number(c.percent)}%</span>
+            <span className="text-text-2">{formatDate(c.payment_date)} · {c.lead_name} · {formatCurrency(c.payment_amount)}{c.payment_days ? ` (${c.payment_days} gün)` : ''} × {Number(c.percent)}%</span>
             <span className="font-mono">{formatCurrency(c.amount)}</span>
           </div>
         ))}
       </div>
 
       <p className="section-label mb-1.5">Ödənişlər</p>
-      <div className="bg-surface border border-rule rounded divide-y divide-rule/60">
-        {data.payouts.length === 0 ? <p className="px-3 py-2 text-sm text-ink-muted">Hələ ödəniş etməmisiniz.</p> : data.payouts.map(p => (
+      <div className="bg-surface border border-border rounded divide-y divide-border/60">
+        {data.payouts.length === 0 ? <p className="px-3 py-2 text-sm text-text-3">Hələ ödəniş etməmisiniz.</p> : data.payouts.map(p => (
           <div key={p.id} className="flex justify-between gap-2 px-3 py-1.5 text-sm">
-            <span className="text-ink-soft">{formatDate(p.date)}{p.note ? ` · ${p.note}` : ''}</span>
+            <span className="text-text-2">{formatDate(p.date)}{p.note ? ` · ${p.note}` : ''}</span>
             <span className="font-mono text-success">{formatCurrency(p.amount)}</span>
           </div>
         ))}
@@ -197,7 +197,7 @@ function ReferrerPanel({ id, onChanged, onOpenLead }: { id: number; onChanged: (
 
 function Box({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
-    <div className="bg-surface border border-rule rounded px-3 py-2.5">
+    <div className="bg-surface border border-border rounded px-3 py-2.5">
       <p className="section-label mb-1">{label}</p>
       <p className={`font-mono font-semibold text-sm ${danger ? 'text-danger' : 'text-ink'}`}>{value}</p>
     </div>

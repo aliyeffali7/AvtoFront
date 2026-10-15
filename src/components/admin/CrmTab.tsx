@@ -62,7 +62,7 @@ export default function CrmTab({ businesses, openLeadId, onOpened }: {
 
   const chips: { key: View; label: string; count?: number; tone?: string }[] = [
     { key: 'all', label: 'Hamısı' },
-    { key: 'today', label: 'Bu gün zəng', count: agenda?.today.length, tone: 'text-accent' },
+    { key: 'today', label: 'Bu gün zəng', count: agenda?.today.length, tone: 'text-ink' },
     { key: 'overdue', label: 'Gecikmiş', count: agenda?.overdue.length, tone: 'text-danger' },
     { key: 'risk', label: 'Risk altında', count: agenda?.at_risk.length, tone: 'text-danger' },
     ...STAGES.map(s => ({ key: s.key as View, label: s.label, count: agenda?.stages[s.key] })),
@@ -71,22 +71,22 @@ export default function CrmTab({ businesses, openLeadId, onOpened }: {
   const list = loading ? <Spinner /> : leads.length === 0 ? (
     <div className="p-6"><EmptyState title="Kart yoxdur" subtitle='Servisə getdinizsə, "Tez qeyd" ilə yazın.' /></div>
   ) : (
-    <div className="divide-y divide-rule">
+    <div className="divide-y divide-border">
       {leads.map(l => {
         const stage = stageOf(l.stage)
         const overdue = l.next_action_date && l.next_action_date < toLocalISODate()
         return (
           <button key={l.id} onClick={() => setSelectedId(l.id)}
-            className={`w-full text-left px-4 py-3 hover:bg-surface-alt ${selectedId === l.id ? 'bg-surface-alt' : ''}`}>
+            className={`w-full text-left px-4 py-3 hover:bg-surface-2 ${selectedId === l.id ? 'bg-surface-2' : ''}`}>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-ink">{l.name}</span>
               <Badge variant={stage.variant}>{stage.label}</Badge>
               {risk.has(l.id) && <Badge variant="danger">Risk</Badge>}
-              {l.district && <span className="text-xs text-ink-muted">{l.district}</span>}
+              {l.district && <span className="text-xs text-text-3">{l.district}</span>}
             </div>
-            {l.last_note && <p className="text-sm text-ink-soft truncate mt-0.5">{l.last_note.text}</p>}
+            {l.last_note && <p className="text-sm text-text-2 truncate mt-0.5">{l.last_note.text}</p>}
             {l.next_action_date && (
-              <p className={`text-xs font-mono mt-0.5 ${overdue ? 'text-danger' : 'text-ink-muted'}`}>
+              <p className={`text-xs font-mono mt-0.5 ${overdue ? 'text-danger' : 'text-text-3'}`}>
                 ⏰ {formatDate(l.next_action_date)}{l.next_action ? ` — ${l.next_action}` : ''}
               </p>
             )}
@@ -106,7 +106,7 @@ export default function CrmTab({ businesses, openLeadId, onOpened }: {
         </Button>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Servis, adam, telefon, rayon..." className="input sm:max-w-xs" />
         {topObjections.length > 0 && (
-          <p className="text-xs text-ink-muted sm:ml-auto">
+          <p className="text-xs text-text-3 sm:ml-auto">
             Ən çox etiraz: {topObjections.map(([k, n]) => `${OBJECTIONS.find(o => o.key === k)?.label} (${n})`).join(', ')}
           </p>
         )}
@@ -123,7 +123,7 @@ export default function CrmTab({ businesses, openLeadId, onOpened }: {
       <div className="flex gap-1.5 flex-wrap mb-3">
         {chips.map(c => (
           <button key={c.key} onClick={() => setView(c.key)}
-            className={`px-3 py-1.5 rounded text-sm border ${view === c.key ? 'bg-ink text-cream border-ink' : 'border-rule text-ink-muted hover:bg-surface-alt'}`}>
+            className={`px-3 py-1.5 rounded text-sm border ${view === c.key ? 'bg-ink text-paper border-ink' : 'border-border text-text-3 hover:bg-surface-2'}`}>
             {c.label}{c.count ? <span className={`ml-1.5 font-mono font-semibold ${view === c.key ? '' : c.tone ?? ''}`}>{c.count}</span> : null}
           </button>
         ))}
@@ -183,18 +183,18 @@ function QuickCapture({ referrers, onSaved, onCancel }: { referrers: Referrer[];
       <p className="card-title">Tez qeyd — yeni servis</p>
       <input value={name} onChange={e => setName(e.target.value)} required autoFocus placeholder="Servisin adı" className="input" />
       <div className="flex flex-col gap-1">
-        <span className="text-xs text-ink-muted">Haradan gəlib?</span>
+        <span className="text-xs text-text-3">Haradan gəlib?</span>
         <div className="flex gap-1.5 flex-wrap">
           {SOURCES.map(s => (
             <button type="button" key={s.key} onClick={() => setSource(s.key)} aria-pressed={source === s.key}
-              className={`px-3 py-1.5 rounded text-xs font-semibold border ${source === s.key ? 'bg-accent text-cream border-accent' : 'border-rule text-ink-muted hover:bg-surface-alt'}`}>
+              className={`px-3 py-1.5 rounded text-xs font-semibold border ${source === s.key ? 'bg-ink text-paper border-ink' : 'border-border text-text-3 hover:bg-surface-2'}`}>
               {s.label}
             </button>
           ))}
         </div>
       </div>
       {source === 'referral' && (
-        <div className="bg-surface-alt border border-rule rounded p-3">
+        <div className="bg-surface-2 border border-border rounded p-3">
           <ReferrerPicker value={referrer} onChange={setReferrer} referrers={referrers} />
         </div>
       )}
@@ -204,10 +204,10 @@ function QuickCapture({ referrers, onSaved, onCancel }: { referrers: Referrer[];
         <input value={district} onChange={e => setDistrict(e.target.value)} placeholder="Rayon" className="input" />
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-xs text-ink-muted">Təklif etdiyim qiymət (₼/ay)
+        <label className="flex flex-col gap-1 text-xs text-text-3">Təklif etdiyim qiymət (₼/ay)
           <input type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="məs. 70" className="input-mono" />
         </label>
-        <label className="flex flex-col gap-1 text-xs text-ink-muted">Nə vaxt yenidən əlaqə saxlayım?
+        <label className="flex flex-col gap-1 text-xs text-text-3">Nə vaxt yenidən əlaqə saxlayım?
           <input type="date" value={next} onChange={e => setNext(e.target.value)} className="input-mono" />
         </label>
       </div>

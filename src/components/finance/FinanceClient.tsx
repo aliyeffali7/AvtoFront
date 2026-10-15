@@ -516,9 +516,9 @@ export default function FinanceClient() {
                     <td className="ledger-td" onClick={e => e.stopPropagation()}>
                       <span className="flex items-center gap-2">
                         {r.order ? (
-                          <Link to={`/business/orders/${r.order}`} className="font-mono text-small hover:underline underline-offset-2">Sifariş № {r.order}</Link>
+                          <Link to={`/business/orders/${r.order}`} className="font-mono text-small hover:underline underline-offset-2">Sifariş</Link>
                         ) : r.purchase ? (
-                          <Link to={`/business/warehouse/purchases/${r.purchase}`} className="font-mono text-small hover:underline underline-offset-2">Alış № {r.purchase}</Link>
+                          <Link to={`/business/warehouse/purchases/${r.purchase}`} className="font-mono text-small hover:underline underline-offset-2">Alış</Link>
                         ) : null}
                         {r.source && r.source !== 'manual' && (
                           <span className="text-small text-text-3" title="Sistem qeydidir — onu yaradan sifariş, alış və ya borc üzərindən dəyişdirilir">avtomatik</span>

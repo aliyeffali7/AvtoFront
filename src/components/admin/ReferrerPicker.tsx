@@ -21,7 +21,7 @@ export default function ReferrerPicker({ value, onChange, referrers, autoFocus }
   return (
     <div className="flex flex-col gap-1">
       <div className="grid grid-cols-[1fr_6.5rem] gap-2">
-        <label className="flex flex-col gap-1 text-xs text-ink-muted">Kim gətirib?
+        <label className="flex flex-col gap-1 text-xs text-text-3">Kim gətirib?
           <input
             list={listId}
             value={value.name}
@@ -32,7 +32,7 @@ export default function ReferrerPicker({ value, onChange, referrers, autoFocus }
             required
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs text-ink-muted">Faizi (%)
+        <label className="flex flex-col gap-1 text-xs text-text-3">Faizi (%)
           <input
             type="number" min="0.5" max="100" step="0.5"
             value={value.percent}
@@ -46,7 +46,7 @@ export default function ReferrerPicker({ value, onChange, referrers, autoFocus }
       <datalist id={listId}>
         {referrers.map(r => <option key={r.id} value={r.name} />)}
       </datalist>
-      <p className="text-xs text-ink-muted">
+      <p className="text-xs text-text-3">
         {isNew ? `"${name}" yeni referal kimi əlavə olunacaq. ` : ''}
         Servis hər dəfə ödəyəndə, ödənişin bu faizi ona borcunuz kimi yazılır.
       </p>

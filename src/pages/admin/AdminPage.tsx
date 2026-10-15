@@ -215,7 +215,7 @@ export default function AdminPage() {
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
         <div>
           <h1 className="page-title">SuperAdmin Paneli</h1>
-          <p className="text-sm text-ink-muted mt-0.5">{businesses.length} biznes qeydiyyatdan keçib</p>
+          <p className="text-sm text-text-3 mt-0.5">{businesses.length} biznes qeydiyyatdan keçib</p>
         </div>
         <div className="flex items-center gap-3">
           <input
@@ -226,13 +226,13 @@ export default function AdminPage() {
           />
           <button
             onClick={() => setShowChangePassword(v => !v)}
-            className="text-sm font-medium text-ink-muted hover:text-ink px-3 py-2.5 rounded border border-rule hover:bg-surface-alt transition-colors whitespace-nowrap"
+            className="text-sm font-medium text-text-3 hover:text-ink px-3 py-2.5 rounded border border-border hover:bg-surface-2 transition-colors whitespace-nowrap"
           >
             Şifrəni dəyiş
           </button>
           <button
             onClick={handleLogout}
-            className="text-sm font-medium text-ink-muted hover:text-ink px-3 py-2.5 rounded border border-rule hover:bg-surface-alt transition-colors whitespace-nowrap"
+            className="text-sm font-medium text-text-3 hover:text-ink px-3 py-2.5 rounded border border-border hover:bg-surface-2 transition-colors whitespace-nowrap"
           >
             Çıxış
           </button>
@@ -245,10 +245,10 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div className="flex gap-1 border border-rule rounded p-1 bg-surface-alt w-fit mb-6">
+      <div className="flex gap-1 border border-border rounded p-1 bg-surface-2 w-fit mb-6">
         {([['businesses', 'Bizneslər'], ['crm', 'CRM'], ['referrals', 'Referallar']] as const).map(([key, label]) => (
           <button key={key} onClick={() => changeTab(key)}
-            className={`px-5 py-2 rounded text-sm font-medium ${tab === key ? 'bg-surface text-ink border border-rule' : 'text-ink-muted hover:text-ink'}`}>
+            className={`px-5 py-2 rounded text-sm font-medium ${tab === key ? 'bg-surface text-ink border border-border' : 'text-text-3 hover:text-ink'}`}>
             {label}
           </button>
         ))}
@@ -263,20 +263,20 @@ export default function AdminPage() {
       ) : dashboard && (
         <div className="mb-8 space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="rounded-lg border border-rule bg-surface px-4 py-3">
-              <p className="text-xs text-ink-muted">Ümumi gəlir</p>
+            <div className="rounded-lg border border-border bg-surface px-4 py-3">
+              <p className="text-xs text-text-3">Ümumi gəlir</p>
               <p className="text-lg font-semibold font-mono mt-1">{formatCurrency(dashboard.total_revenue)}</p>
             </div>
-            <div className="rounded-lg border border-rule bg-surface px-4 py-3">
-              <p className="text-xs text-ink-muted">Bu ay gəlir</p>
+            <div className="rounded-lg border border-border bg-surface px-4 py-3">
+              <p className="text-xs text-text-3">Bu ay gəlir</p>
               <p className="text-lg font-semibold font-mono mt-1">{formatCurrency(dashboard.revenue_this_month)}</p>
             </div>
-            <div className="rounded-lg border border-rule bg-surface px-4 py-3">
-              <p className="text-xs text-ink-muted">Aktiv bizneslər</p>
+            <div className="rounded-lg border border-border bg-surface px-4 py-3">
+              <p className="text-xs text-text-3">Aktiv bizneslər</p>
               <p className="text-lg font-semibold font-mono mt-1">{dashboard.active_businesses} / {dashboard.total_businesses}</p>
             </div>
-            <div className="rounded-lg border border-rule bg-surface px-4 py-3">
-              <p className="text-xs text-ink-muted">Müddəti bitməyə az qalıb</p>
+            <div className="rounded-lg border border-border bg-surface px-4 py-3">
+              <p className="text-xs text-text-3">Müddəti bitməyə az qalıb</p>
               <p className="text-lg font-semibold font-mono mt-1">{dashboard.expiring_soon.length}</p>
             </div>
           </div>
@@ -284,7 +284,7 @@ export default function AdminPage() {
           {dashboard.expiring_soon.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-ink mb-2">Müddəti bitməyə az qalanlar</h2>
-              <div className="overflow-x-auto rounded-lg border border-rule">
+              <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="ledger-table min-w-[500px]">
                   <thead>
                     <tr>
@@ -298,11 +298,11 @@ export default function AdminPage() {
                     {dashboard.expiring_soon.map(b => (
                       <tr key={b.id} className="ledger-row">
                         <td className="ledger-td font-medium">{b.name}</td>
-                        <td className="ledger-td text-ink-soft">{b.owner_email ?? '—'}</td>
+                        <td className="ledger-td text-text-2">{b.owner_email ?? '—'}</td>
                         <td className="ledger-td text-right font-mono">
                           <Badge variant={b.days_left <= 2 ? 'danger' : 'warning'}>{b.days_left} gün</Badge>
                         </td>
-                        <td className="ledger-td text-ink-muted text-xs">{formatDate(b.expires_at)}</td>
+                        <td className="ledger-td text-text-3 text-xs">{formatDate(b.expires_at)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -314,7 +314,7 @@ export default function AdminPage() {
           {dashboard.recent_payments.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-ink mb-2">Son ödənişlər</h2>
-              <div className="overflow-x-auto rounded-lg border border-rule">
+              <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="ledger-table min-w-[600px]">
                   <thead>
                     <tr>
@@ -331,8 +331,8 @@ export default function AdminPage() {
                         <td className="ledger-td font-medium">{p.business_name}</td>
                         <td className="ledger-td text-right font-mono">{formatCurrency(p.amount)}</td>
                         <td className="ledger-td text-right font-mono">{p.days_extended}</td>
-                        <td className="ledger-td text-ink-muted text-xs">{p.note || '—'}</td>
-                        <td className="ledger-td text-ink-muted text-xs">{formatDate(p.date)}</td>
+                        <td className="ledger-td text-text-3 text-xs">{p.note || '—'}</td>
+                        <td className="ledger-td text-text-3 text-xs">{formatDate(p.date)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -368,34 +368,34 @@ export default function AdminPage() {
                 <tr key={b.id} className="ledger-row">
                   <td className="ledger-td font-medium">
                     {b.name}
-                    <p className="text-xs text-ink-muted font-mono mt-0.5">kod: {b.login_code ?? '—'}</p>
+                    <p className="text-xs text-text-3 font-mono mt-0.5">kod: {b.login_code ?? '—'}</p>
                   </td>
-                  <td className="ledger-td text-ink-soft">{b.owner_email ?? '—'}</td>
+                  <td className="ledger-td text-text-2">{b.owner_email ?? '—'}</td>
                   <td className="ledger-td">
                     <Badge variant={subscriptionVariant(b)}>{subscriptionLabel(b)}</Badge>
                     {b.access_ends_at && (() => {
                       const left = daysLeft(b.access_ends_at)
                       return (
-                        <p className={`text-xs mt-1 font-mono ${left !== null && left <= 3 ? 'text-danger font-semibold' : 'text-ink-muted'}`}>
+                        <p className={`text-xs mt-1 font-mono ${left !== null && left <= 3 ? 'text-danger font-semibold' : 'text-text-3'}`}>
                           bitir: {formatDate(b.access_ends_at)}
                           {left !== null && (left >= 0 ? ` · ${left} gün` : ` · ${-left} gün əvvəl`)}
                         </p>
                       )
                     })()}
-                    <p className="text-xs text-ink-muted mt-0.5">{b.subscription_ends_at ? 'ödənişli' : b.trial_ends_at ? 'sınaq' : ''}</p>
+                    <p className="text-xs text-text-3 mt-0.5">{b.subscription_ends_at ? 'ödənişli' : b.trial_ends_at ? 'sınaq' : ''}</p>
                   </td>
                   <td className="ledger-td text-right font-mono">
                     {b.member_count}
-                    <span className="text-ink-muted"> ({b.mechanic_count} usta)</span>
+                    <span className="text-text-3"> ({b.mechanic_count} usta)</span>
                   </td>
                   <td className="ledger-td text-right font-mono">{b.order_count}</td>
-                  <td className="ledger-td text-ink-muted text-xs">{formatDate(b.created_at)}</td>
+                  <td className="ledger-td text-text-3 text-xs">{formatDate(b.created_at)}</td>
                   <td className="ledger-td">
                     <div className="flex flex-col gap-2 min-w-[220px]">
                       <button
                         onClick={() => handleView(b)}
                         disabled={busyId === b.id || !b.owner_active || !b.owner_email}
-                        className="text-xs font-semibold px-2.5 py-1.5 rounded bg-accent text-cream hover:bg-accent-hover disabled:opacity-40 w-fit"
+                        className="text-xs font-semibold px-2.5 py-1.5 rounded bg-ink text-paper hover:bg-ink-up disabled:opacity-40 w-fit"
                       >
                         {busyId === b.id ? '...' : 'Bax (bu biznes kimi)'}
                       </button>
@@ -412,7 +412,7 @@ export default function AdminPage() {
                             key={opt.days}
                             onClick={() => handleExtend(b, opt.days)}
                             disabled={busyId === b.id}
-                            className="text-xs font-mono font-semibold px-2 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40"
+                            className="text-xs font-mono font-semibold px-2 py-1.5 rounded border border-border text-text-3 hover:bg-surface-2 disabled:opacity-40"
                           >
                             {opt.label}
                           </button>
@@ -429,7 +429,7 @@ export default function AdminPage() {
                         <button
                           onClick={() => handleSetDate(b)}
                           disabled={busyId === b.id || !rowDate[b.id]}
-                          className="text-xs font-semibold px-2 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40 whitespace-nowrap"
+                          className="text-xs font-semibold px-2 py-1.5 rounded border border-border text-text-3 hover:bg-surface-2 disabled:opacity-40 whitespace-nowrap"
                         >
                           Tarixi təyin et
                         </button>
@@ -446,14 +446,14 @@ export default function AdminPage() {
                         </button>
                         <button
                           onClick={() => handleOpenCrm(b)}
-                          className="text-xs font-semibold px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt"
+                          className="text-xs font-semibold px-2.5 py-1.5 rounded border border-border text-text-3 hover:bg-surface-2"
                         >
                           {b.crm_lead_id ? 'CRM kartı' : 'CRM kartı yarat'}
                         </button>
                         <button
                           onClick={() => setConfirmAction({ business: b, kind: 'reset-password' })}
                           disabled={busyId === b.id}
-                          className="text-xs font-semibold px-2.5 py-1.5 rounded border border-rule text-ink-muted hover:bg-surface-alt disabled:opacity-40"
+                          className="text-xs font-semibold px-2.5 py-1.5 rounded border border-border text-text-3 hover:bg-surface-2 disabled:opacity-40"
                         >
                           Şifrəni sıfırla
                         </button>

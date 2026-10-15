@@ -4,9 +4,9 @@ import SubscriptionBanner from '@/components/layout/SubscriptionBanner'
 
 export default function MechanicLayout() {
   return (
-    <div className="min-h-screen bg-cream pb-20 font-sans">
+    <div className="min-h-screen bg-surface-2 pb-[68px] font-sans text-body-l text-text-2">
       <SubscriptionBanner />
-      <main><Outlet /></main>
+      <main className="max-w-xl mx-auto"><Outlet /></main>
       <MechanicBottomNav />
     </div>
   )

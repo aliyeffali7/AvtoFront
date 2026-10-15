@@ -7,6 +7,9 @@ import PeriodFilter from '@/components/ui/PeriodFilter'
 import { Period, makePeriod, periodRange } from '@/lib/period'
 import { CHART_SEQUENTIAL } from '@/lib/chartColors'
 import Spinner from '@/components/ui/Spinner'
+import KpiCard from '@/components/ui/KpiCard'
+import Money from '@/components/ui/Money'
+import MechanicHeader from '@/components/layout/MechanicHeader'
 
 export default function MechanicEarningsClient() {
   const [period, setPeriod] = useState<Period>(() => makePeriod('30'))
@@ -30,61 +33,42 @@ export default function MechanicEarningsClient() {
   useEffect(() => { load() }, [load])
 
   return (
-    <div className="min-h-screen bg-cream">
-      {/* Header */}
-      <div className="bg-surface border-b border-rule px-5 pt-6 pb-4">
-        <h1 className="page-title mb-1.5">Qazancım</h1>
-        <p className="text-sm text-ink-muted">Tamamladığınız işlərdən qazandığınız məbləğ</p>
-      </div>
+    <div>
+      <MechanicHeader title="Qazancım" subtitle="Tamamladığınız işlərdən qazandığınız məbləğ" />
 
-      <div className="px-4 py-4 pb-28 max-w-lg mx-auto flex flex-col gap-3">
-        {/* Bugün / Bu ay */}
+      <div className="p-4 flex flex-col gap-3">
         <div className="grid grid-cols-2 gap-3">
-          <div className="card px-5 py-5">
-            <p className="section-label mb-2">Bugün</p>
-            <p className="text-2xl font-bold text-ink font-mono">
-              {data ? formatCurrency(data.today ?? 0) : '—'}
-            </p>
-          </div>
-          <div className="card px-5 py-5">
-            <p className="section-label mb-2">Bu ay</p>
-            <p className="text-2xl font-bold text-ink font-mono">
-              {data ? formatCurrency(data.this_month ?? 0) : '—'}
-            </p>
-          </div>
+          <KpiCard label="Bugün" value={data?.today ?? 0} money />
+          <KpiCard label="Bu ay" value={data?.this_month ?? 0} money />
         </div>
 
         {/* Account: what the shop still owes */}
         {account && (
-          <div className="card px-5 py-4 grid grid-cols-2 gap-3">
-            <div>
-              <p className="section-label mb-1">Aldığım (cəmi)</p>
-              <p className="text-lg font-bold text-ink font-mono">{formatCurrency(account.paid)}</p>
-            </div>
-            <div>
-              <p className="section-label mb-1">Mənə borc</p>
-              <p className={`text-lg font-bold font-mono ${account.balance > 0 ? 'text-accent' : 'text-ink'}`}>{formatCurrency(account.balance)}</p>
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <KpiCard label="Aldığım (cəmi)" value={account.paid} money />
+              <KpiCard label="Mənə borc" value={account.balance} money />
             </div>
             {account.this_month_salary > 0 && (
-              <p className="col-span-2 text-xs text-ink-muted">Bu ayın maaşından bu günə qədər: {formatCurrency(account.this_month_salary)}</p>
+              <p className="text-body text-text-3 px-1">Bu ayın maaşından bu günə qədər: <span className="font-mono font-semibold text-text-2">{formatCurrency(account.this_month_salary)}</span></p>
             )}
-          </div>
+          </>
         )}
 
         {/* Period selector + daily breakdown */}
-        <div className="card px-5 py-5">
+        <div className="bg-surface border border-border rounded-lg p-4">
           <PeriodFilter value={period} onChange={setPeriod} className="mb-4" />
 
           {loading ? (
             <Spinner />
           ) : (
             <>
-              <div className="flex items-center justify-between mb-4">
-                <p className="section-label mb-0">Seçilmiş dövr üçün cəmi</p>
-                <p className="font-mono font-semibold text-sm text-ink">{formatCurrency(data?.total ?? 0)}</p>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <p className="font-sans text-label uppercase text-text-3">Seçilmiş dövr üçün cəmi</p>
+                <Money value={data?.total ?? 0} className="text-money" />
               </div>
               {!data || data.daily.length === 0 ? (
-                <p className="text-sm text-ink-muted">Bu dövrdə qazanc qeydi yoxdur.</p>
+                <p className="text-body text-text-3">Bu dövrdə qazanc qeydi yoxdur.</p>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={data.daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>

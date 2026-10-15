@@ -1,5 +1,18 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ClipboardList, LogOut, Wallet } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { logout } from '@/services/auth.service'
+
+const TAB_BASE = 'flex-1 flex flex-col items-center justify-center gap-1 text-small font-semibold transition-colors duration-[120ms]'
+
+function Tab({ to, icon: Icon, label, active }: { to: string; icon: LucideIcon; label: string; active: boolean }) {
+  return (
+    <Link to={to} className={`${TAB_BASE} ${active ? 'text-ink' : 'text-text-3'}`} aria-current={active ? 'page' : undefined}>
+      <Icon size={24} strokeWidth={active ? 2 : 1.75} />
+      {label}
+    </Link>
+  )
+}
 
 export default function MechanicBottomNav() {
   const { pathname } = useLocation()
@@ -11,42 +24,11 @@ export default function MechanicBottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-sidebar flex items-stretch h-[68px] z-50">
-      <Link
-        to="/mechanic/orders"
-        className={`flex-1 flex flex-col items-center justify-center gap-1 text-xs font-semibold transition-colors border-t-2 ${
-          pathname.startsWith('/mechanic/orders') ? 'text-cream border-sidebar-accent bg-sidebar-active' : 'text-ink-muted border-transparent'
-        }`}
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
-        Sifarişlər
-      </Link>
-
-      <div className="w-px bg-white/10" />
-
-      <Link
-        to="/mechanic/earnings"
-        className={`flex-1 flex flex-col items-center justify-center gap-1 text-xs font-semibold transition-colors border-t-2 ${
-          pathname.startsWith('/mechanic/earnings') ? 'text-cream border-sidebar-accent bg-sidebar-active' : 'text-ink-muted border-transparent'
-        }`}
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 12v-2m0-12a9 9 0 100 18 9 9 0 000-18z" />
-        </svg>
-        Qazancım
-      </Link>
-
-      <div className="w-px bg-white/10" />
-
-      <button
-        onClick={handleLogout}
-        className="flex-1 flex flex-col items-center justify-center gap-1 text-xs font-semibold text-ink-muted hover:text-cream transition-colors border-t-2 border-transparent"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-        </svg>
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border flex items-stretch h-[68px] z-40">
+      <Tab to="/mechanic/orders" icon={ClipboardList} label="Sifarişlər" active={pathname.startsWith('/mechanic/orders')} />
+      <Tab to="/mechanic/earnings" icon={Wallet} label="Qazancım" active={pathname.startsWith('/mechanic/earnings')} />
+      <button type="button" onClick={handleLogout} className={`${TAB_BASE} text-text-3 hover:text-ink`}>
+        <LogOut size={24} strokeWidth={1.75} />
         Çıxış
       </button>
     </nav>
