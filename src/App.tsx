@@ -14,6 +14,8 @@ import MechanicsPage from '@/pages/business/MechanicsPage'
 import MechanicDetailPage from '@/pages/business/MechanicDetailPage'
 import WarehousePage from '@/pages/business/WarehousePage'
 import ProductsTab from '@/components/warehouse/ProductsTab'
+import ProductDetail from '@/components/warehouse/ProductDetail'
+import PurchaseDetail from '@/components/warehouse/PurchaseDetail'
 import PurchasesTab from '@/components/warehouse/PurchasesTab'
 import MovementsTab from '@/components/warehouse/MovementsTab'
 import StockReportTab from '@/components/warehouse/StockReportTab'
@@ -27,6 +29,7 @@ import CustomersPage from '@/pages/business/CustomersPage'
 import CustomerDetailPage from '@/pages/business/CustomerDetailPage'
 import SettingsPage from '@/pages/business/SettingsPage'
 import StoresPage from '@/pages/business/StoresPage'
+import StoreDetailPage from '@/pages/business/StoreDetailPage'
 import MechanicOrdersPage from '@/pages/mechanic/MechanicOrdersPage'
 import MechanicOrderDetailPage from '@/pages/mechanic/MechanicOrderDetailPage'
 import MechanicEarningsPage from '@/pages/mechanic/MechanicEarningsPage'
@@ -120,9 +123,9 @@ export default function App() {
               <Route path="/business/warehouse" element={<WarehousePage />}>
                 <Route index element={<Navigate to="products" replace />} />
                 <Route path="products" element={<ProductsTab />} />
-                <Route path="products/:productId" element={<ProductsTab />} />
+                <Route path="products/:productId" element={<ProductDetail />} />
                 <Route path="purchases" element={<PurchasesTab />} />
-                <Route path="purchases/:purchaseId" element={<PurchasesTab />} />
+                <Route path="purchases/:purchaseId" element={<PurchaseDetail />} />
                 <Route path="movements" element={<MovementsTab />} />
                 <Route path="report" element={<StockReportTab />} />
               </Route>
@@ -137,6 +140,7 @@ export default function App() {
               <Route path="/business/customers" element={<CustomersPage />} />
               <Route path="/business/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/business/stores" element={<StoresPage />} />
+              <Route path="/business/stores/:id" element={<StoreDetailPage />} />
               <Route path="/business/shops" element={<Navigate to="/business/stores" replace />} />
               <Route path="/business/settings" element={<SettingsPage />} />
             </Route>

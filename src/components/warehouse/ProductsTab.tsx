@@ -1,52 +1,67 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Plus, FileSpreadsheet, Copy } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, FileSpreadsheet, Copy, Search } from 'lucide-react'
 import { Product } from '@/types'
 import { getDuplicates, getProducts, ProductTab } from '@/services/warehouse.service'
-import { formatCurrency } from '@/lib/utils'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
-import MasterDetailShell from '@/components/ui/MasterDetailShell'
+import KpiCard from '@/components/ui/KpiCard'
+import Money from '@/components/ui/Money'
+import PageHeader from '@/components/ui/PageHeader'
+import Pagination from '@/components/ui/Pagination'
+import Segmented from '@/components/ui/Segmented'
 import Spinner from '@/components/ui/Spinner'
-import ProductCardPanel from './ProductCardPanel'
+import StatusBadge from '@/components/ui/StatusBadge'
 import DuplicatesPanel from './DuplicatesPanel'
 
-const TABS: { key: ProductTab; label: string; hint: string }[] = [
-  { key: 'stock', label: 'Stokda', hint: 'Rəfdə olan məhsullar' },
-  { key: 'out', label: 'Bitənlər', hint: 'Anbar məhsulu, stoku bitib — yenidən almaq lazımdır' },
-  { key: 'order', label: 'Sifarişlik', hint: 'Anbarda saxlanmır, sifariş üçün alınır' },
-  { key: 'archived', label: 'Arxiv', hint: 'Artıq işlənməyən məhsullar (tarixçə saxlanılır)' },
+const TABS: { key: ProductTab; label: string; title: string }[] = [
+  { key: 'stock', label: 'Stokda', title: 'Rəfdə olan məhsullar' },
+  { key: 'out', label: 'Bitənlər', title: 'Anbar məhsulu, stoku bitib — yenidən almaq lazımdır' },
+  { key: 'order', label: 'Sifarişlik', title: 'Anbarda saxlanmır, sifariş üçün alınır' },
+  { key: 'archived', label: 'Arxiv', title: 'Artıq işlənməyən məhsullar (tarixçə saxlanılır)' },
 ]
 
 const TAB_KEY = 'avtoservis:stock:tab'
+const PAGE_SIZE = 50
 
 function isLow(p: Product) {
   return p.is_warehouse !== false && p.stock_quantity > 0 && p.stock_quantity < (p.low_stock_threshold ?? 3)
 }
+function isOut(p: Product) {
+  return p.is_warehouse !== false && p.stock_quantity <= 0
+}
 
+/** Stok · Məhsullar. A row opens the product's own full page. */
 export default function ProductsTab() {
   const navigate = useNavigate()
-  const { productId } = useParams<{ productId?: string }>()
   const [params] = useSearchParams()
   const [tab, setTab] = useState<ProductTab>(() => {
     const fromLink = params.get('tab') as ProductTab | null
     if (fromLink && TABS.some(t => t.key === fromLink)) return fromLink
-    try { return (localStorage.getItem(TAB_KEY) as ProductTab) || 'stock' } catch { return 'stock' }
+    try {
+      const saved = localStorage.getItem(TAB_KEY) as ProductTab
+      if (TABS.some(t => t.key === saved)) return saved
+    } catch { /* ignore */ }
+    return 'stock'
   })
   const [search, setSearch] = useState('')
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [page, setPage] = useState(1)
   const [showDuplicates, setShowDuplicates] = useState(false)
   const [duplicateCount, setDuplicateCount] = useState(0)
+  // KPI sources are independent of the active tab / search.
+  const [kpiStock, setKpiStock] = useState<Product[]>([])
+  const [outCount, setOutCount] = useState(0)
 
-  const loadDuplicateCount = useCallback(() => {
+  const loadSide = useCallback(() => {
     getDuplicates().then(r => setDuplicateCount(r.data.length)).catch(() => {})
+    getProducts(undefined, 'stock').then(r => setKpiStock(r.data)).catch(() => {})
+    getProducts(undefined, 'out').then(r => setOutCount(r.data.length)).catch(() => {})
   }, [])
-  useEffect(() => { loadDuplicateCount() }, [loadDuplicateCount])
-  // A product opened by URL (link from elsewhere, browser back) replaces the duplicates panel.
-  useEffect(() => { if (productId) setShowDuplicates(false) }, [productId])
+  useEffect(() => { loadSide() }, [loadSide])
 
   const load = useCallback(async (q: string, t: ProductTab) => {
     setLoading(true)
@@ -64,155 +79,126 @@ export default function ProductsTab() {
     const timer = setTimeout(() => load(search, tab), search ? 300 : 0)
     return () => clearTimeout(timer)
   }, [search, tab, load])
+  useEffect(() => { setPage(1) }, [search, tab])
 
   function changeTab(t: ProductTab) {
     setTab(t)
     try { localStorage.setItem(TAB_KEY, t) } catch { /* ignore */ }
   }
 
-  const selectedId = productId ? parseInt(productId) : null
-  const openProduct = (id: number) => {
-    setShowDuplicates(false)
-    navigate(`/business/warehouse/products/${id}`, { replace: selectedId !== null })
-  }
-  const closeProduct = () => {
-    setShowDuplicates(false)
-    navigate('/business/warehouse/products', { replace: true })
-  }
+  const stockValue = useMemo(() => kpiStock.reduce((s, p) => s + Number(p.purchase_price ?? 0) * p.stock_quantity, 0), [kpiStock])
+  const lowCount = useMemo(() => kpiStock.filter(isLow).length, [kpiStock])
 
-  const stockValue = products.reduce((s, p) => s + Number(p.purchase_price ?? 0) * p.stock_quantity, 0)
-  const sellValue = products.reduce((s, p) => s + Number(p.sell_price) * p.stock_quantity, 0)
-  const lowCount = products.filter(isLow).length
+  // Totals cover every row of the active list, not just the visible page.
+  const costTotal = products.reduce((s, p) => s + Number(p.purchase_price ?? 0) * p.stock_quantity, 0)
+  const sellTotal = products.reduce((s, p) => s + Number(p.sell_price) * p.stock_quantity, 0)
+  const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE))
+  const pageRows = products.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const activeTab = TABS.find(t => t.key === tab)!
 
-  const list = (
-    <>
-      {loading ? (
-        <Spinner />
-      ) : error ? (
-        <p className="p-6 text-sm text-danger">{error}</p>
-      ) : products.length === 0 ? (
-        <div className="p-6">
-          <EmptyState
-            title={search ? 'Heç nə tapılmadı' : 'Bu bölmədə məhsul yoxdur'}
-            subtitle={tab === 'stock' ? 'Məhsul əlavə etmək üçün "Yeni alış" düyməsini basın.' : activeTab.hint}
-          />
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="ledger-table min-w-[640px]">
-            <thead>
-              <tr>
-                <th className="ledger-th w-24">Kodu</th>
-                <th className="ledger-th">Adı</th>
-                <th className="ledger-th text-center w-24">Stok</th>
-                <th className="ledger-th text-right w-28">Son alış</th>
-                <th className="ledger-th text-right w-28">Satış</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map(p => (
-                <tr
-                  key={p.id}
-                  onClick={() => openProduct(p.id)}
-                  className={`ledger-row ${selectedId === p.id ? 'ledger-row-selected' : ''}`}
-                >
-                  <td className="ledger-td font-mono text-xs text-ink-muted">{p.code || '—'}</td>
-                  <td className="ledger-td whitespace-normal">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-ink">{p.name}</span>
-                      {isLow(p) && <Badge variant="warning">Az qalıb</Badge>}
-                      {p.is_warehouse === false && tab !== 'order' && <Badge variant="neutral">Sifarişlik</Badge>}
-                    </div>
-                  </td>
-                  <td className="ledger-td text-center font-mono">
-                    <span className={p.stock_quantity === 0 ? 'text-ink-muted' : isLow(p) ? 'text-warning font-semibold' : 'text-ink font-semibold'}>
-                      {p.stock_quantity}
-                    </span>
-                    <span className="text-xs text-ink-muted ml-1">{p.unit}</span>
-                  </td>
-                  <td className="ledger-td text-right font-mono text-ink-soft">{formatCurrency(p.purchase_price ?? 0)}</td>
-                  <td className="ledger-td text-right font-mono font-semibold text-accent">{formatCurrency(p.sell_price)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </>
-  )
-
   return (
-    <div>
-      <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-4">
-        <div className="flex flex-wrap gap-1 border border-rule rounded p-1 bg-surface-alt w-fit">
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => changeTab(t.key)}
-              title={t.hint}
-              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${tab === t.key ? 'bg-surface text-ink border border-rule' : 'text-ink-muted hover:text-ink'}`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Ad və ya kod ilə axtar..."
-          className="input lg:max-w-xs"
-        />
-        <div className="flex gap-2 lg:ml-auto">
-          {duplicateCount > 0 && (
-            <Button variant="secondary" onClick={() => { navigate('/business/warehouse/products', { replace: true }); setShowDuplicates(true) }}>
-              <Copy className="w-4 h-4" />
-              Təkrarlar ({duplicateCount})
-            </Button>
-          )}
-          <Button variant="secondary" onClick={() => navigate('/business/warehouse/purchases?new=excel')}>
-            <FileSpreadsheet className="w-4 h-4" />
-            Excel idxal
-          </Button>
-          <Button onClick={() => navigate('/business/warehouse/purchases?new=1')}>
-            <Plus className="w-4 h-4" strokeWidth={2.5} />
-            Yeni alış
-          </Button>
-        </div>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Stok · Məhsullar"
+        subtitle={`${activeTab.title} · ${products.length} məhsul`}
+        actions={
+          <>
+            {duplicateCount > 0 && (
+              <Button variant="secondary" icon={Copy} onClick={() => setShowDuplicates(true)}>
+                Təkrar məhsullar ({duplicateCount})
+              </Button>
+            )}
+            <Button variant="secondary" icon={FileSpreadsheet} onClick={() => navigate('/business/warehouse/purchases?new=excel')}>Excel idxal</Button>
+            <Button icon={Plus} onClick={() => navigate('/business/warehouse/purchases?new=1')}>Yeni alış</Button>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <KpiCard label="Anbarın dəyəri" value={stockValue} money note="Son alış qiyməti ilə" />
+        <KpiCard label="Az qalıb" value={lowCount} note={lowCount ? 'Tezliklə bitəcək məhsullar' : 'Hamısı kifayət qədərdir'} />
+        <KpiCard label="Bitib" value={outCount} note={outCount ? 'Yenidən almaq lazımdır' : undefined} />
       </div>
 
-      {tab === 'stock' && products.length > 0 && !search && (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
-          <div className="card px-4 py-3">
-            <p className="section-label mb-1">Alış dəyəri (son qiymətlə)</p>
-            <p className="text-lg font-bold font-mono text-ink">{formatCurrency(stockValue)}</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full sm:w-72">
+          <Search size={18} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Ad və ya kod ilə axtar..."
+            aria-label="Axtar"
+            className="input !pl-10"
+          />
+        </div>
+        <Segmented label="Bölmə" options={TABS} value={tab} onChange={changeTab} />
+      </div>
+
+      {loading && products.length === 0 ? (
+        <Spinner />
+      ) : error ? (
+        <p className="text-body text-danger">{error}</p>
+      ) : products.length === 0 ? (
+        <EmptyState
+          title={search ? 'Heç nə tapılmadı' : 'Bu bölmədə məhsul yoxdur'}
+          subtitle={tab === 'stock' ? 'Məhsul əlavə etmək üçün "Yeni alış" düyməsini basın.' : activeTab.title}
+        />
+      ) : (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="ledger-table min-w-[720px]">
+              <thead>
+                <tr>
+                  <th className="ledger-th w-28">Kodu</th>
+                  <th className="ledger-th">Adı</th>
+                  <th className="ledger-th">Stok</th>
+                  <th className="ledger-th text-right">Son alış</th>
+                  <th className="ledger-th text-right">Satış</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.map(p => (
+                  <tr key={p.id} onClick={() => navigate(`/business/warehouse/products/${p.id}`)} className="ledger-row">
+                    <td className="ledger-td font-mono text-small text-text-3">{p.code || '—'}</td>
+                    <td className="ledger-td whitespace-normal font-semibold">{p.name}</td>
+                    <td className="ledger-td">
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono tabular-nums font-semibold min-w-[3ch] text-right">{p.stock_quantity}</span>
+                        <span className="text-small text-text-3">{p.unit}</span>
+                        {isOut(p) && <StatusBadge status="Bitib" />}
+                        {isLow(p) && <StatusBadge status="Az qalıb" />}
+                        {p.is_warehouse === false && <Badge variant="neutral">Sifarişlik</Badge>}
+                        {p.is_archived && <Badge variant="danger">Arxivdə</Badge>}
+                      </span>
+                    </td>
+                    <td className="ledger-td text-right"><Money value={p.purchase_price ?? 0} /></td>
+                    <td className="ledger-td text-right"><Money value={p.sell_price} /></td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-surface-2">
+                  <td className="ledger-td font-semibold" colSpan={3}>Cəmi · {products.length} məhsul</td>
+                  <td className="ledger-td text-right">
+                    <span className="block font-sans text-label uppercase text-text-3">Alış dəyəri</span>
+                    <Money value={costTotal} className="font-bold" />
+                  </td>
+                  <td className="ledger-td text-right">
+                    <span className="block font-sans text-label uppercase text-text-3">Satış dəyəri</span>
+                    <Money value={sellTotal} className="font-bold" />
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
-          <div className="card px-4 py-3">
-            <p className="section-label mb-1">Satış dəyəri</p>
-            <p className="text-lg font-bold font-mono text-accent">{formatCurrency(sellValue)}</p>
-          </div>
-          <div className={`card px-4 py-3 ${lowCount ? 'bg-warning-bg border-warning' : ''}`}>
-            <p className={`section-label mb-1 ${lowCount ? 'text-warning' : ''}`}>Az qalıb</p>
-            <p className={`text-lg font-bold font-mono ${lowCount ? 'text-warning' : 'text-ink'}`}>{lowCount} məhsul</p>
-          </div>
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </div>
       )}
-      <p className="text-xs text-ink-muted mb-2">{activeTab.hint} · {products.length} məhsul</p>
 
-      <MasterDetailShell
-        list={list}
-        detail={showDuplicates ? (
-          <DuplicatesPanel onChanged={() => { load(search, tab); loadDuplicateCount() }} />
-        ) : selectedId ? (
-          <ProductCardPanel
-            key={selectedId}
-            productId={selectedId}
-            onChanged={() => { load(search, tab); loadDuplicateCount() }}
-            onClosed={closeProduct}
-            onOpenProduct={openProduct}
-          />
-        ) : null}
-        onClose={closeProduct}
+      <DuplicatesPanel
+        open={showDuplicates}
+        onClose={() => setShowDuplicates(false)}
+        onChanged={() => { load(search, tab); loadSide() }}
       />
     </div>
   )
