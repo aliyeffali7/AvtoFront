@@ -2,51 +2,70 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { logout, getBusinessProfile } from '@/services/auth.service'
 import { Business } from '@/types'
+import { useCurrentUser } from '@/App'
+import ServoLogo from '@/components/ui/ServoLogo'
 import {
   LayoutDashboard,
   ClipboardList,
-  Users,
-  Package,
-  Wallet,
-  UserCircle,
   CalendarDays,
-  Store,
+  Users,
+  Wrench,
+  Package,
+  Banknote,
   Settings,
   LogOut,
-  ChevronDown,
+  ChevronRight,
+  X,
+  type LucideIcon,
 } from 'lucide-react'
 import { mediaUrl } from '@/lib/apiUrl'
 
-const stockChildren = [
-  { href: '/business/warehouse/products',  label: 'Məhsullar' },
+interface NavChild {
+  href: string
+  label: string
+}
+interface NavItem {
+  href: string
+  label: string
+  icon: LucideIcon
+  children?: NavChild[]
+}
+
+const stockChildren: NavChild[] = [
+  { href: '/business/warehouse/products', label: 'Məhsullar' },
   { href: '/business/warehouse/purchases', label: 'Alışlar' },
   { href: '/business/warehouse/movements', label: 'Hərəkətlər' },
-  { href: '/business/stores',              label: 'Tədarükçülər' },
-  { href: '/business/warehouse/report',    label: 'Anbar hesabatı' },
+  { href: '/business/stores', label: 'Tədarükçülər' },
+  { href: '/business/warehouse/report', label: 'Anbar hesabatı' },
 ]
 
-const financeChildren = [
-  { href: '/business/finance/kassa',       label: 'Kassa' },
+const financeChildren: NavChild[] = [
+  { href: '/business/finance/kassa', label: 'Kassa' },
   { href: '/business/finance/kreditorlar', label: 'Kreditorlar' },
-  { href: '/business/finance/debitorlar',  label: 'Debitorlar' },
-  { href: '/business/finance/hesabat',     label: 'Hesabat' },
+  { href: '/business/finance/debitorlar', label: 'Debitorlar' },
+  { href: '/business/finance/hesabat', label: 'Hesabat' },
 ]
 
-const navItems = [
-  { href: '/business/dashboard',    label: 'Dashboard',       icon: LayoutDashboard },
-  { href: '/business/orders',       label: 'Sifarişlər',      icon: ClipboardList },
-  { href: '/business/customers',    label: 'Müştərilər',      icon: UserCircle },
-  { href: '/business/mechanics',    label: 'Ustalar',         icon: Users },
-  { href: '/business/warehouse',    label: 'Stok',            icon: Package, children: stockChildren },
-  { href: '/business/finance',      label: 'Maliyyə',         icon: Wallet, children: financeChildren },
-  { href: '/business/reservations', label: 'Rezervasiyalar',  icon: CalendarDays },
-  { href: '/business/shops',        label: 'Mağazalar',       icon: Store },
-  { href: '/business/settings',     label: 'Tənzimləmələr',   icon: Settings },
+const navItems: NavItem[] = [
+  { href: '/business/dashboard', label: 'Ana səhifə', icon: LayoutDashboard },
+  { href: '/business/orders', label: 'Sifarişlər', icon: ClipboardList },
+  { href: '/business/reservations', label: 'Rezervasiyalar', icon: CalendarDays },
+  { href: '/business/customers', label: 'Müştərilər', icon: Users },
+  { href: '/business/mechanics', label: 'Ustalar', icon: Wrench },
+  { href: '/business/warehouse', label: 'Stok', icon: Package, children: stockChildren },
+  { href: '/business/finance', label: 'Maliyyə', icon: Banknote, children: financeChildren },
+  { href: '/business/settings', label: 'Tənzimləmələr', icon: Settings },
 ]
+
+const rowBase =
+  'w-full flex items-center gap-2.5 h-11 px-3 rounded-md border-l-[3px] text-[15px] transition-colors duration-[120ms] ease-servo'
+const subBase =
+  'flex items-center h-10 pl-[30px] pr-3 rounded-md border-l-[3px] text-sm transition-colors duration-[120ms] ease-servo'
 
 export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const user = useCurrentUser()
   const [business, setBusiness] = useState<Business | null>(null)
   const [logoError, setLogoError] = useState(false)
   const [openMenu, setOpenMenu] = useState<string | null>(null)
@@ -60,7 +79,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
   // a manual close click (which doesn't itself change the route) sticks
   // instead of being immediately forced back open.
   useEffect(() => {
-    const parent = navItems.find(item => 'children' in item && item.children?.some(c => pathname.startsWith(c.href)))
+    const parent = navItems.find(item => item.children?.some(c => pathname.startsWith(c.href)))
     setOpenMenu(parent ? parent.href : null)
   }, [pathname])
 
@@ -70,73 +89,54 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
   }
 
   return (
-    <aside className="w-72 bg-sidebar min-h-screen flex flex-col shrink-0">
+    <aside className="w-[232px] bg-ink border-r border-ink-up h-screen flex flex-col shrink-0">
       {/* Brand */}
-      <div className="px-6 py-5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          {business?.logo && !logoError ? (
-            <img
-              src={mediaUrl(business.logo)}
-              alt="logo"
-              className="w-24 h-24 rounded object-contain shrink-0 bg-cream"
-              onError={() => setLogoError(true)}
-            />
-          ) : null}
-          <div className="min-w-0">
-            <p className="font-serif font-semibold text-[17px] text-cream leading-tight truncate">
-              {business?.name ?? 'Avtoservis CRM'}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
+      <div className="px-4 py-5 flex items-center justify-between">
+        <Link to="/business/dashboard" onClick={onClose} aria-label="Servo">
+          <ServoLogo variant="white" className="h-[22px]" />
+        </Link>
+        {onClose && (
           <button
-            onClick={handleLogout}
-            title="Çıxış"
-            aria-label="Çıxış"
-            className="w-11 h-11 flex items-center justify-center rounded text-ink-muted hover:text-cream hover:bg-sidebar-active transition-colors"
+            onClick={onClose}
+            aria-label="Bağla"
+            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-md text-text-4 hover:bg-ink-up hover:text-paper transition-colors"
           >
-            <LogOut className="w-5 h-5" strokeWidth={1.8} />
+            <X className="w-5 h-5" strokeWidth={1.75} />
           </button>
-          {onClose && (
-            <button onClick={onClose} aria-label="Bağla" className="lg:hidden w-11 h-11 flex items-center justify-center rounded text-ink-muted hover:bg-sidebar-active transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 pt-2 flex flex-col gap-0.5 overflow-y-auto">
-        {navItems.map((item) => {
+      <nav className="flex-1 min-h-0 px-2 py-1 flex flex-col gap-0.5 overflow-y-auto">
+        {navItems.map(item => {
           const Icon = item.icon
-          const hasChildren = 'children' in item && !!item.children
+          const hasChildren = !!item.children
           const isChildActive = hasChildren && item.children!.some(c => pathname.startsWith(c.href))
           const isActive = !hasChildren && pathname.startsWith(item.href)
           const isOpen = hasChildren && openMenu === item.href
 
           if (hasChildren) {
             return (
-              <div key={item.href}>
+              <div key={item.href} className="flex flex-col">
                 <button
                   type="button"
+                  aria-expanded={isOpen}
                   onClick={() => setOpenMenu(isOpen ? null : item.href)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors min-h-[42px] border-l-2 ${
-                    isChildActive
-                      ? 'bg-sidebar-active text-cream border-sidebar-accent'
-                      : 'text-ink-muted hover:bg-sidebar-active/60 hover:text-cream border-transparent'
+                  className={`${rowBase} border-transparent hover:bg-ink-up hover:text-paper ${
+                    isChildActive ? 'text-paper font-semibold' : 'text-text-4 font-normal'
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" strokeWidth={isChildActive ? 2.25 : 1.8} />
+                  <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
                   <span className="flex-1 text-left">{item.label}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} strokeWidth={2} />
+                  <ChevronRight
+                    className={`w-4 h-4 shrink-0 transition-transform duration-[160ms] ease-servo ${isOpen ? 'rotate-90' : ''}`}
+                    strokeWidth={1.75}
+                  />
                 </button>
-                {/* max-height transition — content stays mounted (no pop-in)
-                    and slides open/closed. 260px comfortably fits the
-                    5 stock sub-items. */}
-                <div className={`overflow-hidden transition-[max-height] duration-200 ease-in-out ${isOpen ? 'max-h-[260px]' : 'max-h-0'}`}>
-                  <div className="flex flex-col gap-0.5 mt-0.5 mb-1">
+                <div
+                  className={`overflow-hidden transition-[max-height] duration-[160ms] ease-servo ${isOpen ? 'max-h-[260px]' : 'max-h-0'}`}
+                >
+                  <div className="flex flex-col gap-0.5 pt-0.5 pb-1.5">
                     {item.children!.map(child => {
                       const childActive = pathname.startsWith(child.href)
                       return (
@@ -144,10 +144,11 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
                           key={child.href}
                           to={child.href}
                           onClick={onClose}
-                          className={`flex items-center pl-11 pr-3 py-2 text-sm font-medium transition-colors min-h-[38px] border-l-2 ${
+                          tabIndex={isOpen ? 0 : -1}
+                          className={`${subBase} hover:bg-ink-up hover:text-paper ${
                             childActive
-                              ? 'bg-sidebar-active text-cream border-sidebar-accent'
-                              : 'text-ink-muted/90 hover:bg-sidebar-active/60 hover:text-cream border-transparent'
+                              ? 'bg-ink-up text-paper font-semibold border-signal'
+                              : 'text-text-4 font-normal border-transparent'
                           }`}
                         >
                           {child.label}
@@ -165,18 +166,41 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
               key={item.href}
               to={item.href}
               onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors min-h-[42px] border-l-2 ${
-                isActive
-                  ? 'bg-sidebar-active text-cream border-sidebar-accent'
-                  : 'text-ink-muted hover:bg-sidebar-active/60 hover:text-cream border-transparent'
+              className={`${rowBase} hover:bg-ink-up hover:text-paper ${
+                isActive ? 'bg-ink-up text-paper font-semibold border-signal' : 'text-text-4 font-normal border-transparent'
               }`}
             >
-              <Icon className="w-4 h-4 shrink-0" strokeWidth={isActive ? 2.25 : 1.8} />
+              <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
               {item.label}
             </Link>
           )
         })}
       </nav>
+
+      {/* Footer */}
+      <div className="shrink-0 p-4 border-t border-ink-up flex flex-col gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {business?.logo && !logoError ? (
+            <img
+              src={mediaUrl(business.logo)}
+              alt="logo"
+              className="w-8 h-8 rounded-sm object-contain shrink-0 bg-paper"
+              onError={() => setLogoError(true)}
+            />
+          ) : null}
+          <div className="min-w-0 text-small text-text-4">
+            <p className="text-paper truncate">{business?.name ?? user?.business?.name ?? ''}</p>
+            <p className="truncate">{user?.email}</p>
+          </div>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 h-9 px-2 -mx-2 rounded-md text-small text-text-4 hover:bg-ink-up hover:text-paper transition-colors duration-[120ms]"
+        >
+          <LogOut className="w-4 h-4" strokeWidth={1.75} />
+          Çıxış
+        </button>
+      </div>
     </aside>
   )
 }

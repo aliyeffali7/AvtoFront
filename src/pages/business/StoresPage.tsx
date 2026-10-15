@@ -157,7 +157,10 @@ export default function StoresPage() {
                   onClick={() => selectStore(store)}
                   className={`ledger-row ${!creating && selectedId === store.id ? 'ledger-row-selected' : ''}`}
                 >
-                  <td className="ledger-td font-medium">{store.name}</td>
+                  <td className="ledger-td">
+                    <span className="font-medium">{store.name}</span>
+                    {store.contact_person && <span className="block text-small text-text-3">{store.contact_person}</span>}
+                  </td>
                   <td className="ledger-td font-mono text-ink-muted">{store.phone || '—'}</td>
                   <td className="ledger-td text-right font-mono font-semibold">{formatCurrency(store.total_purchased || 0)}</td>
                   <td className={`ledger-td text-right font-mono ${(store.debt_remaining || 0) > 0 ? 'text-danger font-semibold' : 'text-ink-muted'}`}>{formatCurrency(store.debt_remaining || 0)}</td>

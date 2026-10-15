@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AlertTriangle, Clock } from 'lucide-react'
 import api from '@/lib/axios'
 import { SubscriptionStatus } from '@/types'
 
@@ -42,16 +43,14 @@ export default function SubscriptionBanner() {
   }
 
   if (!tone) return null
+  const Icon = tone === 'danger' ? AlertTriangle : Clock
   return (
-    <div role="status" className={`${tone === 'danger' ? 'bg-danger' : 'bg-warning'} text-cream px-5 py-3 flex items-center gap-3`}>
-      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-        {tone === 'danger' ? (
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        ) : (
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        )}
-      </svg>
-      <p className="text-sm font-medium">{text}</p>
+    <div
+      role="status"
+      className={`${tone === 'danger' ? 'bg-danger-subtle text-danger-strong border-danger/20' : 'bg-warning-subtle text-warning-strong border-warning/20'} border-b px-5 py-3 flex items-center gap-3`}
+    >
+      <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
+      <p className="text-body font-medium">{text}</p>
     </div>
   )
 }

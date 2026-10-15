@@ -2,6 +2,7 @@ import { useState } from 'react'
 import LoginForm from '@/components/auth/LoginForm'
 import RegisterForm from '@/components/auth/RegisterForm'
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm'
+import ServoLogo from '@/components/ui/ServoLogo'
 
 const features = [
   {
@@ -38,7 +39,7 @@ const features = [
       </svg>
     ),
     title: 'Maliyyə uçotu',
-    desc: 'Gündəlik gəlir və xərcleri qeyd edin, xalis mənfəəti anlıq görün.',
+    desc: 'Gündəlik gəlir və xərcləri qeyd edin, xalis mənfəəti anlıq görün.',
   },
 ]
 
@@ -50,18 +51,10 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="bg-sidebar px-6 py-4 flex items-center justify-between">
         <div className="max-w-6xl mx-auto w-full flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-sidebar-accent rounded flex items-center justify-center">
-              <svg className="w-4 h-4 text-cream" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 .001M13 16H9m4 0h2m2 0h1a1 1 0 001-1v-5l-3-4H13" />
-              </svg>
-            </div>
-            <span className="font-serif font-semibold text-cream text-base tracking-tight">Avtoservis CRM</span>
-          </div>
+          <ServoLogo variant="white" className="h-6" />
           <button
             onClick={() => setTab('login')}
-            className="text-sm text-cream/80 hover:text-cream font-medium transition-colors"
+            className="text-sm text-text-4 hover:text-paper font-medium transition-colors"
           >
             Daxil ol
           </button>
@@ -71,25 +64,25 @@ export default function LandingPage() {
       <div className="max-w-6xl mx-auto px-6 py-16 lg:py-24 grid lg:grid-cols-2 gap-16 items-center">
         {/* Left — hero */}
         <div>
-          <div className="inline-flex items-center gap-2 bg-surface border border-rule rounded-full px-3 py-1.5 mb-6">
-            <span className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
-            <span className="text-accent text-xs font-semibold">7 günlük pulsuz sınaq</span>
+          <div className="inline-flex items-center gap-2 bg-surface border border-rule rounded px-3 py-1.5 mb-6">
+            <span className="w-1.5 h-1.5 bg-signal rounded-full" />
+            <span className="text-text-1 text-xs font-semibold">7 günlük pulsuz sınaq</span>
           </div>
 
-          <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight text-ink mb-5">
-            Avtoservisinizi<br />
-            <span className="text-accent">rəqəmsal idarə</span><br />
-            edin
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight tracking-[-0.035em] text-ink mb-5">
+            Servisinizi<br />
+            dəftərdən<br />
+            xilas edin
           </h1>
           <p className="text-ink-soft text-lg leading-relaxed mb-8 max-w-md">
-            Sifarişlər, ustalar, anbar, maliyyə — hamısı bir sistemdə. Qeydiyyat 1 dəqiqə çəkir, kart tələb olunmur.
+            Sifarişlər, ustalar, anbar, maliyyə — hamısı bir yerdə. Qeydiyyat 1 dəqiqə çəkir, kart tələb olunmur.
           </p>
 
           {/* Features */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {features.map((f, i) => (
               <div key={i} className="flex items-start gap-3">
-                <div className="w-9 h-9 bg-surface border border-rule rounded flex items-center justify-center shrink-0 text-accent">
+                <div className="w-9 h-9 bg-surface border border-rule rounded flex items-center justify-center shrink-0 text-text-1">
                   {f.icon}
                 </div>
                 <div>
@@ -110,7 +103,7 @@ export default function LandingPage() {
                 onClick={() => setTab('login')}
                 className={`flex-1 py-4 text-sm font-semibold transition-colors border-b-2 -mb-px ${
                   tab === 'login'
-                    ? 'text-ink border-accent'
+                    ? 'text-ink border-ink'
                     : 'text-ink-muted border-transparent hover:text-ink-soft'
                 }`}
               >
@@ -120,7 +113,7 @@ export default function LandingPage() {
                 onClick={() => setTab('register')}
                 className={`flex-1 py-4 text-sm font-semibold transition-colors border-b-2 -mb-px ${
                   tab === 'register'
-                    ? 'text-ink border-accent'
+                    ? 'text-ink border-ink'
                     : 'text-ink-muted border-transparent hover:text-ink-soft'
                 }`}
               >
@@ -134,13 +127,13 @@ export default function LandingPage() {
                   <p className="card-title text-base mb-5">Hesabınıza daxil olun</p>
                   <LoginForm />
                   <p className="text-center text-sm text-ink-muted mt-4">
-                    <button onClick={() => setTab('forgot')} className="text-accent font-semibold hover:underline">
+                    <button onClick={() => setTab('forgot')} className="text-text-1 font-semibold hover:underline">
                       Şifrəni unutmusunuz?
                     </button>
                   </p>
                   <p className="text-center text-sm text-ink-muted mt-2">
                     Hesabınız yoxdur?{' '}
-                    <button onClick={() => setTab('register')} className="text-accent font-semibold hover:underline">
+                    <button onClick={() => setTab('register')} className="text-text-1 font-semibold hover:underline">
                       Qeydiyyatdan keçin
                     </button>
                   </p>
@@ -152,7 +145,7 @@ export default function LandingPage() {
                   <RegisterForm />
                   <p className="text-center text-sm text-ink-muted mt-5">
                     Artıq hesabınız var?{' '}
-                    <button onClick={() => setTab('login')} className="text-accent font-semibold hover:underline">
+                    <button onClick={() => setTab('login')} className="text-text-1 font-semibold hover:underline">
                       Daxil olun
                     </button>
                   </p>
@@ -170,7 +163,7 @@ export default function LandingPage() {
 
       {/* Simple footer */}
       <div className="border-t border-rule py-6 text-center">
-        <p className="text-ink-muted text-xs">© 2024 Avtoservis CRM. Bütün hüquqlar qorunur.</p>
+        <p className="text-ink-muted text-xs">© 2026 Servo. Bütün hüquqlar qorunur.</p>
       </div>
     </div>
   )

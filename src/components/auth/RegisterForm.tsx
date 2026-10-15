@@ -43,9 +43,9 @@ export default function RegisterForm() {
           </svg>
         </div>
         <div>
-          <p className="text-ink font-semibold text-base">Hesab uğurla yaradıldı!</p>
-          <p className="text-ink-muted text-sm mt-1">{successMessage}</p>
-          <p className="text-ink-muted text-xs mt-2">Panelinizə yönləndirilirsiniz...</p>
+          <p className="text-text-1 font-semibold text-base">Hesab uğurla yaradıldı!</p>
+          <p className="text-text-3 text-sm mt-1">{successMessage}</p>
+          <p className="text-text-3 text-xs mt-2">Panelinizə yönləndirilirsiniz...</p>
         </div>
         <div className="w-6 h-6 border-2 border-success/30 border-t-success rounded-full animate-spin mt-1" />
       </div>
@@ -107,7 +107,7 @@ export default function RegisterForm() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 bg-danger-bg border border-danger/30 rounded px-4 py-3 text-sm text-danger">
+        <div className="flex items-center gap-2 bg-danger-subtle border border-danger/20 rounded-md px-4 py-3 text-small text-danger-strong">
           <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
@@ -118,7 +118,7 @@ export default function RegisterForm() {
       <button
         type="submit"
         disabled={loading}
-        className="btn-primary w-full py-3.5 text-sm"
+        className="btn-primary w-full"
       >
         {loading ? (
           <>
@@ -131,7 +131,7 @@ export default function RegisterForm() {
         ) : 'Pulsuz başla →'}
       </button>
 
-      <p className="text-center text-xs text-ink-muted">
+      <p className="text-center text-xs text-text-3">
         Qeydiyyatdan keçməklə istifadə şərtlərini qəbul edirsiniz.
       </p>
     </form>

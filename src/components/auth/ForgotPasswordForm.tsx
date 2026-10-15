@@ -57,10 +57,10 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
           </svg>
         </div>
         <div>
-          <p className="text-ink font-semibold text-base">Şifrə uğurla dəyişdirildi!</p>
-          <p className="text-ink-muted text-sm mt-1">İndi yeni şifrənizlə daxil ola bilərsiniz.</p>
+          <p className="text-text-1 font-semibold text-base">Şifrə uğurla dəyişdirildi!</p>
+          <p className="text-text-3 text-sm mt-1">İndi yeni şifrənizlə daxil ola bilərsiniz.</p>
         </div>
-        <button onClick={onDone} className="btn-primary w-full py-3.5 text-base min-h-[52px] mt-2">
+        <button onClick={onDone} className="btn-primary w-full mt-2">
           Daxil ol
         </button>
       </div>
@@ -70,8 +70,8 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
   if (step === 'code') {
     return (
       <form onSubmit={handleConfirm} className="flex flex-col gap-5">
-        <p className="text-sm text-ink-muted -mt-1">
-          <span className="font-medium text-ink">{email}</span> ünvanına göndərilən kodu və yeni şifrənizi daxil edin.
+        <p className="text-sm text-text-3 -mt-1">
+          <span className="font-medium text-text-1">{email}</span> ünvanına göndərilən kodu və yeni şifrənizi daxil edin.
         </p>
 
         <div className="flex flex-col gap-1.5">
@@ -117,7 +117,7 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 bg-danger-bg border border-danger/30 rounded px-4 py-3 text-sm text-danger">
+          <div className="flex items-center gap-2 bg-danger-subtle border border-danger/20 rounded-md px-4 py-3 text-small text-danger-strong">
             <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
@@ -125,10 +125,10 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
           </div>
         )}
 
-        <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-base min-h-[52px]">
+        <button type="submit" disabled={loading} className="btn-primary w-full">
           {loading ? 'Yoxlanılır...' : 'Şifrəni dəyiş'}
         </button>
-        <button type="button" onClick={() => setStep('email')} className="text-center text-sm text-ink-muted hover:text-ink">
+        <button type="button" onClick={() => setStep('email')} className="text-center text-sm text-text-3 hover:text-text-1">
           Başqa email daxil et
         </button>
       </form>
@@ -137,7 +137,7 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form onSubmit={handleRequestCode} className="flex flex-col gap-5">
-      <p className="text-sm text-ink-muted -mt-1">
+      <p className="text-sm text-text-3 -mt-1">
         Hesabınıza bağlı emaili daxil edin — sizə təsdiq kodu göndərəcəyik.
       </p>
 
@@ -156,7 +156,7 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 bg-danger-bg border border-danger/30 rounded px-4 py-3 text-sm text-danger">
+        <div className="flex items-center gap-2 bg-danger-subtle border border-danger/20 rounded-md px-4 py-3 text-small text-danger-strong">
           <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
@@ -164,10 +164,10 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
         </div>
       )}
 
-      <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-base min-h-[52px]">
+      <button type="submit" disabled={loading} className="btn-primary w-full">
         {loading ? 'Göndərilir...' : 'Kod göndər'}
       </button>
-      <button type="button" onClick={onDone} className="text-center text-sm text-ink-muted hover:text-ink">
+      <button type="button" onClick={onDone} className="text-center text-sm text-text-3 hover:text-text-1">
         Girişə qayıt
       </button>
     </form>

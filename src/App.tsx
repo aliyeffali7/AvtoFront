@@ -26,7 +26,6 @@ import CustomersPage from '@/pages/business/CustomersPage'
 import CustomerDetailPage from '@/pages/business/CustomerDetailPage'
 import SettingsPage from '@/pages/business/SettingsPage'
 import StoresPage from '@/pages/business/StoresPage'
-import ShopsPage from '@/pages/business/ShopsPage'
 import MechanicOrdersPage from '@/pages/mechanic/MechanicOrdersPage'
 import MechanicOrderDetailPage from '@/pages/mechanic/MechanicOrderDetailPage'
 import MechanicEarningsPage from '@/pages/mechanic/MechanicEarningsPage'
@@ -135,7 +134,7 @@ export default function App() {
               <Route path="/business/customers" element={<CustomersPage />} />
               <Route path="/business/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/business/stores" element={<StoresPage />} />
-              <Route path="/business/shops" element={<ShopsPage />} />
+              <Route path="/business/shops" element={<Navigate to="/business/stores" replace />} />
               <Route path="/business/settings" element={<SettingsPage />} />
             </Route>
           </Route>
