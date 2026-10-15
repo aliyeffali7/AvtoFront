@@ -61,16 +61,16 @@ export default function ChangePasswordSection({ email }: { email: string }) {
   if (step === 'done') {
     return (
       <div className="card p-6 flex flex-col items-center gap-4 text-center">
-        <div className="w-14 h-14 bg-success-bg rounded-full flex items-center justify-center">
+        <div className="w-14 h-14 bg-success-subtle rounded-full flex items-center justify-center">
           <svg className="w-7 h-7 text-success" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
         <div>
-          <p className="text-ink font-semibold text-base">Şifrə uğurla dəyişdirildi!</p>
-          <p className="text-ink-muted text-sm mt-1">Təhlükəsizlik üçün bütün sessiyalar bağlandı — yenidən daxil olun.</p>
+          <p className="text-ink font-display font-semibold text-h3">Şifrə uğurla dəyişdirildi!</p>
+          <p className="text-text-3 text-body mt-1">Təhlükəsizlik üçün bütün sessiyalar bağlandı — yenidən daxil olun.</p>
         </div>
-        <button onClick={handleFinish} className="btn-primary w-full py-3.5 text-base min-h-[52px]">
+        <button onClick={handleFinish} className="btn-primary w-full min-h-[52px]">
           Daxil ol
         </button>
       </div>
@@ -81,9 +81,9 @@ export default function ChangePasswordSection({ email }: { email: string }) {
     return (
       <form onSubmit={handleConfirm} className="card p-6 flex flex-col gap-5">
         <div>
-          <h2 className="text-sm font-semibold text-ink">Şifrəni dəyiş</h2>
-          <p className="text-sm text-ink-muted mt-1">
-            <span className="font-medium text-ink">{email}</span> ünvanına göndərilən kodu və yeni şifrənizi daxil edin.
+          <h2 className="font-display font-semibold text-h3 text-ink">Şifrəni dəyiş</h2>
+          <p className="text-body text-text-3 mt-1">
+            <span className="font-semibold text-ink">{email}</span> ünvanına göndərilən kodu və yeni şifrənizi daxil edin.
           </p>
         </div>
 
@@ -129,13 +129,13 @@ export default function ChangePasswordSection({ email }: { email: string }) {
           />
         </div>
 
-        {error && <p className="text-sm text-danger bg-danger-bg rounded px-4 py-3">{error}</p>}
+        {error && <p className="text-small text-danger-strong bg-danger-subtle rounded px-4 py-3">{error}</p>}
 
         <div className="flex gap-3">
-          <button type="submit" disabled={loading} className="btn-primary flex-1 min-h-[48px] text-sm font-semibold">
+          <button type="submit" disabled={loading} className="btn-primary flex-1">
             {loading ? 'Yoxlanılır...' : 'Şifrəni dəyiş'}
           </button>
-          <button type="button" onClick={() => setStep('idle')} className="text-sm text-ink-muted hover:text-ink px-3">
+          <button type="button" onClick={() => setStep('idle')} className="text-body text-text-3 hover:text-ink px-3">
             Ləğv et
           </button>
         </div>
@@ -146,16 +146,16 @@ export default function ChangePasswordSection({ email }: { email: string }) {
   return (
     <div className="card p-6 flex flex-col gap-3">
       <div>
-        <h2 className="text-sm font-semibold text-ink">Şifrəni dəyiş</h2>
-        <p className="text-sm text-ink-muted mt-1">
-          <span className="font-medium text-ink">{email}</span> ünvanına təsdiq kodu göndəriləcək.
+        <h2 className="font-display font-semibold text-h3 text-ink">Şifrəni dəyiş</h2>
+        <p className="text-body text-text-3 mt-1">
+          <span className="font-semibold text-ink">{email}</span> ünvanına təsdiq kodu göndəriləcək.
         </p>
       </div>
-      {error && <p className="text-sm text-danger bg-danger-bg rounded px-4 py-3">{error}</p>}
+      {error && <p className="text-small text-danger-strong bg-danger-subtle rounded px-4 py-3">{error}</p>}
       <button
         onClick={handleRequestCode}
         disabled={loading}
-        className="btn-secondary w-fit min-h-[48px] text-sm font-semibold px-5"
+        className="btn-secondary w-fit"
       >
         {loading ? 'Göndərilir...' : 'Kod göndər'}
       </button>

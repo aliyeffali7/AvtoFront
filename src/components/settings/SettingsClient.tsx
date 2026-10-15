@@ -6,6 +6,10 @@ import { mapApiError } from '@/lib/utils'
 import { useCurrentUser } from '@/App'
 import ChangePasswordSection from '@/components/settings/ChangePasswordSection'
 import { mediaUrl } from '@/lib/apiUrl'
+import { ImagePlus, PenLine } from 'lucide-react'
+import Button from '@/components/ui/Button'
+import PageHeader from '@/components/ui/PageHeader'
+import Spinner from '@/components/ui/Spinner'
 
 export default function SettingsClient() {
   const currentUser = useCurrentUser()
@@ -84,206 +88,179 @@ export default function SettingsClient() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-4 border-rule border-t-accent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  if (loading) return <Spinner />
+
+  const helpClass = 'text-small text-text-3 mb-1.5'
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-8">
-      <h1 className="page-title mb-6">Biznes Tənzimləmələri</h1>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Tənzimləmələr"
+        subtitle="Biznes məlumatı, sənədlər və hesab"
+        actions={<Button type="submit" form="settings-form" loading={saving}>Yadda saxla</Button>}
+      />
 
-      <form onSubmit={handleSubmit} className="card p-6 flex flex-col gap-5">
+      <div className="max-w-[780px] flex flex-col gap-4">
+        {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-4 py-3">{error}</p>}
+        {success && <p className="text-body text-success-strong bg-success-subtle rounded px-4 py-3">Məlumatlar yadda saxlanıldı.</p>}
 
-        {/* Logo */}
-        <div className="flex flex-col gap-2">
-          <label className="label">Logo</label>
-          <div className="flex items-center gap-4">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="w-20 h-20 rounded border-2 border-dashed border-rule flex items-center justify-center cursor-pointer hover:border-accent hover:bg-surface-alt transition-colors overflow-hidden shrink-0"
-            >
-              {logoPreview ? (
-                <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
-              ) : (
-                <svg className="w-7 h-7 text-ink-muted" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 8.25V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18V8.25M3 8.25A2.25 2.25 0 015.25 6h13.5A2.25 2.25 0 0121 8.25M3 8.25h18" />
-                </svg>
-              )}
+        <form id="settings-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Biznes məlumatı */}
+          <section className="card p-6 flex flex-col gap-5">
+            <h2 className="section-label">Biznes məlumatı</h2>
+
+            {/* Logo */}
+            <div className="flex flex-col gap-2">
+              <label className="label">Logo</label>
+              <div className="flex items-center gap-4">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-20 h-20 rounded-md border-2 border-dashed border-border-strong flex items-center justify-center cursor-pointer hover:border-ink hover:bg-surface-2 transition-colors overflow-hidden shrink-0"
+                >
+                  {logoPreview ? (
+                    <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <ImagePlus size={28} strokeWidth={1.75} className="text-text-3" />
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-body font-semibold text-ink underline underline-offset-2 text-left"
+                  >
+                    {logoPreview ? 'Logoyu dəyiş' : 'Logo yüklə'}
+                  </button>
+                  <p className="text-small text-text-3">PNG, JPG — maks 2 MB</p>
+                </div>
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
             </div>
-            <div className="flex flex-col gap-1">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-sm font-medium text-accent hover:text-accent-hover text-left"
-              >
-                {logoPreview ? 'Logoyu dəyiş' : 'Logo yüklə'}
-              </button>
-              <p className="text-xs text-ink-muted">PNG, JPG — maks 2 MB</p>
+
+            {/* Name */}
+            <div>
+              <label className="label">Biznes adı</label>
+              <input value={name} onChange={e => setName(e.target.value)} required placeholder="Məs: Garage 1903" className="input" />
             </div>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleLogoChange}
-          />
-        </div>
 
-        {/* Name */}
-        <div>
-          <label className="label">Biznes adı</label>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            required
-            placeholder="Məs: Garage 1903"
-            className="input"
-          />
-        </div>
-
-        {/* Slogan */}
-        <div>
-          <label className="label">Şüar</label>
-          <p className="text-xs text-ink-muted mb-1.5">PDF-də biznes adının altında görünür. Boş qalsa, göstərilmir.</p>
-          <input
-            value={slogan}
-            onChange={e => setSlogan(e.target.value)}
-            maxLength={150}
-            placeholder="Məs: Dəqiq diaqnoz. Bizim işimiz sizin yolunuz"
-            className="input"
-          />
-        </div>
-
-        {/* Login code (read-only) — mechanics need this to log in */}
-        <div>
-          <label className="label">Biznes kodu</label>
-          <p className="text-xs text-ink-muted mb-1.5">
-            Ustalarınız daxil olarkən telefon nömrəsi ilə yanaşı bu kodu daxil etməlidir.
-          </p>
-          <input value={loginCode} readOnly className="input-mono bg-surface-alt" />
-        </div>
-
-        {/* Phone */}
-        <div>
-          <label className="label">Telefon nömrəsi</label>
-          <input
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            placeholder="Məs: 010 123 45 67"
-            className="input-mono"
-          />
-        </div>
-
-        {/* Address */}
-        <div>
-          <label className="label">Ünvan</label>
-          <input
-            value={address}
-            onChange={e => setAddress(e.target.value)}
-            placeholder="Məs: Binəqədi Şossesi 31"
-            className="input"
-          />
-        </div>
-
-        {/* Instagram */}
-        <div>
-          <label className="label">Instagram</label>
-          <p className="text-xs text-ink-muted mb-1.5">PDF-in aşağısında göstərilir, QR kod da bu səhifəyə aparır. Linki də yapışdıra bilərsiniz.</p>
-          <div className="flex">
-            <span className="input rounded-r-none border-r-0 w-auto shrink-0 bg-surface-alt text-ink-muted">@</span>
-            <input
-              value={instagram}
-              onChange={e => setInstagram(e.target.value)}
-              placeholder="garage1903"
-              className="input rounded-l-none flex-1"
-            />
-          </div>
-        </div>
-
-        {/* Guarantee text */}
-        <div>
-          <label className="label">Zəmanət mətni</label>
-          <p className="text-xs text-ink-muted mb-1.5">Sifarişdə "Zəmanət var" işarələndikdə bu mətn PDF-ə əlavə ediləcək.</p>
-          <textarea
-            value={guaranteeText}
-            onChange={e => setGuaranteeText(e.target.value)}
-            placeholder="Məs: İşimizə 3 ay zəmanət veririk. Eyni nasazlıq baş verərsə pulsuz düzəldilir."
-            rows={3}
-            className="input resize-none"
-          />
-        </div>
-
-        {/* Guarantee exclusions */}
-        <div>
-          <label className="label">Zəmanətə daxil olmayan hallar</label>
-          <p className="text-xs text-ink-muted mb-1.5">Hər sətir ayrıca bənd olacaq. Zəmanət mətninin yanında göstərilir.</p>
-          <textarea
-            value={guaranteeExclusions}
-            onChange={e => setGuaranteeExclusions(e.target.value)}
-            placeholder={'Məs:\nEhtiyat hissələrinin səhv istismarı\nMüştərinin gətirdiyi ehtiyat hissələri\nÜçüncü şəxslərin müdaxiləsi'}
-            rows={4}
-            className="input resize-none"
-          />
-        </div>
-
-        {/* Signature image */}
-        <div className="flex flex-col gap-2">
-          <label className="label">İmza şəkli</label>
-          <p className="text-xs text-ink-muted -mt-1">PDF-ə ixrac zamanı servis imzası yerinə bu şəkil göstəriləcək.</p>
-          <div className="flex items-center gap-4">
-            <div
-              onClick={() => signatureInputRef.current?.click()}
-              className="w-32 h-16 rounded border-2 border-dashed border-rule flex items-center justify-center cursor-pointer hover:border-accent hover:bg-surface-alt transition-colors overflow-hidden shrink-0"
-            >
-              {signaturePreview ? (
-                <img src={signaturePreview} alt="İmza" className="w-full h-full object-contain p-1" />
-              ) : (
-                <svg className="w-6 h-6 text-ink-muted" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-              )}
+            {/* Slogan */}
+            <div>
+              <label className="label">Şüar</label>
+              <p className={helpClass}>PDF-də biznes adının altında görünür. Boş qalsa, göstərilmir.</p>
+              <input
+                value={slogan}
+                onChange={e => setSlogan(e.target.value)}
+                maxLength={150}
+                placeholder="Məs: Dəqiq diaqnoz. Bizim işimiz sizin yolunuz"
+                className="input"
+              />
             </div>
-            <div className="flex flex-col gap-1">
-              <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-sm font-medium text-accent hover:text-accent-hover text-left">
-                {signaturePreview ? 'İmzanı dəyiş' : 'İmza yüklə'}
-              </button>
-              <p className="text-xs text-ink-muted">PNG, JPG — ağ fon tövsiyə edilir</p>
-            </div>
-          </div>
-          <input ref={signatureInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
-            const f = e.target.files?.[0]
-            if (!f) return
-            setSignatureFile(f)
-            setSignaturePreview(URL.createObjectURL(f))
-          }} />
-        </div>
 
-        {error && (
-          <p className="text-sm text-danger bg-danger-bg rounded px-4 py-3">{error}</p>
+            {/* Login code (read-only) — mechanics need this to log in */}
+            <div>
+              <label className="label">Biznes kodu</label>
+              <p className={helpClass}>Ustalarınız daxil olarkən telefon nömrəsi ilə yanaşı bu kodu daxil etməlidir.</p>
+              <input value={loginCode} readOnly className="input-mono !bg-surface-2" />
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="label">Telefon nömrəsi</label>
+              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Məs: 010 123 45 67" className="input-mono" />
+            </div>
+
+            {/* Address */}
+            <div>
+              <label className="label">Ünvan</label>
+              <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Məs: Binəqədi Şossesi 31" className="input" />
+            </div>
+
+            {/* Instagram */}
+            <div>
+              <label className="label">Instagram</label>
+              <p className={helpClass}>PDF-in aşağısında göstərilir, QR kod da bu səhifəyə aparır. Linki də yapışdıra bilərsiniz.</p>
+              <div className="flex">
+                <span className="input !rounded-r-none !border-r-0 !w-auto shrink-0 !bg-surface-2 text-text-3 flex items-center">@</span>
+                <input
+                  value={instagram}
+                  onChange={e => setInstagram(e.target.value)}
+                  placeholder="garage1903"
+                  className="input !rounded-l-none flex-1"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Sənədlər */}
+          <section className="card p-6 flex flex-col gap-5">
+            <h2 className="section-label">Sənədlər</h2>
+
+            {/* Guarantee text */}
+            <div>
+              <label className="label">Zəmanət mətni</label>
+              <p className={helpClass}>Sifarişdə "Zəmanət var" işarələndikdə bu mətn PDF-ə əlavə ediləcək.</p>
+              <textarea
+                value={guaranteeText}
+                onChange={e => setGuaranteeText(e.target.value)}
+                placeholder="Məs: İşimizə 3 ay zəmanət veririk. Eyni nasazlıq baş verərsə pulsuz düzəldilir."
+                rows={3}
+                className="input resize-none"
+              />
+            </div>
+
+            {/* Guarantee exclusions */}
+            <div>
+              <label className="label">Zəmanətə daxil olmayan hallar</label>
+              <p className={helpClass}>Hər sətir ayrıca bənd olacaq. Zəmanət mətninin yanında göstərilir.</p>
+              <textarea
+                value={guaranteeExclusions}
+                onChange={e => setGuaranteeExclusions(e.target.value)}
+                placeholder={'Məs:\nEhtiyat hissələrinin səhv istismarı\nMüştərinin gətirdiyi ehtiyat hissələri\nÜçüncü şəxslərin müdaxiləsi'}
+                rows={4}
+                className="input resize-none"
+              />
+            </div>
+
+            {/* Signature image */}
+            <div className="flex flex-col gap-2">
+              <label className="label">İmza şəkli</label>
+              <p className="text-small text-text-3 -mt-1">PDF-ə ixrac zamanı servis imzası yerinə bu şəkil göstəriləcək.</p>
+              <div className="flex items-center gap-4">
+                <div
+                  onClick={() => signatureInputRef.current?.click()}
+                  className="w-32 h-16 rounded-md border-2 border-dashed border-border-strong flex items-center justify-center cursor-pointer hover:border-ink hover:bg-surface-2 transition-colors overflow-hidden shrink-0"
+                >
+                  {signaturePreview ? (
+                    <img src={signaturePreview} alt="İmza" className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <PenLine size={24} strokeWidth={1.75} className="text-text-3" />
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button type="button" onClick={() => signatureInputRef.current?.click()} className="text-body font-semibold text-ink underline underline-offset-2 text-left">
+                    {signaturePreview ? 'İmzanı dəyiş' : 'İmza yüklə'}
+                  </button>
+                  <p className="text-small text-text-3">PNG, JPG — ağ fon tövsiyə edilir</p>
+                </div>
+              </div>
+              <input ref={signatureInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
+                const f = e.target.files?.[0]
+                if (!f) return
+                setSignatureFile(f)
+                setSignaturePreview(URL.createObjectURL(f))
+              }} />
+            </div>
+          </section>
+        </form>
+
+        {/* Hesab */}
+        {currentUser?.email && (
+          <section className="flex flex-col gap-3">
+            <h2 className="section-label">Hesab</h2>
+            <ChangePasswordSection email={currentUser.email} />
+          </section>
         )}
-        {success && (
-          <p className="text-sm text-success bg-success-bg rounded px-4 py-3">Məlumatlar yadda saxlanıldı.</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="btn-primary min-h-[48px] text-sm font-semibold mt-1"
-        >
-          {saving ? 'Saxlanılır...' : 'Saxla'}
-        </button>
-      </form>
-
-      {currentUser?.email && (
-        <div className="mt-6">
-          <ChangePasswordSection email={currentUser.email} />
-        </div>
-      )}
+      </div>
     </div>
   )
 }

@@ -1,14 +1,19 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Plus, FileDown, CheckCircle2 } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Plus, FileDown, CheckCircle2, Printer, Trash2 } from 'lucide-react'
 import { FinanceRecord, FinanceCategory } from '@/types'
 import { getFinanceRecords, createFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
 import { formatCurrency, formatDate, mapApiError, toLocalISODate } from '@/lib/utils'
 import { loadDraft, saveDraft } from '@/lib/formDraft'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
-import Card from '@/components/ui/Card'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import EmptyState from '@/components/ui/EmptyState'
+import InkBand from '@/components/ui/InkBand'
+import Modal from '@/components/ui/Modal'
+import Money from '@/components/ui/Money'
+import PageHeader from '@/components/ui/PageHeader'
+import Segmented from '@/components/ui/Segmented'
 import Spinner from '@/components/ui/Spinner'
 import PeriodFilter from '@/components/ui/PeriodFilter'
 import { Period, isPeriodKey, makePeriod, periodLabel as describePeriod, periodRange } from '@/lib/period'
@@ -27,7 +32,7 @@ function getToday() {
   return toLocalISODate(new Date())
 }
 
-// ── Add record inline form ───────────────────────────────────────────────────
+// ── Add record modal ─────────────────────────────────────────────────────────
 
 const EXPENSE_CATEGORIES: { value: FinanceCategory; label: string }[] = [
   { value: 'parts', label: 'Ehtiyat hissə' },
@@ -49,6 +54,26 @@ const OWNER_CATEGORY_LABELS: Partial<Record<FinanceCategory, string>> = {
   owner_deposit: 'Sahibkar qoydu',
 }
 
+const CATEGORY_LABELS: Partial<Record<FinanceCategory, string>> = {
+  parts: 'Ehtiyat hissə',
+  salary: 'Əmək haqqı',
+  rent: 'İcarə',
+  utilities: 'Kommunal',
+  cogs: 'Maya dəyəri',
+  write_off: 'Anbar itkisi',
+  service: 'Xidmət',
+  parts_sale: 'Hissə satışı',
+  discount: 'Endirim',
+  goods_purchase: 'Mal alışı',
+  ...OWNER_CATEGORY_LABELS,
+}
+
+function categoryLabel(r: FinanceRecord): string {
+  if (!r.category) return '—'
+  if (r.category === 'other') return r.type === 'income' ? 'Digər gəlir' : 'Digər'
+  return CATEGORY_LABELS[r.category] ?? '—'
+}
+
 function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const [type, setType] = useState<'income' | 'expense'>('income')
   const [category, setCategory] = useState<FinanceCategory>('other')
@@ -56,8 +81,6 @@ function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () 
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  function reset() { setAmount(''); setDescription(''); setType('income'); setCategory('other'); setError('') }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -71,7 +94,7 @@ function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () 
         date: toLocalISODate(new Date()),
         category,
       })
-      reset(); onAdded(); onClose()
+      onAdded(); onClose()
     } catch (err) {
       setError(mapApiError(err))
     } finally {
@@ -80,57 +103,49 @@ function AddRecordForm({ onClose, onAdded }: { onClose: () => void; onAdded: () 
   }
 
   return (
-    <Card className="p-5 mb-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="card-title">Yeni qeyd</p>
-        <button type="button" onClick={onClose} className="text-ink-muted hover:text-ink transition-colors" aria-label="Bağla">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="label">Növ</label>
-            <div className="flex border border-rule rounded overflow-hidden">
-              <button type="button" onClick={() => { setType('income'); setCategory('other') }}
-                className={`px-4 py-2.5 text-sm font-semibold transition-colors ${type === 'income' ? 'bg-success text-cream' : 'bg-surface text-ink-soft hover:bg-surface-alt'}`}>
-                Gəlir
-              </button>
-              <button type="button" onClick={() => { setType('expense'); setCategory('other') }}
-                className={`px-4 py-2.5 text-sm font-semibold transition-colors border-l border-rule ${type === 'expense' ? 'bg-danger text-cream' : 'bg-surface text-ink-soft hover:bg-surface-alt'}`}>
-                Xərc
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5 min-w-[160px]">
-            <label className="label">Maddə</label>
-            <select value={category} onChange={e => setCategory(e.target.value as FinanceCategory)} className="input">
-              {(type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5 flex-1 min-w-[140px]">
-            <label className="label">Məbləğ (₼)</label>
-            <input value={amount} onChange={e => setAmount(e.target.value)} required type="number" step="0.01" min="0.01" placeholder="0.00" className="input-mono" />
-          </div>
-          <div className="flex flex-col gap-1.5 flex-[2] min-w-[200px]">
-            <label className="label">Açıqlama</label>
-            <input value={description} onChange={e => setDescription(e.target.value)} required placeholder="Məs. Ehtiyat hissəsi alışı" className="input" />
-          </div>
+    <Modal
+      open
+      title="Yeni qeyd"
+      onClose={onClose}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>Ləğv et</Button>
+          <Button type="submit" form="kassa-add-form" loading={loading}>Saxla</Button>
+        </>
+      }
+    >
+      <form id="kassa-add-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
+        <div>
+          <label className="label">Növ</label>
+          <Segmented
+            label="Növ"
+            value={type}
+            onChange={t => { setType(t); setCategory('other') }}
+            options={[{ key: 'income', label: 'Gəlir' }, { key: 'expense', label: 'Xərc' }]}
+          />
+        </div>
+        <div>
+          <label className="label">Maddə</label>
+          <select value={category} onChange={e => setCategory(e.target.value as FinanceCategory)} className="input">
+            {(type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(c => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Məbləğ (₼)</label>
+          <input value={amount} onChange={e => setAmount(e.target.value)} required type="number" step="0.01" min="0.01" placeholder="0.00" className="input-mono" />
+        </div>
+        <div>
+          <label className="label">Açıqlama</label>
+          <input value={description} onChange={e => setDescription(e.target.value)} required placeholder="Məs. Ehtiyat hissəsi alışı" className="input" />
         </div>
         {category in OWNER_CATEGORY_LABELS && (
-          <p className="text-xs text-ink-muted">Kassada görünür, amma Hesabatda mənfəətə təsir etmir — bu, biznesin gəliri və ya xərci deyil.</p>
+          <p className="text-small text-info-strong bg-info-subtle rounded px-3 py-2">Kassada görünür, amma Hesabatda mənfəətə təsir etmir — bu, biznesin gəliri və ya xərci deyil.</p>
         )}
-        {error && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{error}</p>}
-        <div className="flex gap-2">
-          <Button type="submit" loading={loading}>Saxla</Button>
-          <Button type="button" variant="secondary" onClick={onClose}>Ləğv et</Button>
-        </div>
+        {error && <p className="text-small text-danger-strong bg-danger-subtle rounded px-3 py-2">{error}</p>}
       </form>
-    </Card>
+    </Modal>
   )
 }
 
@@ -182,108 +197,93 @@ function EndDayModal({ onClose }: { onClose: () => void }) {
     win.print()
   }
 
+
+  const dateLabel = new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/45">
-      <div className="bg-surface rounded shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] border border-rule">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-rule">
-          <div>
-            <h2 className="font-serif font-semibold text-lg text-ink">Günün bağlanışı</h2>
-            <p className="text-xs text-ink-muted mt-0.5">{new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+    <Modal
+      open
+      title="Günün bağlanışı"
+      subtitle={dateLabel}
+      onClose={handleClose}
+      width="max-w-lg"
+      footer={
+        <>
+          <Button type="button" variant="secondary" icon={Printer} onClick={handlePrint}>Çap et</Button>
+          <Button type="button" variant="primary" onClick={handleClose} loading={saving}>Günü bağla</Button>
+        </>
+      }
+    >
+      {/* Printable content */}
+      <div ref={printRef}>
+        <h2 className="font-display font-semibold text-h3 text-ink">Avtoservis CRM — Günlük Hesabat</h2>
+        <p style={{ color: '#6b7264', marginBottom: '16px' }}>{dateLabel}</p>
+
+        {/* Summary */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="border border-border rounded-md px-4 py-3">
+            <p className="font-sans text-label uppercase text-text-3">Gəlir</p>
+            <p className="text-body-l font-mono font-semibold text-success">{formatCurrency(income)}</p>
           </div>
-          <button onClick={handleClose} className="p-2 rounded hover:bg-surface-alt text-ink-muted transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="border border-border rounded-md px-4 py-3">
+            <p className="font-sans text-label uppercase text-text-3">Xərc</p>
+            <p className="text-body-l font-mono font-semibold text-danger">{formatCurrency(expense)}</p>
+          </div>
+          <div className="border border-border rounded-md px-4 py-3">
+            <p className="font-sans text-label uppercase text-text-3">Xalis</p>
+            <p className={`text-body-l font-mono font-semibold ${net >= 0 ? 'text-success' : 'text-danger'}`}>{net >= 0 ? '+' : '−'}{formatCurrency(Math.abs(net))}</p>
+          </div>
         </div>
 
-        {/* Printable content */}
-        <div className="overflow-y-auto flex-1 px-6 py-5" ref={printRef}>
-          <h2 className="font-serif font-semibold text-lg text-ink">Avtoservis CRM — Günlük Hesabat</h2>
-          <p style={{ color: '#6b7264', marginBottom: '16px' }}>
-            {new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
-
-          {/* Summary */}
-          <div className="grid grid-cols-3 sm:grid-cols-3 gap-3 mb-5">
-            <div className="bg-success-bg border border-rule rounded px-4 py-3">
-              <p className="text-xs text-success font-medium mb-0.5">Gəlir</p>
-              <p className="text-lg font-mono font-bold text-success">{formatCurrency(income)}</p>
-            </div>
-            <div className="bg-danger-bg border border-rule rounded px-4 py-3">
-              <p className="text-xs text-danger font-medium mb-0.5">Xərc</p>
-              <p className="text-lg font-mono font-bold text-danger">{formatCurrency(expense)}</p>
-            </div>
-            <div className={`border border-rule rounded px-4 py-3 ${net >= 0 ? 'bg-success-bg' : 'bg-danger-bg'}`}>
-              <p className={`text-xs font-medium mb-0.5 ${net >= 0 ? 'text-success' : 'text-danger'}`}>Xalis</p>
-              <p className={`text-lg font-mono font-bold ${net >= 0 ? 'text-success' : 'text-danger'}`}>{net >= 0 ? '+' : ''}{formatCurrency(net)}</p>
-            </div>
-          </div>
-
-          {/* Transactions */}
-          {todayRecords.length === 0 ? (
-            <p className="text-sm text-ink-muted text-center py-8">Bu gün heç bir əməliyyat yoxdur.</p>
-          ) : (
-            <table className="ledger-table">
-              <thead>
-                <tr>
-                  <th className="ledger-th">Açıqlama</th>
-                  <th className="ledger-th">Növ</th>
-                  <th className="ledger-th text-right">Məbləğ</th>
+        {/* Transactions */}
+        {todayRecords.length === 0 ? (
+          <p className="text-body text-text-3 text-center py-8">Bu gün heç bir əməliyyat yoxdur.</p>
+        ) : (
+          <table className="ledger-table">
+            <thead>
+              <tr>
+                <th className="ledger-th">Açıqlama</th>
+                <th className="ledger-th">Növ</th>
+                <th className="ledger-th text-right">Məbləğ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {todayRecords.map(r => (
+                <tr key={r.id}>
+                  <td className="ledger-td text-ink !whitespace-normal">{r.description}</td>
+                  <td className="ledger-td">
+                    <Badge variant={r.type === 'income' ? 'success' : 'danger'}>{r.type === 'income' ? 'Gəlir' : 'Xərc'}</Badge>
+                  </td>
+                  <td className="ledger-td text-right">
+                    <Money value={Number(r.amount)} meaning={r.type === 'income' ? 'income' : 'expense'} />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {todayRecords.map(r => (
-                  <tr key={r.id}>
-                    <td className="ledger-td text-ink">{r.description}</td>
-                    <td className="ledger-td">
-                      <Badge variant={r.type === 'income' ? 'success' : 'danger'}>{r.type === 'income' ? 'Gəlir' : 'Xərc'}</Badge>
-                    </td>
-                    <td className={`ledger-td text-right font-mono font-semibold ${r.type === 'income' ? 'text-success' : 'text-danger'}`}>
-                      {r.type === 'income' ? '+' : '-'}{formatCurrency(Number(r.amount))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+              ))}
+            </tbody>
+          </table>
+        )}
 
-          {/* Comment — at the end, only rendered if filled, appears in print */}
-          {comment.trim() && (
-            <div className="note-box" style={{ marginTop: '24px', borderTop: '1px solid #CBD3C7', paddingTop: '14px' }}>
-              <p className="note-label" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6b7264', marginBottom: '4px' }}>Qeyd</p>
-              <p className="note-text" style={{ fontSize: '13px', color: '#1F2A24', whiteSpace: 'pre-wrap', margin: 0 }}>{comment}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Comment input */}
-        <div className="px-6 pt-3 pb-2 border-t border-rule">
-          <label className="label">Qeyd</label>
-          <textarea
-            value={comment}
-            onChange={e => setComment(e.target.value)}
-            rows={2}
-            placeholder="Bu gün üçün qeyd əlavə edin..."
-            className="input resize-none"
-          />
-        </div>
-
-        {/* Footer */}
-        <div className="flex gap-2 px-6 py-4">
-          <Button type="button" variant="secondary" onClick={handlePrint} className="flex-1">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Çap et
-          </Button>
-          <Button type="button" variant="primary" onClick={handleClose} loading={saving} className="flex-1">
-            Günü bağla
-          </Button>
-        </div>
+        {/* Comment — at the end, only rendered if filled, appears in print */}
+        {comment.trim() && (
+          <div className="note-box" style={{ marginTop: '24px', borderTop: '1px solid #CBD3C7', paddingTop: '14px' }}>
+            <p className="note-label" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6b7264', marginBottom: '4px' }}>Qeyd</p>
+            <p className="note-text" style={{ fontSize: '13px', color: '#1F2A24', whiteSpace: 'pre-wrap', margin: 0 }}>{comment}</p>
+          </div>
+        )}
       </div>
-    </div>
+
+      {/* Comment input */}
+      <div className="mt-5 pt-4 border-t border-border pb-2">
+        <label className="label">Qeyd</label>
+        <textarea
+          value={comment}
+          onChange={e => setComment(e.target.value)}
+          rows={2}
+          placeholder="Bu gün üçün qeyd əlavə edin..."
+          className="input resize-none"
+        />
+      </div>
+    </Modal>
   )
 }
 
@@ -368,7 +368,6 @@ export default function FinanceClient() {
     }
   }
 
-  const filtered = records
   const income = Number(totals.income)
   const expense = Number(totals.expense)
   const net = income - expense
@@ -433,178 +432,159 @@ export default function FinanceClient() {
     win.print()
   }
 
+
   return (
-    <>
-      <div>
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-end gap-4 mb-6">
-          <div className="flex items-center gap-2 shrink-0">
-            <Button variant="secondary" onClick={exportPDF}>
-              <FileDown className="w-4 h-4 shrink-0" strokeWidth={2} />
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Maliyyə · Kassa"
+        subtitle={`${periodLabel} · ${count} qeyd`}
+        actions={
+          <>
+            <Button variant="secondary" icon={FileDown} onClick={exportPDF}>
               <span className="hidden sm:inline">PDF</span>
             </Button>
-            <Button variant="secondary" onClick={() => setEndDayOpen(true)}>
-              <CheckCircle2 className="w-4 h-4 shrink-0" strokeWidth={2} />
+            <Button variant="secondary" icon={CheckCircle2} onClick={() => setEndDayOpen(true)}>
               <span className="hidden sm:inline">Günü bağla</span>
             </Button>
-            <Button variant="primary" onClick={() => setAddOpen(o => !o)}>
-              <Plus className="w-4 h-4 shrink-0" strokeWidth={2.5} />
-              <span className="hidden sm:inline">Qeyd əlavə et</span>
-            </Button>
-          </div>
-        </div>
+            <Button icon={Plus} onClick={() => setAddOpen(true)}>Yeni qeyd</Button>
+          </>
+        }
+      />
 
-        <PeriodFilter value={period} onChange={setPeriod} withAll className="mb-6" />
+      <InkBand
+        label={`${periodLabel} üzrə`}
+        items={[
+          { label: 'Gəlir', value: `+${formatCurrency(income)}`, note: `${totals.income_count} əməliyyat` },
+          { label: 'Xərc', value: `−${formatCurrency(expense)}`, note: `${totals.expense_count} əməliyyat` },
+          { label: 'Xalis', value: `${net < 0 ? '−' : net > 0 ? '+' : ''}${formatCurrency(Math.abs(net))}`, note: `${operationCount} əməliyyat`, highlight: true },
+        ]}
+      />
 
-        {/* Summary: big net total + income/expense pair */}
-        <Card className="px-6 py-6 mb-8">
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <div>
-              <p className="section-label mb-1.5">{periodLabel} üzrə hesabat</p>
-              <p className={`font-serif font-semibold text-[40px] leading-none ${net >= 0 ? 'text-accent' : 'text-danger'}`}>
-                {net >= 0 ? '+' : ''}{formatCurrency(net)}
-              </p>
-              <p className="text-sm text-ink-soft mt-1.5">Xalis · {operationCount} əməliyyat</p>
-            </div>
-            <div className="flex gap-8">
-              <div className="text-right">
-                <p className="font-mono font-semibold text-xl text-ink">{formatCurrency(income)}</p>
-                <p className="section-label mt-1">Gəlir · {totals.income_count}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-mono font-semibold text-xl text-danger">{formatCurrency(expense)}</p>
-                <p className="section-label mt-1">Xərc · {totals.expense_count}</p>
-              </div>
-            </div>
-          </div>
-        </Card>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <PeriodFilter value={period} onChange={setPeriod} withAll />
+        <Segmented
+          label="Növ"
+          value={typeFilter}
+          onChange={setTypeFilter}
+          options={[
+            { key: 'all', label: 'Hamısı' },
+            { key: 'income', label: 'Gəlir' },
+            { key: 'expense', label: 'Xərc' },
+          ]}
+        />
+      </div>
 
-        {/* Table filter */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex gap-1 border border-rule rounded p-1 bg-surface-alt">
-            {(['all', 'income', 'expense'] as TypeFilter[]).map(t => (
-              <button
-                key={t}
-                onClick={() => setTypeFilter(t)}
-                className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
-                  typeFilter === t ? 'bg-surface text-ink border border-rule' : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                {t === 'all' ? 'Hamısı' : t === 'income' ? 'Gəlir' : 'Xərc'}
-              </button>
-            ))}
-          </div>
-          <p className="section-label">{count} qeyd</p>
-        </div>
-
-        {/* Inline add-record form — expands above the records table */}
-        {addOpen && <AddRecordForm onClose={() => setAddOpen(false)} onAdded={load} />}
-
-        {/* Records table */}
-        {loading ? (
-          <Card>
-            <Spinner />
-          </Card>
-        ) : filtered.length === 0 ? (
-          <EmptyState title="Qeyd tapılmadı" subtitle="Seçilmiş filtr üzrə heç bir əməliyyat yoxdur." />
-        ) : (
-          <Card className="overflow-hidden overflow-x-auto">
-            <table className="ledger-table min-w-[560px]">
+      {/* Records table */}
+      {loading && records.length === 0 ? (
+        <Spinner />
+      ) : records.length === 0 ? (
+        <EmptyState title="Qeyd tapılmadı" subtitle="Seçilmiş filtr üzrə heç bir əməliyyat yoxdur." />
+      ) : (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="ledger-table min-w-[820px]">
               <thead>
                 <tr>
                   <th className="ledger-th">Tarix</th>
                   <th className="ledger-th">Növ</th>
+                  <th className="ledger-th">Maddə</th>
                   <th className="ledger-th">Açıqlama</th>
+                  <th className="ledger-th">Mənbə</th>
                   <th className="ledger-th text-right">Məbləğ</th>
                   <th className="ledger-th" />
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(r => (
+                {records.map(r => (
                   <tr
                     key={r.id}
-                    className={`ledger-row ${r.order ? '' : 'cursor-default'}`}
+                    className={`ledger-row ${r.order ? '' : '!cursor-default'}`}
                     onClick={r.order ? () => navigate(`/business/orders/${r.order}`) : undefined}
                     title={r.order ? 'Sifarişə keç' : undefined}
                   >
-                    <td className="ledger-td font-mono text-ink-muted">{formatDate(r.date)}</td>
+                    <td className="ledger-td font-mono text-text-2">{formatDate(r.date)}</td>
                     <td className="ledger-td">
                       <Badge variant={r.type === 'income' ? 'success' : 'danger'}>{r.type === 'income' ? 'Gəlir' : 'Xərc'}</Badge>
                     </td>
-                    <td className="ledger-td whitespace-normal">
-                      <span className="flex items-center gap-1.5">
-                        {r.category && OWNER_CATEGORY_LABELS[r.category] && (
-                          <Badge variant="neutral">{OWNER_CATEGORY_LABELS[r.category]}</Badge>
+                    <td className="ledger-td">
+                      {r.category && OWNER_CATEGORY_LABELS[r.category]
+                        ? <Badge variant="neutral">{OWNER_CATEGORY_LABELS[r.category]}</Badge>
+                        : <span className="text-text-2">{categoryLabel(r)}</span>}
+                    </td>
+                    <td className="ledger-td !whitespace-normal">{r.description || <span className="text-text-3">—</span>}</td>
+                    <td className="ledger-td" onClick={e => e.stopPropagation()}>
+                      <span className="flex items-center gap-2">
+                        {r.order ? (
+                          <Link to={`/business/orders/${r.order}`} className="font-mono text-small hover:underline underline-offset-2">Sifariş № {r.order}</Link>
+                        ) : r.purchase ? (
+                          <Link to={`/business/warehouse/purchases/${r.purchase}`} className="font-mono text-small hover:underline underline-offset-2">Alış № {r.purchase}</Link>
+                        ) : null}
+                        {r.source && r.source !== 'manual' && (
+                          <span className="text-small text-text-3" title="Sistem qeydidir — onu yaradan sifariş, alış və ya borc üzərindən dəyişdirilir">avtomatik</span>
                         )}
-                        {r.description}
-                        {r.order && (
-                          <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        )}
+                        {!r.order && !r.purchase && (!r.source || r.source === 'manual') && <span className="text-text-3">—</span>}
                       </span>
                     </td>
-                    <td className={`ledger-td text-right font-mono font-semibold ${r.type === 'income' ? 'text-success' : 'text-danger'}`}>
-                      {r.type === 'income' ? '+' : '-'}{formatCurrency(Number(r.amount))}
+                    <td className="ledger-td text-right">
+                      <Money value={Number(r.amount)} meaning={r.type === 'income' ? 'income' : 'expense'} />
                     </td>
                     <td className="ledger-td text-right" onClick={e => e.stopPropagation()}>
-                      {r.source && r.source !== 'manual' ? (
-                        <span className="text-xs text-ink-muted" title="Sistem qeydidir — onu yaradan sifariş, alış və ya borc üzərindən dəyişdirilir">avtomatik</span>
-                      ) : confirmDeleteId === r.id ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="text-xs text-ink-muted">Silinsin?</span>
-                          <button
-                            onClick={() => handleDeleteRecord(r.id)}
-                            disabled={deletingId === r.id}
-                            className="text-xs font-semibold px-2.5 py-1 rounded bg-danger text-cream hover:bg-danger/90 disabled:opacity-50 transition-colors"
-                          >
-                            {deletingId === r.id ? '...' : 'Bəli'}
-                          </button>
-                          <button
-                            onClick={() => setConfirmDeleteId(null)}
-                            className="text-xs font-semibold px-2.5 py-1 rounded border border-rule text-ink-muted hover:bg-surface-alt transition-colors"
-                          >
-                            Xeyr
-                          </button>
-                        </div>
-                      ) : (
+                      {(!r.source || r.source === 'manual') && (
                         <button
+                          type="button"
                           onClick={() => setConfirmDeleteId(r.id)}
-                          className="text-ink-muted hover:text-danger transition-colors p-1.5 rounded hover:bg-danger-bg"
+                          className="w-9 h-9 inline-flex items-center justify-center rounded text-text-3 hover:text-danger hover:bg-danger-subtle transition-colors"
                           title="Ləğv et"
+                          aria-label="Ləğv et"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <Trash2 size={18} strokeWidth={1.75} />
                         </button>
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="bg-surface-2">
+                  <td className="ledger-td font-semibold" colSpan={5}>Dövr üzrə cəmi · {operationCount} əməliyyat</td>
+                  <td className="ledger-td text-right"><Money value={net} meaning="profit" className="font-bold" /></td>
+                  <td className="ledger-td" />
+                </tr>
+              </tfoot>
             </table>
-          </Card>
-        )}
-
-
-        {!loading && page < totalPages && (
-          <div className="flex justify-center mt-4">
-            <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
-              Daha çox göstər ({records.length} / {count})
-            </Button>
           </div>
-        )}
+          {page < totalPages && (
+            <div className="flex justify-center py-3 border-t border-border">
+              <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
+                Daha çox göstər ({records.length} / {count})
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* Saved day note */}
-        {singleDate && pageNote && (
-          <div className="card mt-6 px-5 py-4 border-l-2 border-l-warning">
-            <p className="section-label text-warning mb-1">Gün qeydi</p>
-            <p className="text-sm text-ink whitespace-pre-wrap">{pageNote}</p>
-          </div>
-        )}
-      </div>
+      {/* Saved day note */}
+      {singleDate && pageNote && (
+        <div className="card px-5 py-4">
+          <p className="font-sans text-label uppercase text-text-3 mb-1">Gün qeydi</p>
+          <p className="text-body text-ink whitespace-pre-wrap">{pageNote}</p>
+        </div>
+      )}
 
+      {addOpen && <AddRecordForm onClose={() => setAddOpen(false)} onAdded={load} />}
       {endDayOpen && <EndDayModal onClose={() => { setEndDayOpen(false); load() }} />}
-    </>
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Qeyd silinsin?"
+        message="Bu qeyd kassadan silinəcək. Bu əməliyyat geri qaytarıla bilməz."
+        confirmLabel={deletingId !== null ? '...' : 'Bəli, sil'}
+        cancelLabel="Xeyr"
+        danger
+        onConfirm={() => confirmDeleteId !== null && handleDeleteRecord(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+    </div>
   )
 }

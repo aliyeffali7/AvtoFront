@@ -1,14 +1,20 @@
-import { useState, useEffect, useCallback } from 'react'
+import { Fragment, useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { SupplierDebt, SupplierDebtItem } from '@/types'
 import { getSupplierDebts, createSupplierDebt, paySupplierDebt, paySupplierItems, deleteSupplierDebt } from '@/services/warehouse.service'
 import { formatCurrency, formatDate, mapApiError } from '@/lib/utils'
 import ComboboxInput from '@/components/ui/ComboboxInput'
-import MasterDetailShell from '@/components/ui/MasterDetailShell'
-import Badge, { BadgeVariant } from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import EmptyState from '@/components/ui/EmptyState'
+import KpiCard from '@/components/ui/KpiCard'
+import Modal from '@/components/ui/Modal'
+import Money from '@/components/ui/Money'
+import PageHeader from '@/components/ui/PageHeader'
+import Segmented from '@/components/ui/Segmented'
 import Spinner from '@/components/ui/Spinner'
+import StatusBadge from '@/components/ui/StatusBadge'
 
 interface SupplierGroup {
   key: string
@@ -50,15 +56,9 @@ function groupBySupplier(debts: SupplierDebt[]): SupplierGroup[] {
   }).sort((a, b) => (b.hasUnpaid ? 1 : 0) - (a.hasUnpaid ? 1 : 0) || a.name.localeCompare(b.name))
 }
 
-function statusVariant(group: SupplierGroup): BadgeVariant {
-  if (group.isFullyPaid) return 'success'
-  if (group.totalPaid > 0) return 'warning'
-  return 'danger'
-}
-
-function statusLabel(group: SupplierGroup): string {
+function statusWord(group: SupplierGroup): string {
   if (group.isFullyPaid) return 'Ödənilib'
-  if (group.totalPaid > 0) return 'Qismən'
+  if (group.totalPaid > 0) return 'Qismən ödənilib'
   return 'Ödənilməyib'
 }
 
@@ -113,7 +113,7 @@ export default function CreditorsPage() {
 
   function selectSupplier(key: string) {
     setCreating(false)
-    setSelectedKey(key)
+    setSelectedKey(prev => (prev === key ? null : key))
     resetSelection()
   }
 
@@ -228,85 +228,28 @@ export default function CreditorsPage() {
     }
   }
 
-  const listPane = loading ? <Spinner /> : visibleGroups.length === 0 ? (
-    <div className="p-6"><EmptyState title="Heç bir borc yoxdur" subtitle="Bütün kreditorlara ödənilib." /></div>
-  ) : (
-    <div className="overflow-x-auto">
-      <table className="ledger-table min-w-[560px]">
-        <thead>
-          <tr>
-            <th className="ledger-th">Təchizatçı</th>
-            <th className="ledger-th">Status</th>
-            <th className="ledger-th">Telefon</th>
-            <th className="ledger-th text-right">Qalıq</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visibleGroups.map(group => (
-            <tr key={group.key} onClick={() => selectSupplier(group.key)}
-              className={`ledger-row ${!creating && selectedKey === group.key ? 'ledger-row-selected' : ''}`}>
-              <td className="ledger-td font-medium">{group.name}</td>
-              <td className="ledger-td"><Badge variant={statusVariant(group)}>{statusLabel(group)}</Badge></td>
-              <td className="ledger-td font-mono text-ink-muted">{group.phone || '—'}</td>
-              <td className="ledger-td text-right font-mono font-semibold">{formatCurrency(group.remaining)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-
-  const createForm = (
-    <form onSubmit={handleAdd} className="p-6 flex flex-col gap-4">
-      <div>
-        <h2 className="card-title mb-1">Borc yarat</h2>
-        <p className="text-xs text-ink-muted">Mal alışı ilə bağlı olmayan borc üçün (məs. sistemdən əvvəlki köhnə borc). Mal alanda "Stok → Alışlar"dan nisyə alış edin.</p>
-      </div>
-      <div>
-        <label className="label">Kreditor adı <span className="text-danger normal-case">*</span></label>
-        <ComboboxInput value={newSupplier} onChange={setNewSupplier} options={supplierNames} placeholder="Məs. Avtoehtiyat MMC" autoFocus />
-      </div>
-      <div>
-        <label className="label">Telefon <span className="text-ink-muted normal-case font-normal">(ixtiyari)</span></label>
-        <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+994 50 000 00 00" className="input" />
-      </div>
-      <div>
-        <label className="label">Açıqlama <span className="text-ink-muted normal-case font-normal">(ixtiyari)</span></label>
-        <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Məs. Köhnə borc" className="input" />
-      </div>
-      <div>
-        <label className="label">Məbləğ <span className="text-danger normal-case">*</span></label>
-        <input value={newAmount} onChange={e => setNewAmount(e.target.value)} type="number" min="0.01" step="0.01" placeholder="0.00" className="input-mono" />
-      </div>
-      {addError && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2">{addError}</p>}
-      <div className="flex flex-col gap-2 pt-2">
-        <Button type="submit" loading={adding}>Əlavə et</Button>
-        <Button type="button" variant="secondary" onClick={() => setCreating(false)}>Ləğv et</Button>
-      </div>
-    </form>
-  )
-
-  const detailPane = creating ? createForm : selectedGroup ? (
-    <div className="p-6 pb-28">
-      <div className="flex items-start justify-between gap-3 mb-1 pr-8">
-        <div className="min-w-0">
-          <h2 className="font-serif font-semibold text-xl text-ink truncate">{selectedGroup.name}</h2>
-          {selectedGroup.phone && <p className="font-mono text-xs text-ink-muted mt-0.5">{selectedGroup.phone}</p>}
+  const detailPanel = selectedGroup ? (
+    <div className="px-5 py-5 bg-paper border-b border-border">
+      <div className="grid grid-cols-3 gap-3 mb-4 max-w-xl">
+        <div className="card px-3 py-2.5">
+          <p className="font-sans text-label uppercase text-text-3 mb-1">Cəmi</p>
+          <Money value={selectedGroup.totalAmount} className="!justify-start" />
         </div>
-        <Badge variant={statusVariant(selectedGroup)}>{statusLabel(selectedGroup)}</Badge>
+        <div className="card px-3 py-2.5">
+          <p className="font-sans text-label uppercase text-text-3 mb-1">Ödənilib</p>
+          <Money value={selectedGroup.totalPaid} meaning="income" sign="none" className="!justify-start" />
+        </div>
+        <div className="card px-3 py-2.5">
+          <p className="font-sans text-label uppercase text-text-3 mb-1">Qalıq</p>
+          <Money value={selectedGroup.remaining} meaning="payable" showWord={false} className="!justify-start" />
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 my-4">
-        <SummaryBox label="Cəmi" value={formatCurrency(selectedGroup.totalAmount)} />
-        <SummaryBox label="Ödənilib" value={formatCurrency(selectedGroup.totalPaid)} tone="success" />
-        <SummaryBox label="Qalıq" value={formatCurrency(selectedGroup.remaining)} tone="danger" />
-      </div>
-
-      {payNotice && <p className="text-sm text-success bg-success-bg rounded px-3 py-2 mb-3">{payNotice}</p>}
-      {payError && <p className="text-sm text-danger bg-danger-bg rounded px-3 py-2 mb-3">{payError}</p>}
+      {payNotice && <p className="text-small text-success-strong bg-success-subtle rounded px-3 py-2 mb-3">{payNotice}</p>}
+      {payError && <p className="text-small text-danger-strong bg-danger-subtle rounded px-3 py-2 mb-3">{payError}</p>}
 
       {selectedGroup.hasUnpaid && allItems.some(i => !i.is_paid) && (
-        <label className="flex items-center gap-2 text-sm font-semibold text-ink mb-3 cursor-pointer">
+        <label className="flex items-center gap-2 text-body font-semibold text-ink mb-3 cursor-pointer">
           <input type="checkbox" checked={allUnpaidSelected} onChange={e => toggleAll(e.target.checked)} className="w-4 h-4" />
           Bütün ödənilməmiş məhsulları seç
         </label>
@@ -314,41 +257,41 @@ export default function CreditorsPage() {
 
       <div className="flex flex-col gap-3">
         {selectedGroup.debts.filter(d => showPaidGroups || !d.is_paid).map(debt => (
-          <div key={debt.id} className={`bg-surface border border-rule rounded ${debt.is_paid ? 'opacity-60' : ''}`}>
-            <div className="flex items-start justify-between gap-3 px-3 pt-3 pb-2">
+          <div key={debt.id} className={`bg-surface border border-border rounded-md ${debt.is_paid ? 'opacity-60' : ''}`}>
+            <div className="flex items-start justify-between gap-3 px-4 pt-3 pb-2">
               <label className="flex items-start gap-2 min-w-0 cursor-pointer">
                 {!debt.is_paid && debt.items.length > 0 && (
-                  <input type="checkbox" checked={debtFullySelected(debt)} onChange={e => toggleDebt(debt, e.target.checked)} className="w-4 h-4 mt-0.5 shrink-0" />
+                  <input type="checkbox" checked={debtFullySelected(debt)} onChange={e => toggleDebt(debt, e.target.checked)} className="w-4 h-4 mt-1 shrink-0" />
                 )}
                 <span className="min-w-0">
-                  <span className="block text-sm font-medium text-ink">{formatDate(debt.date)}{debt.description ? ` — ${debt.description}` : ''}</span>
+                  <span className="block text-body font-semibold text-ink">{formatDate(debt.date)}{debt.description ? ` — ${debt.description}` : ''}</span>
                   {debt.purchase && (
-                    <Link to={`/business/warehouse/purchases/${debt.purchase}`} className="text-xs text-accent hover:underline">Alışa bax →</Link>
+                    <Link to={`/business/warehouse/purchases/${debt.purchase}`} className="text-small font-semibold text-ink underline underline-offset-2">Alışa bax →</Link>
                   )}
                 </span>
               </label>
-              <span className="text-right shrink-0">
-                <span className="block text-sm font-mono font-semibold text-ink">{formatCurrency(debt.total_amount)}</span>
+              <span className="text-right shrink-0 flex flex-col items-end">
+                <Money value={debt.total_amount} />
                 {debt.is_paid
-                  ? <span className="block text-xs font-mono text-success">Ödənilib</span>
-                  : <span className="block text-xs font-mono text-danger">Qalıb: {formatCurrency(debt.remaining)}</span>}
+                  ? <StatusBadge status="Ödənilib" className="mt-1" />
+                  : <span className="text-small font-mono text-warning-strong">Qalıb: {formatCurrency(debt.remaining)}</span>}
               </span>
             </div>
 
             {debt.items.length > 0 ? (
-              <div className="border-t border-rule/70 divide-y divide-rule/70">
+              <div className="border-t border-border divide-y divide-border">
                 {debt.items.map(item => {
                   const checked = selectedItems[item.id] > 0
                   return (
-                    <div key={item.id} className={`flex items-center gap-2 px-3 py-2 ${item.is_paid ? 'opacity-50' : ''}`}>
+                    <div key={item.id} className={`flex items-center gap-3 px-4 py-2.5 ${item.is_paid ? 'opacity-50' : ''}`}>
                       {item.is_paid ? (
-                        <span className="text-success text-sm w-4 text-center shrink-0" title="Ödənilib">✓</span>
+                        <span className="text-success text-body w-4 text-center shrink-0" title="Ödənilib">✓</span>
                       ) : (
                         <input type="checkbox" checked={checked} onChange={e => toggleItem(item, e.target.checked)} className="w-4 h-4 shrink-0" />
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-ink truncate">{item.product_name}</p>
-                        <p className="text-xs text-ink-muted font-mono">
+                        <p className="text-body text-ink truncate">{item.product_name}</p>
+                        <p className="text-small text-text-3 font-mono">
                           {item.quantity} {item.unit || 'ədəd'} × {formatCurrency(item.purchase_price)}
                           {item.paid_quantity > 0 && ` · ${item.paid_quantity} ödənilib`}
                           {!item.is_paid && ` · ${item.remaining_quantity} qalıb`}
@@ -357,9 +300,9 @@ export default function CreditorsPage() {
                       {checked && item.remaining_quantity > 1 && (
                         <input type="number" min={1} max={item.remaining_quantity} value={selectedItems[item.id]}
                           onChange={e => setItemQty(item, e.target.value)}
-                          className="input-mono w-14 py-1 px-1 text-xs text-center shrink-0" aria-label="Ödəniləcək say" />
+                          className="input-mono !w-16 !min-h-[36px] !py-1 !px-1 text-small text-center shrink-0" aria-label="Ödəniləcək say" />
                       )}
-                      <span className="text-xs font-mono text-ink-soft shrink-0 w-20 text-right">
+                      <span className="text-small font-mono tabular-nums text-text-2 shrink-0 w-24 text-right">
                         {item.is_paid ? '' : formatCurrency(checked ? selectedItems[item.id] * Number(item.purchase_price) : item.remaining_amount)}
                       </span>
                     </div>
@@ -367,25 +310,17 @@ export default function CreditorsPage() {
                 })}
               </div>
             ) : !debt.is_paid && (
-              <div className="border-t border-rule/70 px-3 py-2.5 flex gap-2">
+              <div className="border-t border-border px-4 py-3 flex gap-2">
                 <input type="number" min="0.01" step="0.01" value={amountInputs[debt.id] ?? String(debt.remaining)}
                   onChange={e => setAmountInputs(prev => ({ ...prev, [debt.id]: e.target.value }))}
-                  className="input-mono text-sm flex-1" aria-label="Ödəniləcək məbləğ" />
-                <Button className="min-h-0 py-2 text-sm" loading={amountPayingId === debt.id} onClick={() => handlePayAmount(debt)}>Ödə</Button>
+                  className="input-mono flex-1" aria-label="Ödəniləcək məbləğ" />
+                <Button loading={amountPayingId === debt.id} onClick={() => handlePayAmount(debt)}>Ödə</Button>
               </div>
             )}
 
             {!debt.purchase && debt.paid_amount === 0 && (
-              <div className="border-t border-rule/70 px-3 py-1.5 flex justify-end">
-                {confirmDeleteId === debt.id ? (
-                  <span className="flex gap-2 items-center text-xs">
-                    Silinsin?
-                    <button onClick={() => handleDelete(debt.id)} disabled={deletingId === debt.id} className="font-semibold text-danger">Bəli</button>
-                    <button onClick={() => setConfirmDeleteId(null)} className="font-semibold text-ink-muted">Xeyr</button>
-                  </span>
-                ) : (
-                  <button onClick={() => setConfirmDeleteId(debt.id)} className="text-xs text-ink-muted hover:text-danger">Borcu sil</button>
-                )}
+              <div className="border-t border-border px-4 py-2 flex justify-end">
+                <Button variant="ghost" size="sm" icon={Trash2} onClick={() => setConfirmDeleteId(debt.id)}>Borcu sil</Button>
               </div>
             )}
           </div>
@@ -393,53 +328,145 @@ export default function CreditorsPage() {
       </div>
 
       {chosen.length > 0 && (
-        <div className="sticky bottom-0 mt-4 -mx-6 px-6 py-3 bg-cream border-t border-rule flex items-center gap-3">
-          <span className="text-sm text-ink flex-1">
+        <div className="mt-4 px-5 py-4 bg-ink rounded-lg flex items-center gap-4">
+          <span className="text-body text-paper flex-1">
             <span className="font-semibold">{chosen.length} məhsul</span> seçilib
-            <span className="block font-mono font-bold text-lg">{formatCurrency(chosenTotal)}</span>
+            <span className="block font-mono font-semibold text-[26px] leading-9">{formatCurrency(chosenTotal)}</span>
           </span>
-          <Button loading={paying} onClick={handlePaySelected}>Ödə</Button>
+          <Button variant="secondary" loading={paying} onClick={handlePaySelected}>Ödə</Button>
         </div>
       )}
     </div>
   ) : null
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-ink-muted">Nisyə alışlardan yaranan borclar. Ödəniş kassadan çıxır, hesabata təsir etmir.</p>
-        <Button onClick={() => { setCreating(true); setSelectedKey(null); setAddError('') }}>+ Borc yarat</Button>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Maliyyə · Kreditorlar"
+        subtitle="Nisyə alışlardan yaranan borclar. Ödəniş kassadan çıxır, hesabata təsir etmir."
+        actions={<Button icon={Plus} onClick={() => { setCreating(true); setAddError('') }}>Borc yarat</Button>}
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <KpiCard
+          label="Ümumi ödənilməmiş borc"
+          value={totalUnpaid}
+          money
+          meaning="payable"
+          note={`${unpaidCount} kreditor · Ödəniləcək`}
+        />
       </div>
 
-      {totalUnpaid > 0 && (
-        <div className="bg-danger-bg border border-rule rounded px-6 py-4 mb-6 flex items-center justify-between">
-          <div>
-            <p className="section-label text-danger">Ümumi ödənilməmiş borc</p>
-            <p className="font-mono font-semibold text-2xl text-danger mt-0.5">{formatCurrency(totalUnpaid)}</p>
+      <Segmented
+        label="Filtr"
+        value={showPaidGroups ? 'all' : 'unpaid'}
+        onChange={k => setShowPaidGroups(k === 'all')}
+        options={[{ key: 'unpaid', label: 'Ödənilməmiş' }, { key: 'all', label: 'Bütün kreditorlar' }]}
+      />
+
+      {loading && debts.length === 0 ? <Spinner /> : visibleGroups.length === 0 ? (
+        <EmptyState title="Heç bir borc yoxdur" subtitle="Bütün kreditorlara ödənilib." />
+      ) : (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="ledger-table min-w-[760px]">
+              <thead>
+                <tr>
+                  <th className="ledger-th w-8" />
+                  <th className="ledger-th">Tədarükçü</th>
+                  <th className="ledger-th">Telefon</th>
+                  <th className="ledger-th">Status</th>
+                  <th className="ledger-th text-right">Cəmi</th>
+                  <th className="ledger-th text-right">Ödənilib</th>
+                  <th className="ledger-th text-right">Qalıq</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleGroups.map(group => {
+                  const open = selectedKey === group.key
+                  return (
+                    <Fragment key={group.key}>
+                      <tr onClick={() => selectSupplier(group.key)} className={`ledger-row ${open ? 'ledger-row-selected' : ''}`}>
+                        <td className="ledger-td !pr-0">
+                          <ChevronRight size={18} strokeWidth={1.75} className={`text-text-3 transition-transform duration-[160ms] ${open ? 'rotate-90' : ''}`} />
+                        </td>
+                        <td className="ledger-td font-semibold">
+                          {group.storeId != null ? (
+                            <Link to={`/business/stores/${group.storeId}`} onClick={e => e.stopPropagation()} className="hover:underline underline-offset-2">{group.name}</Link>
+                          ) : group.name}
+                        </td>
+                        <td className="ledger-td font-mono text-text-2">{group.phone || '—'}</td>
+                        <td className="ledger-td"><StatusBadge status={statusWord(group)} /></td>
+                        <td className="ledger-td text-right"><Money value={group.totalAmount} /></td>
+                        <td className="ledger-td text-right"><Money value={group.totalPaid} meaning="income" sign="none" /></td>
+                        <td className="ledger-td text-right"><Money value={group.remaining} meaning="payable" showWord={false} /></td>
+                      </tr>
+                      {open && (
+                        <tr>
+                          <td colSpan={7} className="p-0">{detailPanel}</td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-surface-2">
+                  <td className="ledger-td font-semibold" colSpan={4}>Cəmi · {visibleGroups.length} kreditor</td>
+                  <td className="ledger-td text-right"><Money value={visibleGroups.reduce((s, g) => s + g.totalAmount, 0)} className="font-bold" /></td>
+                  <td className="ledger-td text-right"><Money value={visibleGroups.reduce((s, g) => s + g.totalPaid, 0)} meaning="income" sign="none" className="font-bold" /></td>
+                  <td className="ledger-td text-right"><Money value={visibleGroups.reduce((s, g) => s + g.remaining, 0)} meaning="payable" showWord={false} className="font-bold" /></td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
-          <p className="text-sm text-danger">{unpaidCount} kreditor</p>
         </div>
       )}
 
-      <div className="flex items-center gap-2 mb-5">
-        {([[false, 'Ödənilməmiş'], [true, 'Bütün kreditorlar']] as const).map(([paid, label]) => (
-          <button key={label} onClick={() => setShowPaidGroups(paid)}
-            className={`text-xs font-mono font-semibold uppercase tracking-wide px-3 py-2 rounded border transition-colors ${showPaidGroups === paid ? 'bg-ink text-cream border-ink' : 'bg-surface text-ink-muted border-rule hover:bg-surface-alt'}`}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <Modal
+        open={creating}
+        title="Borc yarat"
+        subtitle="Mal alışı ilə bağlı olmayan borc"
+        onClose={() => setCreating(false)}
+        footer={
+          <>
+            <Button type="button" variant="secondary" onClick={() => setCreating(false)}>Ləğv et</Button>
+            <Button type="submit" form="creditor-debt-form" loading={adding}>Əlavə et</Button>
+          </>
+        }
+      >
+        <form id="creditor-debt-form" onSubmit={handleAdd} className="flex flex-col gap-4 pb-2">
+          <p className="text-small text-text-3">Mal alışı ilə bağlı olmayan borc üçün (məs. sistemdən əvvəlki köhnə borc). Mal alanda "Stok → Alışlar"dan nisyə alış edin.</p>
+          <div>
+            <label className="label">Kreditor adı <span className="text-danger normal-case">*</span></label>
+            <ComboboxInput value={newSupplier} onChange={setNewSupplier} options={supplierNames} placeholder="Məs. Avtoehtiyat MMC" autoFocus />
+          </div>
+          <div>
+            <label className="label">Telefon <span className="text-text-3 normal-case font-normal">(ixtiyari)</span></label>
+            <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+994 50 000 00 00" className="input" />
+          </div>
+          <div>
+            <label className="label">Açıqlama <span className="text-text-3 normal-case font-normal">(ixtiyari)</span></label>
+            <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Məs. Köhnə borc" className="input" />
+          </div>
+          <div>
+            <label className="label">Məbləğ <span className="text-danger normal-case">*</span></label>
+            <input value={newAmount} onChange={e => setNewAmount(e.target.value)} type="number" min="0.01" step="0.01" placeholder="0.00" className="input-mono" />
+          </div>
+          {addError && <p className="text-small text-danger-strong bg-danger-subtle rounded px-3 py-2">{addError}</p>}
+        </form>
+      </Modal>
 
-      <MasterDetailShell list={listPane} detail={detailPane} onClose={() => { setCreating(false); setSelectedKey(null) }} />
-    </div>
-  )
-}
-
-function SummaryBox({ label, value, tone }: { label: string; value: string; tone?: 'success' | 'danger' }) {
-  return (
-    <div className="bg-surface border border-rule rounded px-3 py-2.5">
-      <p className="section-label mb-1">{label}</p>
-      <p className={`font-mono font-semibold text-sm ${tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-danger' : 'text-ink'}`}>{value}</p>
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Borc silinsin?"
+        message="Bu borc qeydi silinəcək. Bu əməliyyat geri qaytarıla bilməz."
+        confirmLabel={deletingId !== null ? '...' : 'Bəli, sil'}
+        cancelLabel="Xeyr"
+        danger
+        onConfirm={() => confirmDeleteId !== null && handleDelete(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   )
 }
