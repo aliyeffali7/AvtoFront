@@ -13,5 +13,7 @@ export default function ServoLogo({
     kind === 'mark'
       ? 'servo_mark_ink_transparent.svg'
       : `servo_wordmark_${variant}_transparent.svg`
-  return <img src={`/brand/${file}`} alt="Servo" className={`w-auto ${className}`} />
+  // Size by height by default; a caller that sets a width (e.g. `w-full`) owns the sizing.
+  const sizing = /(^|\s)w-/.test(className) ? '' : 'w-auto '
+  return <img src={`/brand/${file}`} alt="Servo" className={`${sizing}${className}`} />
 }
