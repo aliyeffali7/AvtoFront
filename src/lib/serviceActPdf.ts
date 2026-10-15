@@ -82,7 +82,7 @@ async function loadMark(): Promise<string> {
 
 function money(n: number) {
   const [int, dec] = Math.abs(n).toFixed(2).split('.')
-  return `${int.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}.${dec}`
+  return `${int.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')},${dec}`
 }
 
 // 'YYYY-MM-DD' (a date) or a full ISO timestamp → local calendar parts.
@@ -265,7 +265,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   ]
   const sumRows = [
     ...(services.length && products.length ? [trow('İşlər', `${money(servicesTotal)} AZN`), trow('Ehtiyat hissələri', `${money(productsTotal)} AZN`)] : []),
-    ...(discount > 0 ? [trow('Endirim', `−${money(discount)} AZN`)] : []),
+    ...(discount > 0 ? [trow('Endirim', `− ${money(discount)} AZN`)] : []),
   ]
   const totalsBody = [
     ...sumRows,
