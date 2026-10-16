@@ -256,6 +256,8 @@ export interface OrderProduct {
   sell_price: number
   // null for a MECHANIC-role response — cost data isn't theirs to see.
   purchase_price: number | null
+  // Units of this line bought just for the order ("Anbarda yoxdur"); asks what to do with the purchase on removal.
+  bought_now_quantity?: number
 }
 
 export interface Product {

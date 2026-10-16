@@ -12,6 +12,7 @@ import { loadDraft, saveDraft, clearDraft, ORDER_DRAFT_KEY } from '@/lib/formDra
 import { X } from 'lucide-react'
 import Plate from '@/components/ui/Plate'
 import ComboboxInput from '@/components/ui/ComboboxInput'
+import BoughtNowRemoveModal, { BoughtNowAction } from '@/components/orders/BoughtNowRemoveModal'
 import PlateInput from '@/components/ui/PlateInput'
 import CarBrandModelInputs from '@/components/ui/CarBrandModelInputs'
 
@@ -88,6 +89,9 @@ export default function OrderForm({ order, onDone, onCancel }: {
           }))
       : draft?.orderProducts ?? []
   )
+  const [boughtRemoveIndex, setBoughtRemoveIndex] = useState<number | null>(null)
+  // order line id -> what to do with its purchase, for bought-now lines removed before save
+  const [boughtActions, setBoughtActions] = useState<Record<string, BoughtNowAction>>({})
   const [newProducts, setNewProducts] = useState<NewProdRow[]>(order ? [] : draft?.newProducts ?? [])
   const [customerProducts, setCustomerProducts] = useState<CustProdRow[]>(
     order
@@ -244,7 +248,24 @@ export default function OrderForm({ order, onDone, onCancel }: {
   }
 
   function addProductRow() { setOrderProducts(prev => [...prev, { productId: '', qty: '1' }]) }
-  function removeProductRow(i: number) { setOrderProducts(prev => prev.filter((_, idx) => idx !== i)) }
+  function removeProductRow(i: number) {
+    const row = orderProducts[i]
+    const line = row?.lineId != null ? order?.products?.find(x => x.id === row.lineId) : undefined
+    if (row && line && (line.bought_now_quantity ?? 0) > 0) {
+      // Bought just for this order: ask now, apply the choice on save.
+      setBoughtRemoveIndex(i)
+      return
+    }
+    setOrderProducts(prev => prev.filter((_, idx) => idx !== i))
+  }
+  function chooseBoughtNow(action: BoughtNowAction) {
+    const i = boughtRemoveIndex
+    const lineId = i != null ? orderProducts[i]?.lineId : undefined
+    if (i == null || lineId == null) return
+    setBoughtActions(prev => ({ ...prev, [String(lineId)]: action }))
+    setOrderProducts(prev => prev.filter((_, idx) => idx !== i))
+    setBoughtRemoveIndex(null)
+  }
   function updateProductRow(i: number, field: keyof ProdRow, value: string) {
     setOrderProducts(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
   }
@@ -312,6 +333,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
         services: filledServices,
         products: filledProducts,
         customer_products: filledCustomerProducts,
+        ...(isEdit && Object.keys(boughtActions).length > 0 ? { bought_now_actions: boughtActions } : {}),
       }
 
       const orderId = isEdit
@@ -673,6 +695,12 @@ export default function OrderForm({ order, onDone, onCancel }: {
           <button type="submit" disabled={loading} className="btn-primary">{loading ? 'Saxlanılır...' : isEdit ? 'Saxla' : 'Sifarişi yarat'}</button>
         </div>
       </div>
+      <BoughtNowRemoveModal
+        open={boughtRemoveIndex !== null}
+        partName={boughtRemoveIndex != null ? orderProducts[boughtRemoveIndex]?.name ?? '' : ''}
+        onChoose={chooseBoughtNow}
+        onClose={() => setBoughtRemoveIndex(null)}
+      />
     </form>
   )
 }

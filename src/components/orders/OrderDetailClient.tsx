@@ -26,6 +26,8 @@ import Plate from '@/components/ui/Plate'
 import Money from '@/components/ui/Money'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
+import BoughtNowRemoveModal, { BoughtNowAction } from '@/components/orders/BoughtNowRemoveModal'
+import type { OrderProduct } from '@/types'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import Spinner from '@/components/ui/Spinner'
@@ -172,6 +174,8 @@ export default function OrderDetailClient() {
   const [addingProduct, setAddingProduct] = useState(false)
   const [productError, setProductError] = useState('')
   const [removingProductId, setRemovingProductId] = useState<number | null>(null)
+  const [boughtRemove, setBoughtRemove] = useState<OrderProduct | null>(null)
+  const [boughtRemoveError, setBoughtRemoveError] = useState('')
   const [returningProductId, setReturningProductId] = useState<number | null>(null)
   const [returnQty, setReturnQty] = useState('1')
   const [returnBusy, setReturnBusy] = useState(false)
@@ -419,6 +423,12 @@ export default function OrderDetailClient() {
 
   function handleRemoveProduct(orderProductId: number) {
     if (!order) return
+    const line = order.products.find(x => x.id === orderProductId)
+    if (line && (line.bought_now_quantity ?? 0) > 0) {
+      setBoughtRemoveError('')
+      setBoughtRemove(line)
+      return
+    }
     showConfirm({
       title: 'Məhsulu sil', message: 'Bu məhsulu sifarişdən çıxarmaq istəyirsiniz? Stoka qaytarılacaq.', confirmLabel: 'Sil', danger: true,
       onConfirm: async () => {
@@ -426,6 +436,21 @@ export default function OrderDetailClient() {
         try { await removeProductFromOrder(order.id, orderProductId); loadOrder() } finally { setRemovingProductId(null) }
       },
     })
+  }
+
+  async function handleBoughtRemove(action: BoughtNowAction) {
+    if (!order || !boughtRemove) return
+    setRemovingProductId(boughtRemove.id)
+    setBoughtRemoveError('')
+    try {
+      await removeProductFromOrder(order.id, boughtRemove.id, action)
+      setBoughtRemove(null)
+      loadOrder()
+    } catch (err) {
+      setBoughtRemoveError(mapApiError(err))
+    } finally {
+      setRemovingProductId(null)
+    }
   }
 
   async function handleSaveProductEdit(orderProductId: number) {
@@ -1123,6 +1148,14 @@ export default function OrderDetailClient() {
         )
       })()}
 
+      <BoughtNowRemoveModal
+        open={boughtRemove !== null}
+        partName={boughtRemove?.product_name ?? ''}
+        busy={removingProductId !== null && removingProductId === boughtRemove?.id}
+        error={boughtRemoveError}
+        onChoose={handleBoughtRemove}
+        onClose={() => setBoughtRemove(null)}
+      />
       <ConfirmDialog
         open={confirmDialog.open}
         title={confirmDialog.title}

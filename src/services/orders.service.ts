@@ -16,7 +16,7 @@ export const getOrder = (id: number) => api.get<Order>(`/api/orders/${id}`)
 export const createOrder = (data: Omit<Partial<Order>, 'products'> & { products?: { id?: number; product?: number; quantity: number }[]; customer_products?: { name: string; quantity: number }[]; expense_record_ids?: number[] }) =>
   api.post<Order>('/api/orders', data)
 
-export const updateOrder = (id: number, data: Omit<Partial<Order>, 'products' | 'services'> & { products?: { id?: number; product?: number; quantity: number }[]; customer_products?: { name: string; quantity: number }[]; services?: import('@/types').OrderService[] }) =>
+export const updateOrder = (id: number, data: Omit<Partial<Order>, 'products' | 'services'> & { products?: { id?: number; product?: number; quantity: number }[]; customer_products?: { name: string; quantity: number }[]; services?: import('@/types').OrderService[]; bought_now_actions?: Record<string, 'cancel_purchase' | 'keep'> }) =>
   api.patch<Order>(`/api/orders/${id}`, data)
 
 export const deleteOrder = (id: number) =>
@@ -59,8 +59,10 @@ export const updateOrderProduct = (orderId: number, orderProductId: number, data
 export const returnOrderProduct = (orderId: number, orderProductId: number, quantity: number) =>
   api.post<Order & { refund: number }>(`/api/orders/${orderId}/products/${orderProductId}/return`, { quantity })
 
-export const removeProductFromOrder = (orderId: number, orderProductId: number) =>
-  api.delete<Order>(`/api/orders/${orderId}/products/${orderProductId}`)
+/** `boughtNowAction` only matters for a part bought just for this order:
+ * 'cancel_purchase' also cancels that purchase, 'keep' (default) leaves it. */
+export const removeProductFromOrder = (orderId: number, orderProductId: number, boughtNowAction?: 'cancel_purchase' | 'keep') =>
+  api.delete<Order>(`/api/orders/${orderId}/products/${orderProductId}`, { params: boughtNowAction ? { bought_now_action: boughtNowAction } : undefined })
 
 
 export const addServiceToOrder = (orderId: number, name: string, price: number, mechanic?: number | null, mechanic_amount?: number | null, template?: number | null) =>
