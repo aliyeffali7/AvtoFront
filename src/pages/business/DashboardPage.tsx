@@ -6,7 +6,7 @@ import { Business, DashboardStats, Order, WeeklyIncome } from '@/types'
 import { getDashboardStats, getWeeklyIncome } from '@/services/finance.service'
 import { getOrders } from '@/services/orders.service'
 import { getBusinessProfile } from '@/services/auth.service'
-import { formatCurrency, formatDate, toLocalISODate } from '@/lib/utils'
+import { formatAmount, formatCurrency, formatDate, toLocalISODate } from '@/lib/utils'
 import Spinner from '@/components/ui/Spinner'
 import Plate from '@/components/ui/Plate'
 import Money from '@/components/ui/Money'
@@ -118,7 +118,7 @@ export default function DashboardPage() {
             label: 'Bugünkü xalis',
             // Sign carries the meaning (no colour): "− 75.00 ₼" with a real minus.
             value: Number(todayStats.net) < 0
-              ? `− ${formatCurrency(Math.abs(Number(todayStats.net)))}`
+              ? `\u2212 ${formatCurrency(Math.abs(Number(todayStats.net)))}`
               : formatCurrency(todayStats.net),
           },
           { label: 'Gəlir', value: formatCurrency(todayStats.income ?? 0) },
@@ -240,7 +240,7 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-4">
             <div>
               <p className="font-mono font-semibold tabular-nums text-[34px] leading-10 text-ink">
-                {Number(weekly.total).toLocaleString('az-AZ', { maximumFractionDigits: 0 })} <span className="text-h3 text-text-3">₼</span>
+                {formatAmount(weekly.total).replace(/,\d{2}$/, '')} <span className="text-h3 text-text-3">₼</span>
               </p>
               <div className="mt-1 flex items-center gap-2 text-small">
                 {weekly.change_percent != null && (

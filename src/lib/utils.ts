@@ -8,8 +8,17 @@ export function toLocalISODate(date: Date = new Date()): string {
   return `${y}-${m}-${d}`
 }
 
+/** Brand money format: `1 250,00` — non-breaking space thousands, comma decimals, real minus. */
+export function formatAmount(amount: number | string): string {
+  const n = Number(amount) || 0
+  const [int, dec] = Math.abs(n).toFixed(2).split('.')
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0')
+  return `${n < 0 ? '\u2212' : ''}${grouped},${dec}`
+}
+
+/** Money with the currency sign: `1 250,00 ₼`. */
 export function formatCurrency(amount: number | string): string {
-  return `${Number(amount).toFixed(2)} ₼`
+  return `${formatAmount(amount)}\u00A0₼`
 }
 
 export function formatDate(dateString: string): string {

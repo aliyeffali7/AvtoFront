@@ -86,7 +86,7 @@ export default function DebitorlarTab() {
       return
     }
     if (Math.round(amount * 100) > Math.round(debt * 100)) {
-      setOrderPayErrors(prev => ({ ...prev, [orderId]: `Məbləğ qalan borcu (${debt.toFixed(2)} ₼) aşa bilməz.` }))
+      setOrderPayErrors(prev => ({ ...prev, [orderId]: `Məbləğ qalan borcu (${formatCurrency(debt)}) aşa bilməz.` }))
       return
     }
     setOrderPayErrors(prev => ({ ...prev, [orderId]: '' }))

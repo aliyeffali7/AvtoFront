@@ -410,7 +410,7 @@ export default function FinanceClient() {
         <td>${r.date.slice(0, 10)}</td>
         <td>${r.description || '—'}</td>
         <td><span class="${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? 'Gəlir' : 'Xərc'}</span></td>
-        <td class="amount ${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? '+' : '−'}${Number(r.amount).toFixed(2)} ₼</td>
+        <td class="amount ${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? '+' : '−'}${formatCurrency(Math.abs(Number(r.amount)))}</td>
       </tr>`).join('')
 
     const noteHtml = singleDate && pageNote
@@ -440,11 +440,11 @@ export default function FinanceClient() {
       .note-text{font-family:'IBM Plex Sans','Noto Sans',sans-serif;font-size:13px;color:#1F2A24;line-height:1.6}
     </style></head><body>
     <h1>Maliyyə Hesabatı</h1>
-    <p class="sub">${periodLabel} · Gəlir: ${income.toFixed(2)} ₼ · Xərc: −${expense.toFixed(2)} ₼ · Xalis: ${net >= 0 ? '+' : ''}${net.toFixed(2)} ₼</p>
+    <p class="sub">${periodLabel} · Gəlir: ${formatCurrency(income)} · Xərc: −${formatCurrency(expense)} · Xalis: ${net >= 0 ? '+' : ''}${formatCurrency(net)}</p>
     <div class="summary">
-      <div class="card"><p class="card-label green">Gəlir</p><p class="card-value green">${income.toFixed(2)} ₼</p></div>
-      <div class="card"><p class="card-label red">Xərc</p><p class="card-value red">${expense.toFixed(2)} ₼</p></div>
-      <div class="card"><p class="card-label ${net >= 0 ? 'green' : 'red'}">Xalis</p><p class="card-value ${net >= 0 ? 'green' : 'red'}">${net >= 0 ? '+' : ''}${net.toFixed(2)} ₼</p></div>
+      <div class="card"><p class="card-label green">Gəlir</p><p class="card-value green">${formatCurrency(income)}</p></div>
+      <div class="card"><p class="card-label red">Xərc</p><p class="card-value red">${formatCurrency(expense)}</p></div>
+      <div class="card"><p class="card-label ${net >= 0 ? 'green' : 'red'}">Xalis</p><p class="card-value ${net >= 0 ? 'green' : 'red'}">${net >= 0 ? '+' : ''}${formatCurrency(net)}</p></div>
     </div>
     ${all.length === 0 ? '<p style="color:#6b7264;text-align:center;padding:32px 0">Bu dövr üzrə əməliyyat yoxdur.</p>' : `
     <table>
