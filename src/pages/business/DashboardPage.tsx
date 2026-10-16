@@ -114,7 +114,13 @@ export default function DashboardPage() {
       <InkBand
         label={`Bu gün · ${todayLabel}`}
         items={[
-          { label: 'Bugünkü xalis', value: formatCurrency(todayStats.net), highlight: true },
+          {
+            label: 'Bugünkü xalis',
+            // Sign carries the meaning (no colour): "− 75.00 ₼" with a real minus.
+            value: Number(todayStats.net) < 0
+              ? `− ${formatCurrency(Math.abs(Number(todayStats.net)))}`
+              : formatCurrency(todayStats.net),
+          },
           { label: 'Gəlir', value: formatCurrency(todayStats.income ?? 0) },
           { label: 'Xərc', value: formatCurrency(todayStats.expense ?? 0) },
           { label: 'Bugünkü sifarişlər', value: String(todayOrdersCount) },
