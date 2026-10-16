@@ -101,8 +101,9 @@ export default function SettingsClient() {
         actions={<Button type="submit" form="settings-form" loading={saving}>Yadda saxla</Button>}
       />
 
-      <div className="max-w-[780px] flex flex-col gap-4">
-        {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-4 py-3">{error}</p>}
+      <div className="flex flex-col xl:flex-row xl:items-start gap-4">
+      <div className="w-full max-w-[780px] flex flex-col gap-4">
+        {error &&<p className="text-body text-danger-strong bg-danger-subtle rounded px-4 py-3">{error}</p>}
         {success && <p className="text-body text-success-strong bg-success-subtle rounded px-4 py-3">Məlumatlar yadda saxlanıldı.</p>}
 
         <form id="settings-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -254,9 +255,6 @@ export default function SettingsClient() {
           </section>
         </form>
 
-        {/* Hazır işlər */}
-        <ServiceTemplatesCard />
-
         {/* Hesab */}
         {currentUser?.email && (
           <section className="flex flex-col gap-3">
@@ -264,6 +262,12 @@ export default function SettingsClient() {
             <ChangePasswordSection email={currentUser.email} />
           </section>
         )}
+      </div>
+
+      {/* Hazır işlər — right column on wide screens */}
+      <aside className="w-full max-w-[780px] xl:max-w-none xl:flex-1 xl:min-w-[360px] xl:sticky xl:top-6">
+        <ServiceTemplatesCard />
+      </aside>
       </div>
     </div>
   )

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { ClipboardList, Pencil, Plus, Trash2 } from 'lucide-react'
 import { ServiceTemplate } from '@/types'
 import {
   createServiceTemplate, deleteServiceTemplate, getServiceTemplates, updateServiceTemplate,
@@ -75,46 +75,68 @@ export default function ServiceTemplatesCard() {
   }
 
   return (
-    <section className="card p-6 flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="section-label">Hazır işlər</h2>
-          <p className="text-small text-text-3 mt-1">Usta payı hansı ustanın etməsindən asılı olmayaraq eynidir.</p>
+    <section className="card overflow-hidden flex flex-col">
+      <div className="px-6 pt-5 pb-4 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <span className="w-10 h-10 rounded-md bg-surface-2 flex items-center justify-center shrink-0 text-text-2">
+            <ClipboardList size={20} strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-display font-semibold text-h3 text-text-1 flex items-center gap-2">
+              Hazır işlər
+              {items && items.length > 0 && (
+                <span className="font-mono text-small font-medium text-text-3 bg-surface-2 rounded-sm px-1.5 py-0.5">{items.length}</span>
+              )}
+            </h2>
+            <p className="text-small text-text-3 mt-0.5">Usta payı hansı ustanın etməsindən asılı olmayaraq eynidir.</p>
+          </div>
         </div>
-        <Button type="button" variant="secondary" size="sm" icon={Plus} onClick={openNew}>Əlavə et</Button>
+        <Button type="button" size="sm" icon={Plus} onClick={openNew}>Əlavə et</Button>
       </div>
 
       {loadFailed ? (
-        <p className="text-body text-danger-strong bg-danger-subtle rounded px-4 py-3">
+        <p className="mx-6 mb-6 text-body text-danger-strong bg-danger-subtle rounded px-4 py-3">
           Hazır işlər yüklənmədi. <button type="button" onClick={load} className="underline font-semibold">Yenidən cəhd et</button>
         </p>
       ) : items === null ? (
-        <Spinner />
+        <div className="px-6 pb-6"><Spinner /></div>
       ) : items.length === 0 ? (
-        <p className="text-body text-text-3 border border-dashed border-border-strong rounded-lg px-4 py-8 text-center">
-          Hələ hazır iş yoxdur. Tez-tez gördüyünüz işi əlavə edin — sifarişdə bir kliklə seçəcəksiniz.
-        </p>
+        <div className="mx-6 mb-6 border border-dashed border-border-strong rounded-lg px-4 py-10 text-center flex flex-col items-center gap-3">
+          <p className="text-body text-text-3 max-w-[36ch]">
+            Hələ hazır iş yoxdur. Tez-tez gördüyünüz işi əlavə edin — sifarişdə bir kliklə seçəcəksiniz.
+          </p>
+          <Button type="button" variant="secondary" size="sm" icon={Plus} onClick={openNew}>İlk hazır işi əlavə et</Button>
+        </div>
       ) : (
-        <ul className="border border-border rounded-lg divide-y divide-border">
-          {items.map(t => (
-            <li key={t.id} className="flex items-center gap-3 px-4 py-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-body font-medium text-text-1 truncate">{t.name}</p>
-                <p className="text-small text-text-3 flex flex-wrap items-center gap-x-1.5">
-                  <span>Qiymət: <Money value={Number(t.price)} className="!text-small !font-medium" /></span>
-                  <span aria-hidden>·</span>
-                  <span>Usta payı: <Money value={Number(t.mechanic_amount)} className="!text-small !font-medium" /></span>
-                </p>
-              </div>
-              <button type="button" onClick={() => openEdit(t)} aria-label={`${t.name} — redaktə et`} className="w-9 h-9 flex items-center justify-center rounded text-text-3 hover:bg-surface-2 hover:text-ink">
-                <Pencil size={18} strokeWidth={1.75} />
-              </button>
-              <button type="button" onClick={() => { setDeleting(t); setDeleteError('') }} aria-label={`${t.name} — sil`} className="w-9 h-9 flex items-center justify-center rounded text-text-3 hover:bg-surface-2 hover:text-danger">
-                <Trash2 size={18} strokeWidth={1.75} />
-              </button>
-            </li>
-          ))}
-        </ul>
+        <table className="w-full border-t border-border">
+          <thead>
+            <tr className="bg-surface-2">
+              <th className="text-left px-6 py-2.5 text-label uppercase text-text-3 font-medium">İş</th>
+              <th className="text-right px-3 py-2.5 text-label uppercase text-text-3 font-medium whitespace-nowrap">Qiymət</th>
+              <th className="text-right px-3 py-2.5 text-label uppercase text-text-3 font-medium whitespace-nowrap">Usta payı</th>
+              <th className="w-[88px]" aria-label="Əməliyyatlar" />
+            </tr>
+          </thead>
+          <tbody>
+            {items.map(t => (
+              <tr key={t.id} className="group border-t border-border hover:bg-[#F9F9F9] transition-colors">
+                <td className="px-6 py-3 text-body font-medium text-text-1">{t.name}</td>
+                <td className="px-3 py-3 text-right whitespace-nowrap"><Money value={Number(t.price)} className="!text-body" /></td>
+                <td className="px-3 py-3 text-right whitespace-nowrap text-text-2"><Money value={Number(t.mechanic_amount)} className="!text-body" /></td>
+                <td className="pr-4 py-2">
+                  <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <button type="button" onClick={() => openEdit(t)} aria-label={`${t.name} — redaktə et`} className="w-9 h-9 flex items-center justify-center rounded text-text-3 hover:bg-surface-2 hover:text-ink">
+                      <Pencil size={18} strokeWidth={1.75} />
+                    </button>
+                    <button type="button" onClick={() => { setDeleting(t); setDeleteError('') }} aria-label={`${t.name} — sil`} className="w-9 h-9 flex items-center justify-center rounded text-text-3 hover:bg-surface-2 hover:text-danger">
+                      <Trash2 size={18} strokeWidth={1.75} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
       <Modal
