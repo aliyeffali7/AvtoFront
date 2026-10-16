@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import Pagination from '@/components/ui/Pagination'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ArrowLeft, Pencil, Phone, UserCheck, UserX } from 'lucide-react'
@@ -22,6 +23,9 @@ import PeriodFilter from '@/components/ui/PeriodFilter'
 import Spinner from '@/components/ui/Spinner'
 
 /** Full-page mechanic: header, "Usta hesabı", pay terms, period earnings, orders. */
+// Orders are loaded in full (the totals row sums all of them); only the visible rows are paged.
+const ORDERS_PAGE_SIZE = 20
+
 export default function MechanicDetailClient() {
   const navigate = useNavigate()
   const goBack = useGoBack('/business/mechanics')
@@ -36,6 +40,7 @@ export default function MechanicDetailClient() {
 
   const [orders, setOrders] = useState<Order[]>([])
   const [ordersLoading, setOrdersLoading] = useState(true)
+  const [ordersPage, setOrdersPage] = useState(1)
   const [earningsPeriod, setEarningsPeriod] = useState<Period>(() => makePeriod('30'))
   const [earnings, setEarnings] = useState<MechanicEarnings | null>(null)
   const [earningsLoading, setEarningsLoading] = useState(true)
@@ -55,7 +60,7 @@ export default function MechanicDetailClient() {
   useEffect(() => {
     if (isNaN(mechanicId)) return
     setOrdersLoading(true)
-    getMechanicOrders(mechanicId).then(r => setOrders(r.data)).finally(() => setOrdersLoading(false))
+    getMechanicOrders(mechanicId).then(r => { setOrders(r.data); setOrdersPage(1) }).finally(() => setOrdersLoading(false))
   }, [mechanicId])
 
   useEffect(() => {
@@ -176,7 +181,7 @@ export default function MechanicDetailClient() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map(o => (
+                {orders.slice((ordersPage - 1) * ORDERS_PAGE_SIZE, ordersPage * ORDERS_PAGE_SIZE).map(o => (
                   <tr key={o.id} onClick={() => navigate(`/business/orders/${o.id}`)} className="ledger-row">
                     <td className="ledger-td font-mono font-semibold">{o.number ?? o.id}</td>
                     <td className="ledger-td font-mono text-text-2">{formatDate(o.created_at)}</td>
@@ -200,6 +205,15 @@ export default function MechanicDetailClient() {
                 </tr>
               </tfoot>
             </table>
+            {orders.length > ORDERS_PAGE_SIZE && (
+            <div className="px-5 py-3 border-t border-border">
+              <Pagination
+                page={ordersPage}
+                totalPages={Math.ceil(orders.length / ORDERS_PAGE_SIZE)}
+                onChange={setOrdersPage}
+              />
+            </div>
+            )}
           </div>
         )}
       </section>
