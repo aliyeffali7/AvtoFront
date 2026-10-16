@@ -12,7 +12,7 @@ import { loadDraft, saveDraft, clearDraft, ORDER_DRAFT_KEY } from '@/lib/formDra
 import { X } from 'lucide-react'
 import Plate from '@/components/ui/Plate'
 import ComboboxInput from '@/components/ui/ComboboxInput'
-import BoughtNowRemoveModal, { BoughtNowAction } from '@/components/orders/BoughtNowRemoveModal'
+import BoughtNowRemoveModal, { BoughtNowAction, BoughtNowPart } from '@/components/orders/BoughtNowRemoveModal'
 import PlateInput from '@/components/ui/PlateInput'
 import CarBrandModelInputs from '@/components/ui/CarBrandModelInputs'
 
@@ -90,6 +90,8 @@ export default function OrderForm({ order, onDone, onCancel }: {
       : draft?.orderProducts ?? []
   )
   const [boughtRemoveIndex, setBoughtRemoveIndex] = useState<number | null>(null)
+  // Save blocked on the question about lowered bought-now quantities; the answer applies to all of them.
+  const [reduceAsk, setReduceAsk] = useState<{ lines: { lineId: number; part: BoughtNowPart }[] } | null>(null)
   // order line id -> what to do with its purchase, for bought-now lines removed before save
   const [boughtActions, setBoughtActions] = useState<Record<string, BoughtNowAction>>({})
   const [newProducts, setNewProducts] = useState<NewProdRow[]>(order ? [] : draft?.newProducts ?? [])
@@ -282,8 +284,38 @@ export default function OrderForm({ order, onDone, onCancel }: {
     setCustomerProducts(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Existing bought-now lines whose quantity was lowered below what is
+  // ordinary stock: the removed bought-now units need an answer.
+  function reducedBoughtNowLines() {
+    const found: { lineId: number; part: BoughtNowPart }[] = []
+    for (const row of orderProducts) {
+      if (row.lineId == null) continue
+      const line = order?.products?.find(x => x.id === row.lineId)
+      const bought = line?.bought_now_quantity ?? 0
+      if (!line || bought <= 0) continue
+      const removed = line.quantity - (parseInt(row.qty) || 1)
+      const boughtRemoved = Math.min(bought, Math.max(removed - Math.max(line.quantity - bought, 0), 0))
+      if (boughtRemoved > 0) found.push({ lineId: line.id, part: { name: line.product_name, quantity: boughtRemoved, supplier: line.bought_now_supplier } })
+    }
+    return found
+  }
+
+  function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault()
+    const reduced = isEdit ? reducedBoughtNowLines() : []
+    if (reduced.length > 0) { setReduceAsk({ lines: reduced }); return }
+    void handleSubmit(e)
+  }
+
+  function chooseReduce(action: BoughtNowAction) {
+    if (!reduceAsk) return
+    const extra = Object.fromEntries(reduceAsk.lines.map(l => [String(l.lineId), action]))
+    setReduceAsk(null)
+    void handleSubmit(undefined, extra)
+  }
+
+  async function handleSubmit(e?: React.FormEvent, extraActions: Record<string, BoughtNowAction> = {}) {
+    e?.preventDefault()
     setError('')
     setLoading(true)
     const filledServices: OrderService[] = services
@@ -333,7 +365,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
         services: filledServices,
         products: filledProducts,
         customer_products: filledCustomerProducts,
-        ...(isEdit && Object.keys(boughtActions).length > 0 ? { bought_now_actions: boughtActions } : {}),
+        ...(isEdit && Object.keys({ ...boughtActions, ...extraActions }).length > 0 ? { bought_now_actions: { ...boughtActions, ...extraActions } } : {}),
       }
 
       const orderId = isEdit
@@ -395,7 +427,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
   const CLOSE_ICON = <X size={18} strokeWidth={1.75} />
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-3xl w-full mx-auto">
+    <form onSubmit={handleFormSubmit} className="flex flex-col gap-4 max-w-3xl w-full mx-auto">
       <h1 className="page-title">{isEdit ? 'Sifarişi düzəlt' : 'Yeni sifariş'}</h1>
 
       {draftRestored && (
@@ -697,9 +729,20 @@ export default function OrderForm({ order, onDone, onCancel }: {
       </div>
       <BoughtNowRemoveModal
         open={boughtRemoveIndex !== null}
-        partName={boughtRemoveIndex != null ? orderProducts[boughtRemoveIndex]?.name ?? '' : ''}
+        parts={(() => {
+          const row = boughtRemoveIndex != null ? orderProducts[boughtRemoveIndex] : undefined
+          const line = row?.lineId != null ? order?.products?.find(x => x.id === row.lineId) : undefined
+          return [{ name: row?.name ?? '', quantity: line?.bought_now_quantity ?? 0, supplier: line?.bought_now_supplier }]
+        })()}
         onChoose={chooseBoughtNow}
         onClose={() => setBoughtRemoveIndex(null)}
+      />
+      <BoughtNowRemoveModal
+        open={reduceAsk !== null}
+        mode="reduce"
+        parts={reduceAsk?.lines.map(l => l.part) ?? []}
+        onChoose={chooseReduce}
+        onClose={() => setReduceAsk(null)}
       />
     </form>
   )

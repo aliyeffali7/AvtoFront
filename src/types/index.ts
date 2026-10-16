@@ -258,6 +258,8 @@ export interface OrderProduct {
   purchase_price: number | null
   // Units of this line bought just for the order ("Anbarda yoxdur"); asks what to do with the purchase on removal.
   bought_now_quantity?: number
+  // Supplier name(s) of that purchase, for the question's list.
+  bought_now_supplier?: string
 }
 
 export interface Product {

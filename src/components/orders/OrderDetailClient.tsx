@@ -26,8 +26,7 @@ import Plate from '@/components/ui/Plate'
 import Money from '@/components/ui/Money'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
-import BoughtNowRemoveModal, { BoughtNowAction } from '@/components/orders/BoughtNowRemoveModal'
-import type { OrderProduct } from '@/types'
+import BoughtNowRemoveModal, { BoughtNowAction, BoughtNowMode, BoughtNowPart } from '@/components/orders/BoughtNowRemoveModal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import Spinner from '@/components/ui/Spinner'
@@ -174,7 +173,9 @@ export default function OrderDetailClient() {
   const [addingProduct, setAddingProduct] = useState(false)
   const [productError, setProductError] = useState('')
   const [removingProductId, setRemovingProductId] = useState<number | null>(null)
-  const [boughtRemove, setBoughtRemove] = useState<OrderProduct | null>(null)
+  // The "bought for this order" question: what it is about and what to run with the answer.
+  const [boughtAsk, setBoughtAsk] = useState<{ mode: BoughtNowMode; parts: BoughtNowPart[]; run: (action: BoughtNowAction) => Promise<void> } | null>(null)
+  const [boughtBusy, setBoughtBusy] = useState(false)
   const [boughtRemoveError, setBoughtRemoveError] = useState('')
   const [returningProductId, setReturningProductId] = useState<number | null>(null)
   const [returnQty, setReturnQty] = useState('1')
@@ -426,7 +427,11 @@ export default function OrderDetailClient() {
     const line = order.products.find(x => x.id === orderProductId)
     if (line && (line.bought_now_quantity ?? 0) > 0) {
       setBoughtRemoveError('')
-      setBoughtRemove(line)
+      setBoughtAsk({
+        mode: 'remove',
+        parts: [{ name: line.product_name, quantity: line.bought_now_quantity ?? line.quantity, supplier: line.bought_now_supplier }],
+        run: async action => { await removeProductFromOrder(order.id, line.id, action); setBoughtAsk(null); loadOrder() },
+      })
       return
     }
     showConfirm({
@@ -438,18 +443,16 @@ export default function OrderDetailClient() {
     })
   }
 
-  async function handleBoughtRemove(action: BoughtNowAction) {
-    if (!order || !boughtRemove) return
-    setRemovingProductId(boughtRemove.id)
+  async function handleBoughtChoose(action: BoughtNowAction) {
+    if (!boughtAsk) return
+    setBoughtBusy(true)
     setBoughtRemoveError('')
     try {
-      await removeProductFromOrder(order.id, boughtRemove.id, action)
-      setBoughtRemove(null)
-      loadOrder()
+      await boughtAsk.run(action)
     } catch (err) {
       setBoughtRemoveError(mapApiError(err))
     } finally {
-      setRemovingProductId(null)
+      setBoughtBusy(false)
     }
   }
 
@@ -457,7 +460,34 @@ export default function OrderDetailClient() {
     if (!order) return
     setEditProductError('')
     const newQty = parseInt(editProductQty)
-    if (!newQty || newQty < 1) { setEditProductError('Miqdar müsbət tam ədəd olmalıdır.'); return }
+    const line = order.products.find(x => x.id === orderProductId)
+    if (Number.isNaN(newQty) || newQty < 0) { setEditProductError('Miqdar tam ədəd olmalıdır (0 = sətri çıxar).'); return }
+    if (newQty === 0) {
+      // Reducing to nothing is removing the line — same flow (and question) as the bin button.
+      setEditingProductId(null)
+      handleRemoveProduct(orderProductId)
+      return
+    }
+    const removed = line ? line.quantity - newQty : 0
+    const bought = line?.bought_now_quantity ?? 0
+    // Ordinary-stock units go first; only what eats into the bought-now ones needs the question.
+    const boughtRemoved = line ? Math.min(bought, Math.max(removed - Math.max(line.quantity - bought, 0), 0)) : 0
+    if (line && boughtRemoved > 0) {
+      setBoughtRemoveError('')
+      setBoughtAsk({
+        mode: 'reduce',
+        parts: [{ name: line.product_name, quantity: boughtRemoved, supplier: line.bought_now_supplier }],
+        run: async action => {
+          await updateOrderProduct(order.id, orderProductId, {
+            quantity: newQty,
+            ...(editProductSell !== '' ? { sell_price: parseFloat(editProductSell) } : {}),
+            bought_now_action: action,
+          })
+          setBoughtAsk(null); setEditingProductId(null); loadOrder()
+        },
+      })
+      return
+    }
     setSavingProductEdit(true)
     try {
       // Only this order's line changes (quantity + its frozen sell price) —
@@ -529,6 +559,20 @@ export default function OrderDetailClient() {
 
   function handleDeleteOrder() {
     if (!order) return
+    const boughtLines = order.products.filter(x => (x.bought_now_quantity ?? 0) > 0)
+    if (boughtLines.length > 0) {
+      setBoughtRemoveError('')
+      setBoughtAsk({
+        mode: 'order',
+        parts: boughtLines.map(x => ({ name: x.product_name, quantity: x.bought_now_quantity ?? 0, supplier: x.bought_now_supplier })),
+        run: async action => {
+          setDeleting(true)
+          try { await deleteOrder(order.id, action) } finally { setDeleting(false) }
+          navigate('/business/orders', { replace: true })
+        },
+      })
+      return
+    }
     showConfirm({
       title: 'Sifarişi ləğv et',
       message: 'Bu sifarişi ləğv etmək istəyirsiniz? Bütün ödəniş qeydləri maliyyədən silinəcək, anbar stoku bərpa ediləcək. Bu əməliyyat geri alına bilməz.',
@@ -752,10 +796,10 @@ export default function OrderDetailClient() {
                           </label>
                           <label className="flex flex-col w-24">
                             <span className="label">Ədəd</span>
-                            <input value={editProductQty} onChange={e => setEditProductQty(e.target.value)} type="number" min="1" className="input-mono" />
+                            <input value={editProductQty} onChange={e => setEditProductQty(e.target.value)} type="number" min="0" className="input-mono" />
                           </label>
                         </div>
-                        <p className="text-small text-text-3">Qiymət yalnız bu sifarişdə dəyişir. Miqdar artsa, fərq stokdan çıxılır; azalsa, stoka qayıdır.</p>
+                        <p className="text-small text-text-3">Qiymət yalnız bu sifarişdə dəyişir. Miqdar artsa, fərq stokdan çıxılır; azalsa, stoka qayıdır. 0 yazsanız, sətir sifarişdən çıxır.</p>
                         {editProductError && <p className="text-small text-danger">{editProductError}</p>}
                         <div className="flex gap-2 justify-end">
                           <Button type="button" variant="secondary" size="sm" onClick={() => setEditingProductId(null)}>Ləğv</Button>
@@ -1149,12 +1193,13 @@ export default function OrderDetailClient() {
       })()}
 
       <BoughtNowRemoveModal
-        open={boughtRemove !== null}
-        partName={boughtRemove?.product_name ?? ''}
-        busy={removingProductId !== null && removingProductId === boughtRemove?.id}
+        open={boughtAsk !== null}
+        parts={boughtAsk?.parts ?? []}
+        mode={boughtAsk?.mode}
+        busy={boughtBusy}
         error={boughtRemoveError}
-        onChoose={handleBoughtRemove}
-        onClose={() => setBoughtRemove(null)}
+        onChoose={handleBoughtChoose}
+        onClose={() => setBoughtAsk(null)}
       />
       <ConfirmDialog
         open={confirmDialog.open}

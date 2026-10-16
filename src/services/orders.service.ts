@@ -19,8 +19,10 @@ export const createOrder = (data: Omit<Partial<Order>, 'products'> & { products?
 export const updateOrder = (id: number, data: Omit<Partial<Order>, 'products' | 'services'> & { products?: { id?: number; product?: number; quantity: number }[]; customer_products?: { name: string; quantity: number }[]; services?: import('@/types').OrderService[]; bought_now_actions?: Record<string, 'cancel_purchase' | 'keep'> }) =>
   api.patch<Order>(`/api/orders/${id}`, data)
 
-export const deleteOrder = (id: number) =>
-  api.delete(`/api/orders/${id}`)
+/** `boughtNowAction` decides what happens to parts bought just for this order:
+ * 'cancel_purchase' undoes those purchases too, 'keep' (default) leaves them in stock. */
+export const deleteOrder = (id: number, boughtNowAction?: 'cancel_purchase' | 'keep') =>
+  api.delete(`/api/orders/${id}`, { params: boughtNowAction ? { bought_now_action: boughtNowAction } : undefined })
 
 export const assignMechanic = (orderId: number, mechanicId: number) =>
   api.patch<Order>(`/api/orders/${orderId}`, { mechanic: mechanicId })
@@ -51,7 +53,7 @@ export const purchaseProductForOrder = (orderId: number, data: {
   product_id?: number
 }) => api.post<Order>(`/api/orders/${orderId}/products/purchase`, data)
 
-export const updateOrderProduct = (orderId: number, orderProductId: number, data: { quantity?: number; sell_price?: number }) =>
+export const updateOrderProduct = (orderId: number, orderProductId: number, data: { quantity?: number; sell_price?: number; bought_now_action?: 'cancel_purchase' | 'keep' }) =>
   api.patch<Order>(`/api/orders/${orderId}/products/${orderProductId}`, data)
 
 /** Customer brings a part back after the order was completed. `refund`
