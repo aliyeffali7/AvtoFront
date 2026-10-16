@@ -150,7 +150,7 @@ function Block({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-l-[3px] border-ink pl-4 py-1 min-w-0">
       <p className="font-mono text-label uppercase text-text-3">{label}</p>
-      <p className="font-display font-bold text-[28px] leading-10 tracking-tight text-ink tabular-nums truncate">{value}</p>
+      <p className="font-display font-bold text-[22px] leading-8 sm:text-[28px] sm:leading-10 tracking-tight text-ink tabular-nums truncate">{value}</p>
     </div>
   )
 }

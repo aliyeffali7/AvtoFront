@@ -112,7 +112,7 @@ export default function MechanicDetailClient() {
         <>
           <div className="mb-3">
             <p className="section-label mb-1">Seçilmiş dövrdə qazanc</p>
-            <Money value={earnings.total} className="!justify-start text-[26px] leading-9" />
+            <Money value={earnings.total} className="!justify-start text-[22px] leading-8 sm:text-[26px] sm:leading-9" />
           </div>
           {earnings.daily.length === 0 ? (
             <p className="text-body text-text-3">Bu dövrdə qazanc qeydi yoxdur.</p>

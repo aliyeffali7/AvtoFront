@@ -53,13 +53,13 @@ export default function HesabatTab() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <NumberBlock label="Gəlir">
-                <Money value={report.total_income} meaning="income" sign="none" showWord={false} className="!justify-start text-[30px] leading-10" />
+                <Money value={report.total_income} meaning="income" sign="none" showWord={false} className="!justify-start text-[22px] leading-8 sm:text-[30px] sm:leading-10" />
               </NumberBlock>
               <NumberBlock label="Xərc">
-                <Money value={report.total_expense} meaning="expense" sign="none" showWord={false} className="!justify-start text-[30px] leading-10" />
+                <Money value={report.total_expense} meaning="expense" sign="none" showWord={false} className="!justify-start text-[22px] leading-8 sm:text-[30px] sm:leading-10" />
               </NumberBlock>
               <NumberBlock label="Xalis">
-                <span className="font-mono font-semibold tabular-nums text-[30px] leading-10 text-ink">
+                <span className="font-mono font-semibold tabular-nums text-[22px] leading-8 sm:text-[30px] sm:leading-10 text-ink">
                   {report.net < 0 ? '−' : report.net > 0 ? '+' : ''}{formatCurrency(Math.abs(report.net))}
                 </span>
               </NumberBlock>

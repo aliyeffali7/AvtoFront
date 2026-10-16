@@ -239,7 +239,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-col gap-4">
             <div>
-              <p className="font-mono font-semibold tabular-nums text-[34px] leading-10 text-ink">
+              <p className="font-mono font-semibold tabular-nums text-[26px] leading-9 sm:text-[34px] sm:leading-10 text-ink">
                 {formatAmount(weekly.total).replace(/,\d{2}$/, '')} <span className="text-h3 text-text-3">₼</span>
               </p>
               <div className="mt-1 flex items-center gap-2 text-small">

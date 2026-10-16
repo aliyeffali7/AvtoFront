@@ -18,7 +18,7 @@ export default function InkBand({ label, items, footer, className = '' }: { labe
           <div key={item.label} className="min-w-0">
             <p className="font-sans text-label uppercase text-text-4">{item.label}</p>
             <p
-              className={`font-mono font-semibold tabular-nums text-[26px] sm:text-[30px] leading-10 truncate ${
+              className={`font-mono font-semibold tabular-nums text-[22px] leading-8 sm:text-[30px] sm:leading-10 truncate ${
                 item.highlight ? 'text-signal' : 'text-paper'
               }`}
             >

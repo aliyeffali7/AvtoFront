@@ -362,7 +362,7 @@ export default function CreditorsPage() {
         <div className="mt-4 px-5 py-4 bg-ink rounded-lg flex items-center gap-4">
           <span className="text-body text-paper flex-1">
             <span className="font-semibold">{chosen.length} məhsul</span> seçilib
-            <span className="block font-mono font-semibold text-[26px] leading-9">{formatCurrency(chosenTotal)}</span>
+            <span className="block font-mono font-semibold text-[22px] leading-8 sm:text-[26px] sm:leading-9">{formatCurrency(chosenTotal)}</span>
           </span>
           <Button variant="secondary" loading={paying} onClick={handlePaySelected}>Ödə</Button>
         </div>

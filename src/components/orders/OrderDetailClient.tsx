@@ -952,7 +952,7 @@ export default function OrderDetailClient() {
             </div>
             <div className="flex flex-col gap-1">
               <span className="font-sans text-label uppercase text-text-4">Ümumi məbləğ</span>
-              <span className="font-mono font-semibold tabular-nums text-[34px] leading-10 text-paper">{formatCurrency(effectiveOrderTotal)}</span>
+              <span className="font-mono font-semibold tabular-nums text-[26px] leading-9 sm:text-[34px] sm:leading-10 text-paper">{formatCurrency(effectiveOrderTotal)}</span>
               {Number(order.discount_amount ?? 0) > 0 && (
                 <span className="font-mono text-small text-text-4 line-through">{formatCurrency(grandTotal)}</span>
               )}
