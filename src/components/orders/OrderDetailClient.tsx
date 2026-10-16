@@ -178,6 +178,8 @@ export default function OrderDetailClient() {
   const [boughtBusy, setBoughtBusy] = useState(false)
   const [boughtRemoveError, setBoughtRemoveError] = useState('')
   const [returningProductId, setReturningProductId] = useState<number | null>(null)
+  // Completed orders hide per-line "Qaytar" until the owner explicitly starts a customer return.
+  const [returnMode, setReturnMode] = useState(false)
   const [returnQty, setReturnQty] = useState('1')
   const [returnBusy, setReturnBusy] = useState(false)
   const [returnMessage, setReturnMessage] = useState('')
@@ -216,7 +218,7 @@ export default function OrderDetailClient() {
 
   useEffect(() => { getBusinessProfile().then(res => setBusiness(res.data)).catch(() => {}) }, [])
   // A WhatsApp menu opened for one order must not stay open on the next.
-  useEffect(() => { setWaMenuOpen(false); setShareUrl(null); setShareCopied(false); setShareError('') }, [order?.id])
+  useEffect(() => { setWaMenuOpen(false); setShareUrl(null); setShareCopied(false); setShareError(''); setReturnMode(false) }, [order?.id])
 
   const toShareUrl = (token: string) => `${window.location.origin}/s/${token}`
 
@@ -662,7 +664,7 @@ export default function OrderDetailClient() {
 
           {order.status === 'done' && order.payment_status !== 'paid' && (
             <p className="text-small text-text-2 bg-surface-2 border border-border rounded-lg px-4 py-3">
-              Sifariş tamamlanıb və hesabata yazılıb. İş və ya məhsulu dəyişmək üçün statusu "İcrada" edin; müştəri hissəni geri gətiribsə "Qaytar" düyməsini basın.
+              Sifariş tamamlanıb və hesabata yazılıb. İş və ya məhsulu dəyişmək üçün statusu "İcrada" edin; müştəri hissəni geri gətiribsə "Məhsullar" bölməsində "Müştəri qaytarması"nı seçin.
             </p>
           )}
           {returnMessage && <p className="text-body text-text-1 bg-warning-subtle border border-warning/30 rounded-lg px-4 py-3">{returnMessage}</p>}
@@ -728,12 +730,28 @@ export default function OrderDetailClient() {
           {/* Products */}
           <SectionCard
             title="Məhsullar"
-            action={linesEditable && (
+            action={linesEditable ? (
               <div className="flex gap-4">
                 <button onClick={() => { setAddProductOpen(v => !v); setProductTab('warehouse'); setProductError('') }} className={LINK_BTN}>Anbarda var</button>
                 <button onClick={() => { setAddProductOpen(true); setProductTab('new'); setProductError('') }} className="text-small font-semibold text-warning-strong hover:underline underline-offset-2">Anbarda yoxdur</button>
               </div>
-            )}
+            ) : order.status === 'done' && orderProductsList.some(p => p.source !== 'customer') ? (
+              returnMode ? (
+                <button onClick={() => { setReturnMode(false); setReturningProductId(null) }} className={LINK_BTN}>Qaytarmanı bağla</button>
+              ) : (
+                <button
+                  onClick={() => showConfirm({
+                    title: 'Müştəri qaytarması',
+                    message: 'Müştəri hissəni geri gətirib? Qaytarılan hissə stoka qayıdır, hesabatdan çıxılır; ödənilmiş məbləğ kassadan qaytarılır.',
+                    confirmLabel: 'Bəli, qaytarma et',
+                    onConfirm: () => { closeConfirm(); setReturnMode(true) },
+                  })}
+                  className="text-small font-semibold text-warning-strong hover:underline underline-offset-2"
+                >
+                  Müştəri qaytarması
+                </button>
+              )
+            ) : null}
           >
             {addProductOpen && linesEditable && (
               <div className="mb-3 border border-border rounded-lg p-3 bg-paper">
@@ -825,7 +843,7 @@ export default function OrderDetailClient() {
                         {p.source === 'customer'
                           ? <span className="text-small font-semibold text-text-2 bg-surface-2 border border-border rounded-sm px-2 py-0.5 shrink-0">Müştəri gətirib</span>
                           : <Money value={p.sell_price * p.quantity} />}
-                        {order.status === 'done' && p.source !== 'customer' && (
+                        {order.status === 'done' && returnMode && p.source !== 'customer' && (
                           <button
                             onClick={() => { setReturningProductId(returningProductId === p.id ? null : p.id); setReturnQty('1'); setReturnMessage('') }}
                             className="text-small font-semibold text-warning-strong hover:underline shrink-0"

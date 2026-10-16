@@ -1,6 +1,6 @@
 import { Order, Business } from '@/types'
 import { mediaUrl } from '@/lib/apiUrl'
-import { formatPhone } from '@/lib/utils'
+import { formatPhone, toLocalISODate } from '@/lib/utils'
 import {
   pm, toDataUrl, loadBrand, buildHeader, buildFooter, plateBox, tableCells, rowsLayout, sectionTitle, label, money,
   INK, TEXT_2, TEXT_3, BORDER, PAGE_WIDTH, PAGE_MARGINS,
@@ -32,7 +32,6 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   const customerName = [order.customer_name, order.customer_surname].filter(Boolean).join(' ')
   const actDate = order.completed_on ?? order.created_at
   const shopName = business?.name ?? ''
-  const actNo = order.number != null ? String(order.number) : ''
 
   const [brand, logo, signature] = await Promise.all([
     loadBrand(),
@@ -49,7 +48,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   const content: any[] = []
 
   // ── Header: logo + name + slogan | SERVİS AKTI № / date ──────────────
-  content.push(...buildHeader({ fonts, logo, shopName, slogan: business?.slogan, kind: 'SERVİS AKTI', number: actNo, date: actDate }))
+  content.push(...buildHeader({ fonts, logo, shopName, slogan: business?.slogan, kind: 'SERVİS AKTI', date: actDate }))
 
   // ── Info: Müştəri | Avtomobil ────────────────────────────────────────
   const phone = formatPhone(order.customer_phone)
@@ -220,13 +219,14 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
 
   const footer = buildFooter(brand, business)
 
-  const fileNo = actNo ? `${actNo}_` : ''
+  // The business's internal order number stays off the customer's document.
+  const fileDate = toLocalISODate(new Date(actDate))
   await pm().createPdf({
     pageSize: 'A4',
     pageMargins: PAGE_MARGINS,
     defaultStyle: { font: textFont, fontSize: 9.5, color: INK },
-    info: { title: `Servis aktı${actNo ? ` № ${actNo}` : ''}` },
+    info: { title: 'Servis aktı' },
     content,
     footer,
-  }).download(`Servis_akti_${fileNo}${(order.plate_number ?? '').replace(/\s+/g, '')}.pdf`)
+  }).download(`Servis_akti_${fileDate}_${(order.plate_number ?? '').replace(/\s+/g, '')}.pdf`)
 }

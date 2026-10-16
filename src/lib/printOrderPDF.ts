@@ -181,7 +181,7 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
 
     const main = {
       columns: [
-        cellIn(widths[0], td(o.number != null ? String(o.number) : '—', 'center', { ...f(fonts.mono), fontSize: 8, color: TEXT_3, margin: pad })),
+        cellIn(widths[0], td(String(i + 1), 'center', { ...f(fonts.mono), fontSize: 8, color: TEXT_3, margin: pad })),
         cellIn(widths[1], td(shortDate(o.created_at), 'left', { ...f(fonts.mono), fontSize: 8, margin: pad })),
         cellIn(widths[2], {
           stack: [
