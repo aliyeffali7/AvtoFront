@@ -15,8 +15,10 @@ export function getMechanicImageUrl(image?: string | null) {
 /** Mechanic photo when there is one, otherwise the ink initials avatar. */
 export function MechanicAvatar({ mechanic, size = 36 }: { mechanic: Pick<Mechanic, 'full_name' | 'phone' | 'image'>; size?: number }) {
   const url = getMechanicImageUrl(mechanic.image)
-  if (url) {
-    return <img src={url} alt={mechanic.full_name ?? 'Usta'} style={{ width: size, height: size }} className="rounded-full object-cover shrink-0 border border-border" />
+  // A photo that fails to load (deleted file, missing media) falls back to initials.
+  const [failed, setFailed] = useState(false)
+  if (url && !failed) {
+    return <img src={url} alt={mechanic.full_name ?? 'Usta'} onError={() => setFailed(true)} style={{ width: size, height: size }} className="rounded-full object-cover shrink-0 border border-border" />
   }
   return <Avatar name={mechanic.full_name ?? mechanic.phone ?? '?'} tone="ink" size={size} />
 }

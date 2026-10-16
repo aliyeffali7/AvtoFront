@@ -36,6 +36,7 @@ export default function MechanicsClient() {
   const inactive = mechanics.filter(m => !m.is_active)
   const rows = tab === 'active' ? active : inactive
   const totalBalance = rows.reduce((s, m) => s + (m.balance ?? 0), 0)
+  const totalEarned = rows.reduce((s, m) => s + Number(m.total_earnings ?? 0), 0)
 
   return (
     <div className="flex flex-col gap-4">
@@ -81,6 +82,7 @@ export default function MechanicsClient() {
                   <th className="ledger-th">Usta</th>
                   <th className="ledger-th">Telefon</th>
                   <th className="ledger-th">Ödəniş növü</th>
+                  <th className="ledger-th text-right">Qazanc</th>
                   <th className="ledger-th text-right">Qalıq (borcumuz)</th>
                 </tr>
               </thead>
@@ -100,6 +102,7 @@ export default function MechanicsClient() {
                         {[m.pay_type !== 'salary' ? `${m.work_percent}%` : null, m.pay_type !== 'percent' && m.pay_type ? `${formatCurrency(m.salary ?? 0)}/ay` : null].filter(Boolean).join(' + ')}
                       </span>
                     </td>
+                    <td className="ledger-td text-right"><Money value={Number(m.total_earnings ?? 0)} /></td>
                     <td className="ledger-td text-right">
                       {(m.balance ?? 0) > 0 ? <Money value={m.balance ?? 0} meaning="payable" /> : <Money value={m.balance ?? 0} />}
                     </td>
@@ -109,6 +112,7 @@ export default function MechanicsClient() {
               <tfoot>
                 <tr className="bg-surface-2">
                   <td className="ledger-td font-semibold" colSpan={3}>Cəmi · {rows.length} usta</td>
+                  <td className="ledger-td text-right"><Money value={totalEarned} className="font-bold" /></td>
                   <td className="ledger-td text-right"><Money value={totalBalance} className="font-bold" /></td>
                 </tr>
               </tfoot>
