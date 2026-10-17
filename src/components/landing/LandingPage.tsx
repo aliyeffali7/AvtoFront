@@ -66,7 +66,7 @@ export default function LandingPage() {
         <div>
           <div className="inline-flex items-center gap-2 bg-surface border border-rule rounded px-3 py-1.5 mb-6">
             <span className="w-1.5 h-1.5 bg-signal rounded-full" />
-            <span className="text-text-1 text-xs font-semibold">7 günlük pulsuz sınaq</span>
+            <span className="text-text-1 text-xs font-semibold">14 günlük pulsuz sınaq</span>
           </div>
 
           <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight tracking-[-0.035em] text-ink mb-5">
@@ -140,7 +140,7 @@ export default function LandingPage() {
                 </>
               ) : tab === 'register' ? (
                 <>
-                  <p className="card-title text-base mb-1">7 günlük pulsuz sınaq</p>
+                  <p className="card-title text-base mb-1">14 günlük pulsuz sınaq</p>
                   <p className="text-sm text-ink-muted mb-5">Kart tələb olunmur. Dərhal başlayın.</p>
                   <RegisterForm />
                   <p className="text-center text-sm text-ink-muted mt-5">
