@@ -44,7 +44,10 @@ const features = [
 ]
 
 export default function LandingPage() {
-  const [tab, setTab] = useState<'login' | 'register' | 'forgot'>('login')
+  // servo.az "14 gün pulsuz" links here as /?qeydiyyat to open sign-up directly.
+  const [tab, setTab] = useState<'login' | 'register' | 'forgot'>(
+    () => (new URLSearchParams(window.location.search).has('qeydiyyat') ? 'register' : 'login'),
+  )
 
   return (
     <div className="min-h-screen bg-bg text-ink font-sans">
