@@ -4,6 +4,7 @@ import { createStore, updateStore } from '@/services/stores.service'
 import { mapApiError } from '@/lib/utils'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
+import { t } from '@/i18n'
 
 /** New / edit supplier. Mount it while open (state is initialised on mount). */
 export default function StoreFormModal({ store, onDone, onCancel }: {
@@ -37,26 +38,26 @@ export default function StoreFormModal({ store, onDone, onCancel }: {
     <Modal
       open
       onClose={onCancel}
-      title={isEdit ? 'Tədarükçünü redaktə et' : 'Yeni tədarükçü'}
+      title={isEdit ? t('Tədarükçünü redaktə et') : t('Yeni tədarükçü')}
       footer={
         <>
-          <Button type="button" variant="secondary" onClick={onCancel}>Ləğv et</Button>
-          <Button type="submit" form="store-form" loading={saving}>{saving ? 'Saxlanılır...' : 'Saxla'}</Button>
+          <Button type="button" variant="secondary" onClick={onCancel}>{t('Ləğv et')}</Button>
+          <Button type="submit" form="store-form" loading={saving}>{saving ? t('Saxlanılır...') : t('Saxla')}</Button>
         </>
       }
     >
       <form id="store-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
         <div>
-          <label className="label">Mağaza adı <span className="text-danger normal-case">*</span></label>
-          <input value={name} onChange={e => setName(e.target.value)} required autoFocus placeholder="Məs. Avtoehtiyat MMC" className="input" />
+          <label className="label">{t('Mağaza adı')} <span className="text-danger normal-case">*</span></label>
+          <input value={name} onChange={e => setName(e.target.value)} required autoFocus placeholder={t('Məs. Avtoehtiyat MMC')} className="input" />
         </div>
         <div>
-          <label className="label">Telefon <span className="text-text-3 normal-case font-normal">(ixtiyari)</span></label>
+          <label className="label">{t('Telefon')} <span className="text-text-3 normal-case font-normal">({t('ixtiyari')})</span></label>
           <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input-mono" />
         </div>
         <div>
-          <label className="label">Əlaqəli şəxs <span className="text-text-3 normal-case font-normal">(ixtiyari)</span></label>
-          <input value={contactPerson} onChange={e => setContactPerson(e.target.value)} placeholder="Məs. Əli Məmmədov" className="input" />
+          <label className="label">{t('Əlaqəli şəxs')} <span className="text-text-3 normal-case font-normal">({t('ixtiyari')})</span></label>
+          <input value={contactPerson} onChange={e => setContactPerson(e.target.value)} placeholder={t('Məs. Əli Məmmədov')} className="input" />
         </div>
         {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-3 py-2">{error}</p>}
       </form>

@@ -2,6 +2,7 @@ import { Business, CustomerDetail, Order } from '@/types'
 import { mediaUrl } from '@/lib/apiUrl'
 import { formatPhone, toLocalISODate } from '@/lib/utils'
 import { formatPlate } from '@/components/ui/Plate'
+import { docLang, translate } from '@/i18n'
 import {
   pm, toDataUrl, loadBrand, buildHeader, buildFooter, plateBox, tableCells, sectionTitle, label, money, shortDate, asciiSlug,
   INK, TEXT_2, TEXT_3, BORDER, PAGE_MARGINS,
@@ -47,6 +48,8 @@ function collectCars(customer: CustomerDetail, orders: Order[]): Car[] {
 const short = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text)
 
 export async function printCustomerPDF(customer: CustomerDetail, business?: Business | null) {
+  const lang = docLang(business)
+  const tr = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
   const orders = [...(customer.orders ?? [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   const [brand, logo] = await Promise.all([loadBrand(), business?.logo ? toDataUrl(mediaUrl(business.logo)) : Promise.resolve('')])
@@ -58,18 +61,18 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
   const content: any[] = []
 
   // ── Header: logo + name + slogan | MÜŞTƏRİ TARİXÇƏSİ / export date ───
-  content.push(...buildHeader({ fonts, logo, shopName: business?.name ?? '', slogan: business?.slogan, kind: 'MÜŞTƏRİ TARİXÇƏSİ', date: toLocalISODate() }))
+  content.push(...buildHeader({ fonts, logo, shopName: business?.name ?? '', slogan: business?.slogan, kind: tr('MÜŞTƏRİ TARİXÇƏSİ'), lang, date: toLocalISODate() }))
 
   // ── Customer | cars ──────────────────────────────────────────────────
   const phone = formatPhone(customer.phone)
   const customerStack = [
-    label('MÜŞTƏRİ'),
+    label(tr('MÜŞTƏRİ')),
     { text: customer.full_name, fontSize: 12, bold: true, color: INK },
     phone ? { text: phone, ...f(fonts.mono), fontSize: 9.5, color: TEXT_2, margin: [0, 3, 0, 0] } : null,
   ].filter(Boolean)
   const cars = collectCars(customer, orders)
   const carsStack = [
-    label(cars.length > 1 ? 'AVTOMOBİLLƏR' : 'AVTOMOBİL'),
+    label(tr(cars.length > 1 ? 'AVTOMOBİLLƏR' : 'AVTOMOBİL')),
     ...cars.map((c, i) => ({
       stack: [
         carName(c) ? { text: carName(c), fontSize: 12, bold: true, color: INK } : null,
@@ -109,10 +112,10 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
     table: {
       widths: ['*', '*', '*', '*'],
       body: [[
-        stat('SİFARİŞ SAYI', String(orders.length)),
-        stat('CƏMİ', `${money(grandTotal)} AZN`),
-        stat('ÖDƏNİLİB', `${money(totalPaid)} AZN`),
-        stat('BORC', `${money(totalDebt)} AZN`, true),
+        stat(tr('SİFARİŞ SAYI'), String(orders.length)),
+        stat(tr('CƏMİ'), `${money(grandTotal)} AZN`),
+        stat(tr('ÖDƏNİLİB'), `${money(totalPaid)} AZN`),
+        stat(tr('BORC'), `${money(totalDebt)} AZN`, true),
       ]],
     },
     layout: {
@@ -135,13 +138,13 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
   const COLS = widths.length
   const head = [
     th('№', 'center'),
-    th('TARİX'),
-    th('AVTOMOBİL'),
-    th('GÖRÜLƏN İŞLƏR'),
-    th('STATUS'),
-    th('MƏBLƏĞ', 'right'),
-    th('ÖDƏNİLİB', 'right'),
-    th('QALIQ', 'right'),
+    th(tr('TARİX')),
+    th(tr('AVTOMOBİL')),
+    th(tr('GÖRÜLƏN İŞLƏR')),
+    th(tr('STATUS')),
+    th(tr('MƏBLƏĞ'), 'right'),
+    th(tr('ÖDƏNİLİB'), 'right'),
+    th(tr('QALIQ'), 'right'),
   ].map(c => ({ ...c, margin: [4, 5, 4, 4] }))
   const pad = [4, 5, 4, 4]
 
@@ -163,8 +166,8 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
   orders.forEach((o, i) => {
     const t = lineTotals[i]
     const serviceNames = t.services.map(s => s.name).join(', ')
-    const works = serviceNames ? short(serviceNames, 70) : t.products.length ? 'Ehtiyat hissələri' : '—'
-    const mileage = o.mileage != null ? `Yürüş ${money(o.mileage).slice(0, -3)} ${o.mileage_unit ?? 'km'}` : ''
+    const works = serviceNames ? short(serviceNames, 70) : t.products.length ? tr('Ehtiyat hissələri') : '—'
+    const mileage = o.mileage != null ? `${tr('Yürüş')} ${money(o.mileage).slice(0, -3)} ${tr(o.mileage_unit ?? 'km')}` : ''
     const vin = o.vin_code ? `VIN ${o.vin_code}` : ''
     const meta = [mileage, vin].filter(Boolean).join('   ·   ')
 
@@ -172,10 +175,10 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
       ...t.services.map(s => sub(s.name, money(Number(s.price)))),
       ...t.products.map(p =>
         p.source === 'customer'
-          ? sub(`${p.product_name} × ${p.quantity}  ·  Müştəri gətirib`, '—', { color: TEXT_3 })
+          ? sub(`${p.product_name} × ${p.quantity}  ·  ${tr('Müştəri gətirib')}`, '—', { color: TEXT_3 })
           : sub(`${p.product_name} × ${p.quantity}  ·  ${money(Number(p.sell_price))}`, money(Number(p.sell_price) * p.quantity)),
       ),
-      ...(t.discount > 0 ? [sub('Endirim', `− ${money(t.discount)}`)] : []),
+      ...(t.discount > 0 ? [sub(tr('Endirim'), `− ${money(t.discount)}`)] : []),
       ...(meta ? [{ text: meta, ...f(fonts.mono), fontSize: 7, color: TEXT_3, margin: [widths[0] as number + 4, 1, 0, 2] }] : []),
     ]
 
@@ -193,8 +196,8 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
         cellIn('*', td(works, 'left', { fontSize: 8.5, color: TEXT_2, margin: pad })),
         cellIn(widths[4], {
           stack: [
-            { text: STATUS_WORD[o.status] ?? '', fontSize: 8.5, color: INK },
-            { text: PAYMENT_WORD[o.payment_status] ?? '', fontSize: 7.5, color: TEXT_3, margin: [0, 1, 0, 0] },
+            { text: tr(STATUS_WORD[o.status] ?? ''), fontSize: 8.5, color: INK },
+            { text: tr(PAYMENT_WORD[o.payment_status] ?? ''), fontSize: 7.5, color: TEXT_3, margin: [0, 1, 0, 0] },
           ],
           margin: pad,
         }),
@@ -211,14 +214,14 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
   const totalsIndex = body.length
   const tcell = (text: string, extra = {}) => num(text, { margin: [4, 6, 4, 6], fontSize: 9, ...extra })
   body.push([
-    td('CƏMİ', 'left', { colSpan: 5, ...f(fonts.head), fontSize: 8.5, bold: true, characterSpacing: 1.2, margin: [4, 6, 4, 6] }),
+    td(tr('CƏMİ'), 'left', { colSpan: 5, ...f(fonts.head), fontSize: 8.5, bold: true, characterSpacing: 1.2, margin: [4, 6, 4, 6] }),
     {}, {}, {}, {},
     tcell(money(grandTotal)),
     tcell(money(tablePaid)),
     tcell(money(tableRemaining)),
   ])
 
-  content.push(sectionTitle('SİFARİŞLƏR', fonts))
+  content.push(sectionTitle(tr('SİFARİŞLƏR'), fonts))
   if (orders.length) {
     content.push({
       table: { headerRows: 1, dontBreakRows: true, widths, body },
@@ -233,7 +236,7 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
       },
     })
   } else {
-    content.push({ text: 'Sifariş yoxdur.', fontSize: 9.5, color: TEXT_3 })
+    content.push({ text: tr('Sifariş yoxdur.'), fontSize: 9.5, color: TEXT_3 })
   }
 
   const slug = asciiSlug(customer.full_name)
@@ -241,8 +244,8 @@ export async function printCustomerPDF(customer: CustomerDetail, business?: Busi
     pageSize: 'A4',
     pageMargins: PAGE_MARGINS,
     defaultStyle: { font: fonts.text, fontSize: 9.5, color: INK },
-    info: { title: `Müştəri tarixçəsi — ${customer.full_name}` },
+    info: { title: `${tr('Müştəri tarixçəsi')} — ${customer.full_name}` },
     content,
     footer: buildFooter(brand, business),
-  }).download(`Musteri_tarixcesi_${slug || 'musteri'}.pdf`)
+  }).download(`${lang === 'ru' ? 'Istoriya_klienta' : 'Musteri_tarixcesi'}_${slug || (lang === 'ru' ? 'klient' : 'musteri')}.pdf`)
 }

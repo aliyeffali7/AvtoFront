@@ -14,6 +14,7 @@ import Modal from '@/components/ui/Modal'
 import Money from '@/components/ui/Money'
 import Spinner from '@/components/ui/Spinner'
 import { SOURCE_LABEL } from './PurchasesTab'
+import { t } from '@/i18n'
 
 /** Full-page purchase (qaimə): header, ink band, lines with returns, cancel. */
 export default function PurchaseDetail() {
@@ -64,7 +65,7 @@ export default function PurchaseDetail() {
 
   const backBtn = (
     <div>
-      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={goBack}>Geri — Alışlar</Button>
+      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={goBack}>{t('Geri — Alışlar')}</Button>
     </div>
   )
 
@@ -73,7 +74,7 @@ export default function PurchaseDetail() {
     return (
       <div className="flex flex-col gap-4">
         {backBtn}
-        <EmptyState title="Alış tapılmadı" subtitle="Bu alış silinib və ya əlçatan deyil." />
+        <EmptyState title={t('Alış tapılmadı')} subtitle={t('Bu alış silinib və ya əlçatan deyil.')} />
       </div>
     )
   }
@@ -92,25 +93,25 @@ export default function PurchaseDetail() {
       <div className="card p-5 flex flex-wrap items-center gap-4">
         <div className="flex-1 min-w-[220px]">
           <p className="font-mono text-small text-text-3">
-            {purchase.invoice_no ? `Qaimə №${purchase.invoice_no}` : `Alış #${purchase.id}`} · {formatDate(purchase.date)}
+            {purchase.invoice_no ? `${t('Qaimə №')}${purchase.invoice_no}` : `${t('Alış')} #${purchase.id}`} · {formatDate(purchase.date)}
           </p>
           <h1 className="page-title">
             <Link to={`/business/stores/${purchase.store}`} className="hover:underline underline-offset-4">{purchase.store_name}</Link>
           </h1>
           <div className="flex items-center gap-2 flex-wrap mt-1.5">
             {purchase.is_cancelled
-              ? <Badge variant="danger">Ləğv edilib</Badge>
-              : <Badge variant={purchase.on_credit ? 'warning' : 'success'}>{purchase.on_credit ? 'Nisyə' : 'Nağd'}</Badge>}
-            <Badge variant="neutral">{SOURCE_LABEL[purchase.source]}</Badge>
+              ? <Badge variant="danger">{t('Ləğv edilib')}</Badge>
+              : <Badge variant={purchase.on_credit ? 'warning' : 'success'}>{purchase.on_credit ? t('Nisyə') : t('Nağd')}</Badge>}
+            <Badge variant="neutral">{t(SOURCE_LABEL[purchase.source])}</Badge>
             {purchase.order && (
               <Link to={`/business/orders/${purchase.order}`} className="text-small font-semibold text-ink hover:underline underline-offset-2">
-                Sifariş #{purchase.order_number} üçün alınıb →
+                {t('Sifariş #{num} üçün alınıb →', { num: purchase.order_number ?? '' })}
               </Link>
             )}
           </div>
         </div>
         {!purchase.is_cancelled && untouched && (
-          <Button variant="danger" icon={Ban} onClick={() => setConfirmCancel(true)}>Ləğv et</Button>
+          <Button variant="danger" icon={Ban} onClick={() => setConfirmCancel(true)}>{t('Ləğv et@@action')}</Button>
         )}
       </div>
 
@@ -118,12 +119,12 @@ export default function PurchaseDetail() {
       {error && !returning && <p className="text-body text-danger-strong bg-danger-subtle rounded px-4 py-3">{error}</p>}
 
       <InkBand
-        label="Alış"
+        label={t('Alış')}
         items={[
-          { label: 'Alışın məbləği', value: formatCurrency(total) },
-          { label: 'Ödənilib', value: formatCurrency(paid) },
+          { label: t('Alışın məbləği'), value: formatCurrency(total) },
+          { label: t('Ödənilib'), value: formatCurrency(paid) },
           ...(purchase.on_credit && purchase.debt_remaining !== null
-            ? [{ label: 'Borc qalığı', value: formatCurrency(debt), note: debt > 0 ? 'Ödəniləcək' : undefined, highlight: debt > 0 }]
+            ? [{ label: t('Borc qalığı'), value: formatCurrency(debt), note: debt > 0 ? t('Ödəniləcək') : undefined, highlight: debt > 0 }]
             : []),
         ]}
       />
@@ -131,19 +132,19 @@ export default function PurchaseDetail() {
       {/* Lines */}
       <section className="card overflow-hidden">
         <div className="px-5 py-4">
-          <h2 className="section-label">Məhsullar ({lines.length})</h2>
+          <h2 className="section-label">{t('Məhsullar')} ({lines.length})</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="ledger-table min-w-[760px]">
             <thead>
               <tr>
-                <th className="ledger-th">Məhsul</th>
-                <th className="ledger-th text-right">Say</th>
-                <th className="ledger-th text-right">Alış</th>
-                <th className="ledger-th text-right">Satış</th>
-                <th className="ledger-th text-right">Rəfdə qalıb</th>
-                <th className="ledger-th text-right">Məbləğ</th>
-                <th className="ledger-th w-px"><span className="sr-only">Qaytar</span></th>
+                <th className="ledger-th">{t('Məhsul')}</th>
+                <th className="ledger-th text-right">{t('Say')}</th>
+                <th className="ledger-th text-right">{t('Alış')}</th>
+                <th className="ledger-th text-right">{t('Satış')}</th>
+                <th className="ledger-th text-right">{t('Rəfdə qalıb')}</th>
+                <th className="ledger-th text-right">{t('Məbləğ')}</th>
+                <th className="ledger-th w-px"><span className="sr-only">{t('Qaytar')}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -153,18 +154,18 @@ export default function PurchaseDetail() {
                     <Link to={`/business/warehouse/products/${l.product}`} className="font-semibold hover:underline underline-offset-2">{l.product_name}</Link>
                     {l.product_code && <span className="block font-mono text-small text-text-3">{l.product_code}</span>}
                   </td>
-                  <td className="ledger-td text-right font-mono tabular-nums">{l.quantity} <span className="text-text-3">{l.unit}</span></td>
+                  <td className="ledger-td text-right font-mono tabular-nums">{l.quantity} <span className="text-text-3">{t(l.unit)}</span></td>
                   <td className="ledger-td text-right"><Money value={l.unit_cost} /></td>
                   <td className="ledger-td text-right"><Money value={l.sell_price} /></td>
                   <td className="ledger-td text-right font-mono tabular-nums">
                     {l.remaining_quantity}
-                    {l.returned_quantity > 0 && <span className="block text-small text-text-3">qaytarılıb: {l.returned_quantity}</span>}
+                    {l.returned_quantity > 0 && <span className="block text-small text-text-3">{t('qaytarılıb')}: {l.returned_quantity}</span>}
                   </td>
                   <td className="ledger-td text-right"><Money value={l.line_total} /></td>
                   <td className="ledger-td text-right">
                     {!purchase.is_cancelled && l.remaining_quantity > 0 && (
                       <Button variant="secondary" size="sm" icon={Undo2} onClick={() => { setReturning(l); setReturnQty('1'); setError('') }}>
-                        Qaytar
+                        {t('Qaytar')}
                       </Button>
                     )}
                   </td>
@@ -173,7 +174,7 @@ export default function PurchaseDetail() {
             </tbody>
             <tfoot>
               <tr className="bg-surface-2">
-                <td className="ledger-td font-semibold" colSpan={5}>Cəmi · {lines.length} məhsul</td>
+                <td className="ledger-td font-semibold" colSpan={5}>{t('Cəmi')} · {t('{n} məhsul', { n: lines.length })}</td>
                 <td className="ledger-td text-right"><Money value={total} className="font-bold" /></td>
                 <td className="ledger-td" />
               </tr>
@@ -183,27 +184,27 @@ export default function PurchaseDetail() {
       </section>
 
       {!purchase.is_cancelled && !untouched && (
-        <p className="text-small text-text-3">Bu alışın mallarından istifadə olunub — ləğv etmək olmaz, lazım olanı mağazaya qaytarın.</p>
+        <p className="text-small text-text-3">{t('Bu alışın mallarından istifadə olunub — ləğv etmək olmaz, lazım olanı mağazaya qaytarın.')}</p>
       )}
 
       {/* Return a line */}
       <Modal
         open={!!returning}
         onClose={() => setReturning(null)}
-        title="Mağazaya qaytar"
+        title={t('Mağazaya qaytar')}
         subtitle={returning?.product_name}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setReturning(null)}>Ləğv et</Button>
+            <Button variant="secondary" onClick={() => setReturning(null)}>{t('Ləğv et')}</Button>
             <Button
               variant="danger"
               loading={busy}
               onClick={() => returning && run(
                 () => returnPurchaseLine(returning.id, parseInt(returnQty) || 0),
-                purchase.on_credit ? 'Qaytarıldı — borc azaldıldı.' : 'Qaytarıldı — pul kassaya qayıtdı.',
+                purchase.on_credit ? t('Qaytarıldı — borc azaldıldı.') : t('Qaytarıldı — pul kassaya qayıtdı.'),
               )}
             >
-              Mağazaya qaytar
+              {t('Mağazaya qaytar')}
             </Button>
           </>
         }
@@ -211,10 +212,10 @@ export default function PurchaseDetail() {
         {returning && (
           <div className="flex flex-col gap-4 pb-2">
             <p className="text-body text-text-2">
-              {purchase.on_credit ? 'Qaytarılan malın məbləği tədarükçüyə borcdan çıxılacaq.' : 'Qaytarılan malın pulu kassaya qayıdacaq.'}
+              {purchase.on_credit ? t('Qaytarılan malın məbləği tədarükçüyə borcdan çıxılacaq.') : t('Qaytarılan malın pulu kassaya qayıdacaq.')}
             </p>
             <div>
-              <label className="label">Miqdar (maks. {returning.remaining_quantity})</label>
+              <label className="label">{t('Miqdar (maks. {max})', { max: returning.remaining_quantity })}</label>
               <input type="number" min={1} max={returning.remaining_quantity} value={returnQty} onChange={e => setReturnQty(e.target.value)} className="input-mono" autoFocus />
             </div>
             {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-3 py-2">{error}</p>}
@@ -224,12 +225,12 @@ export default function PurchaseDetail() {
 
       <ConfirmDialog
         open={confirmCancel}
-        title="Alışı ləğv et"
-        message={`Alış tamamilə ləğv edilsin? Mallar stokdan çıxarılacaq${purchase.on_credit ? ', borc silinəcək' : ', kassadakı xərc silinəcək'}.`}
-        confirmLabel="Bəli, ləğv et"
-        cancelLabel="Xeyr"
+        title={t('Alışı ləğv et')}
+        message={purchase.on_credit ? t('Alış tamamilə ləğv edilsin? Mallar stokdan çıxarılacaq, borc silinəcək.') : t('Alış tamamilə ləğv edilsin? Mallar stokdan çıxarılacaq, kassadakı xərc silinəcək.')}
+        confirmLabel={t('Bəli, ləğv et')}
+        cancelLabel={t('Xeyr')}
         danger
-        onConfirm={() => run(() => cancelPurchase(purchase.id), 'Alış ləğv edildi.')}
+        onConfirm={() => run(() => cancelPurchase(purchase.id), t('Alış ləğv edildi.'))}
         onCancel={() => setConfirmCancel(false)}
       />
     </div>

@@ -3,6 +3,8 @@ import LoginForm from '@/components/auth/LoginForm'
 import RegisterForm from '@/components/auth/RegisterForm'
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm'
 import ServoLogo from '@/components/ui/ServoLogo'
+import LanguageSwitch from '@/components/ui/LanguageSwitch'
+import { t } from '@/i18n'
 
 const features = [
   {
@@ -55,12 +57,15 @@ export default function LandingPage() {
       <nav className="bg-sidebar px-6 py-4 flex items-center justify-between">
         <div className="max-w-6xl mx-auto w-full flex items-center justify-between">
           <ServoLogo variant="white" className="h-4" />
-          <button
-            onClick={() => setTab('login')}
-            className="text-sm text-text-4 hover:text-paper font-medium transition-colors"
-          >
-            Daxil ol
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setTab('login')}
+              className="text-sm text-text-4 hover:text-paper font-medium transition-colors"
+            >
+              {t('Daxil ol')}
+            </button>
+            <LanguageSwitch tone="dark" />
+          </div>
         </div>
       </nav>
 
@@ -69,16 +74,16 @@ export default function LandingPage() {
         <div>
           <div className="inline-flex items-center gap-2 bg-surface border border-rule rounded px-3 py-1.5 mb-6">
             <span className="w-1.5 h-1.5 bg-signal rounded-full" />
-            <span className="text-text-1 text-xs font-semibold">14 günlük pulsuz sınaq</span>
+            <span className="text-text-1 text-xs font-semibold">{t('14 günlük pulsuz sınaq')}</span>
           </div>
 
           <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight tracking-[-0.035em] text-ink mb-5">
-            Servisinizi<br />
-            dəftərdən<br />
-            xilas edin
+            {t('Servisinizi')}<br />
+            {t('dəftərdən')}<br />
+            {t('xilas edin')}
           </h1>
           <p className="text-ink-soft text-lg leading-relaxed mb-8 max-w-md">
-            Sifarişlər, ustalar, anbar, maliyyə — hamısı bir yerdə. Qeydiyyat 1 dəqiqə çəkir, kart tələb olunmur.
+            {t('Sifarişlər, ustalar, anbar, maliyyə — hamısı bir yerdə. Qeydiyyat 1 dəqiqə çəkir, kart tələb olunmur.')}
           </p>
 
           {/* Features */}
@@ -89,8 +94,8 @@ export default function LandingPage() {
                   {f.icon}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-ink">{f.title}</p>
-                  <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">{f.desc}</p>
+                  <p className="text-sm font-semibold text-ink">{t(f.title)}</p>
+                  <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">{t(f.desc)}</p>
                 </div>
               </div>
             ))}
@@ -110,7 +115,7 @@ export default function LandingPage() {
                     : 'text-ink-muted border-transparent hover:text-ink-soft'
                 }`}
               >
-                Daxil ol
+                {t('Daxil ol')}
               </button>
               <button
                 onClick={() => setTab('register')}
@@ -120,42 +125,42 @@ export default function LandingPage() {
                     : 'text-ink-muted border-transparent hover:text-ink-soft'
                 }`}
               >
-                Qeydiyyat
+                {t('Qeydiyyat')}
               </button>
             </div>
 
             <div className="p-6 sm:p-8">
               {tab === 'login' ? (
                 <>
-                  <p className="card-title text-base mb-5">Hesabınıza daxil olun</p>
+                  <p className="card-title text-base mb-5">{t('Hesabınıza daxil olun')}</p>
                   <LoginForm />
                   <p className="text-center text-sm text-ink-muted mt-4">
                     <button onClick={() => setTab('forgot')} className="text-text-1 font-semibold hover:underline">
-                      Şifrəni unutmusunuz?
+                      {t('Şifrəni unutmusunuz?')}
                     </button>
                   </p>
                   <p className="text-center text-sm text-ink-muted mt-2">
-                    Hesabınız yoxdur?{' '}
+                    {t('Hesabınız yoxdur?')}{' '}
                     <button onClick={() => setTab('register')} className="text-text-1 font-semibold hover:underline">
-                      Qeydiyyatdan keçin
+                      {t('Qeydiyyatdan keçin')}
                     </button>
                   </p>
                 </>
               ) : tab === 'register' ? (
                 <>
-                  <p className="card-title text-base mb-1">14 günlük pulsuz sınaq</p>
-                  <p className="text-sm text-ink-muted mb-5">Kart tələb olunmur. Dərhal başlayın.</p>
+                  <p className="card-title text-base mb-1">{t('14 günlük pulsuz sınaq')}</p>
+                  <p className="text-sm text-ink-muted mb-5">{t('Kart tələb olunmur. Dərhal başlayın.')}</p>
                   <RegisterForm />
                   <p className="text-center text-sm text-ink-muted mt-5">
-                    Artıq hesabınız var?{' '}
+                    {t('Artıq hesabınız var?')}{' '}
                     <button onClick={() => setTab('login')} className="text-text-1 font-semibold hover:underline">
-                      Daxil olun
+                      {t('Daxil olun')}
                     </button>
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="card-title text-base mb-5">Şifrəni bərpa et</p>
+                  <p className="card-title text-base mb-5">{t('Şifrəni bərpa et')}</p>
                   <ForgotPasswordForm onDone={() => setTab('login')} />
                 </>
               )}
@@ -166,7 +171,7 @@ export default function LandingPage() {
 
       {/* Simple footer */}
       <div className="border-t border-rule py-6 text-center">
-        <p className="text-ink-muted text-xs">© 2026 Servo. Bütün hüquqlar qorunur.</p>
+        <p className="text-ink-muted text-xs">{t('© 2026 Servo. Bütün hüquqlar qorunur.')}</p>
       </div>
     </div>
   )

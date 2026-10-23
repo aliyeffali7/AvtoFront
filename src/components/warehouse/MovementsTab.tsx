@@ -10,6 +10,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import Pagination from '@/components/ui/Pagination'
 import Spinner from '@/components/ui/Spinner'
 import MovementKindBadge from './MovementKindBadge'
+import { t } from '@/i18n'
 
 const KINDS: { value: '' | StockMovementKind; label: string }[] = [
   { value: '', label: 'Bütün növlər' },
@@ -62,47 +63,47 @@ export default function MovementsTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Stok · Hərəkətlər" subtitle={`${totalCount} hərəkət`} />
+      <PageHeader title={t('Stok · Hərəkətlər')} subtitle={t('{n} hərəkət', { n: totalCount })} />
 
       <div className="flex flex-wrap items-end gap-3">
         {!product && (
           <div className="relative w-full sm:w-72">
             <Search size={18} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Məhsul adı və ya kodu..." aria-label="Axtar" className="input !pl-10" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('Məhsul adı və ya kodu...')} aria-label={t('Axtar')} className="input !pl-10" />
           </div>
         )}
-        <select value={kind} onChange={e => setKind(e.target.value)} className="input w-auto" aria-label="Növ">
-          {KINDS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+        <select value={kind} onChange={e => setKind(e.target.value)} className="input w-auto" aria-label={t('Növ')}>
+          {KINDS.map(k => <option key={k.value} value={k.value}>{t(k.label)}</option>)}
         </select>
         <label className="block">
-          <span className="label">Başlanğıc</span>
+          <span className="label">{t('Başlanğıc')}</span>
           <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="input-mono w-auto" />
         </label>
         <label className="block">
-          <span className="label">Son</span>
+          <span className="label">{t('Son')}</span>
           <input type="date" value={to} onChange={e => setTo(e.target.value)} className="input-mono w-auto" />
         </label>
         {product && (
           <Link to="/business/warehouse/movements" className="h-11 flex items-center text-small font-semibold text-ink hover:underline underline-offset-2">
-            Filtri sıfırla (bütün məhsullar)
+            {t('Filtri sıfırla (bütün məhsullar)')}
           </Link>
         )}
       </div>
 
       {loading && rows.length === 0 ? <Spinner /> : rows.length === 0 ? (
-        <EmptyState title="Hərəkət tapılmadı" subtitle="Seçilmiş filtr üzrə stok hərəkəti yoxdur." />
+        <EmptyState title={t('Hərəkət tapılmadı')} subtitle={t('Seçilmiş filtr üzrə stok hərəkəti yoxdur.')} />
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="ledger-table min-w-[820px]">
               <thead>
                 <tr>
-                  <th className="ledger-th w-32">Tarix</th>
-                  <th className="ledger-th">Məhsul</th>
-                  <th className="ledger-th">Növ</th>
-                  <th className="ledger-th text-right">Say</th>
-                  <th className="ledger-th text-right">Maya</th>
-                  <th className="ledger-th">Haradan / hara</th>
+                  <th className="ledger-th w-32">{t('Tarix')}</th>
+                  <th className="ledger-th">{t('Məhsul')}</th>
+                  <th className="ledger-th">{t('Növ')}</th>
+                  <th className="ledger-th text-right">{t('Say')}</th>
+                  <th className="ledger-th text-right">{t('Maya')}</th>
+                  <th className="ledger-th">{t('Haradan / hara')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -120,10 +121,10 @@ export default function MovementsTab() {
                     <td className="ledger-td whitespace-normal">
                       {m.order ? (
                         <Link to={`/business/orders/${m.order}`} className={LINK}>
-                          Sifariş #{m.order_number}{m.customer_name ? ` · ${m.customer_name}` : m.plate_number ? ` · ${m.plate_number}` : ''}
+                          {t('Sifariş')} #{m.order_number}{m.customer_name ? ` · ${m.customer_name}` : m.plate_number ? ` · ${m.plate_number}` : ''}
                         </Link>
                       ) : m.purchase ? (
-                        <Link to={`/business/warehouse/purchases/${m.purchase}`} className={LINK}>{m.store_name ?? 'Alış'}</Link>
+                        <Link to={`/business/warehouse/purchases/${m.purchase}`} className={LINK}>{m.store_name ?? t('Alış')}</Link>
                       ) : (
                         <span className="text-text-3">{m.store_name ?? ''}</span>
                       )}

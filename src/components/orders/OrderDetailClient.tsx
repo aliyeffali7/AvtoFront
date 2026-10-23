@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, Link2, MessageCircle, Pencil, Printer, RefreshCw, Wallet, Wrench, X, XCircle } from 'lucide-react'
 import { useGoBack } from '@/lib/useGoBack'
+import { t } from '@/i18n'
 import { Order, OrderService, Mechanic, Product, Business, Store, ServiceTemplate } from '@/types'
 import {
   getOrder, assignMechanic, changeOrderStatus,
@@ -73,9 +74,9 @@ function ServiceForm({ initial, mechanics, templates, submitLabel, loading, erro
     <form onSubmit={e => { e.preventDefault(); onSubmit(v) }} className="mb-3 border border-border rounded-lg p-3 flex flex-col gap-2 bg-paper">
       <ServiceTemplatePicker
         templates={templates}
-        onPick={t => setV({ ...v, name: t.name, price: String(t.price), mechanicAmount: String(t.mechanic_amount), templateId: String(t.id) })}
+        onPick={tpl => setV({ ...v, name: tpl.name, price: String(tpl.price), mechanicAmount: String(tpl.mechanic_amount), templateId: String(tpl.id) })}
       />
-      <input value={v.name} onChange={e => setV({ ...v, name: e.target.value })} required placeholder="İş adı" aria-label="İş adı" className="input" autoFocus />
+      <input value={v.name} onChange={e => setV({ ...v, name: e.target.value })} required placeholder={t('İş adı')} aria-label={t('İş adı')} className="input" autoFocus />
       <div className="flex gap-2 flex-wrap">
         <input
           value={v.price}
@@ -83,7 +84,7 @@ function ServiceForm({ initial, mechanics, templates, submitLabel, loading, erro
             const amount = fixedPay ? null : percentAmount(e.target.value, v.mechanicId)
             setV({ ...v, price: e.target.value, mechanicAmount: amount ?? v.mechanicAmount })
           }}
-          type="number" min="0" step="0.01" placeholder="Qiymət ₼" aria-label="Qiymət" className="input-mono flex-1 min-w-[120px]"
+          type="number" min="0" step="0.01" placeholder={t('Qiymət ₼')} aria-label={t('Qiymət')} className="input-mono flex-1 min-w-[120px]"
         />
         <select
           value={v.mechanicId}
@@ -91,23 +92,23 @@ function ServiceForm({ initial, mechanics, templates, submitLabel, loading, erro
             const amount = fixedPay ? null : percentAmount(v.price, e.target.value)
             setV({ ...v, mechanicId: e.target.value, mechanicAmount: fixedPay ? v.mechanicAmount : e.target.value ? (amount ?? v.mechanicAmount) : '' })
           }}
-          aria-label="Usta"
+          aria-label={t('Usta')}
           className="input flex-1 min-w-[160px]"
         >
-          <option value="">— Usta yoxdur</option>
+          <option value="">{t('— Usta yoxdur')}</option>
           {mechanics.map(m => <option key={m.id} value={m.id}>{m.full_name || m.id} ({m.work_percent}%)</option>)}
         </select>
       </div>
       {(v.mechanicId || fixedPay) && (
         <div className="flex items-center gap-2">
-          <span className="label !mb-0 shrink-0">Usta payı</span>
-          <input value={v.mechanicAmount} onChange={e => setV({ ...v, mechanicAmount: e.target.value })} type="number" min="0" step="0.01" placeholder="0.00" aria-label="Usta payı" className="input-mono" />
-          {fixedPay && <span className="text-small text-text-3">Hazır iş — sabit pay</span>}
+          <span className="label !mb-0 shrink-0">{t('Usta payı')}</span>
+          <input value={v.mechanicAmount} onChange={e => setV({ ...v, mechanicAmount: e.target.value })} type="number" min="0" step="0.01" placeholder="0.00" aria-label={t('Usta payı')} className="input-mono" />
+          {fixedPay && <span className="text-small text-text-3">{t('Hazır iş — sabit pay')}</span>}
         </div>
       )}
       {error && <p className="text-small text-danger">{error}</p>}
       <div className="flex gap-2 justify-end">
-        <Button type="button" variant="secondary" size="sm" onClick={onCancel}>Ləğv</Button>
+        <Button type="button" variant="secondary" size="sm" onClick={onCancel}>{t('Ləğv')}</Button>
         <Button type="submit" size="sm" loading={loading}>{submitLabel}</Button>
       </div>
     </form>
@@ -116,12 +117,12 @@ function ServiceForm({ initial, mechanics, templates, submitLabel, loading, erro
 
 /** Owner view: who does the job and the mechanic's share. */
 function ServiceMechanicLine({ svc }: { svc: OrderService }) {
-  if (!svc.mechanic) return <p className="text-small text-text-3">Usta təyin edilməyib</p>
+  if (!svc.mechanic) return <p className="text-small text-text-3">{t('Usta təyin edilməyib')}</p>
   return (
     <p className="text-small text-text-3 flex flex-wrap items-center gap-x-1.5">
-      <span>Usta: <span className="text-text-2 font-medium">{svc.mechanic_name || '—'}</span></span>
+      <span>{t('Usta')}: <span className="text-text-2 font-medium">{svc.mechanic_name || '—'}</span></span>
       <span aria-hidden>·</span>
-      <span>Usta payı: <Money value={Number(svc.mechanic_amount ?? 0)} className="!text-small !font-medium" /></span>
+      <span>{t('Usta payı')}: <Money value={Number(svc.mechanic_amount ?? 0)} className="!text-small !font-medium" /></span>
     </p>
   )
 }
@@ -212,7 +213,7 @@ export default function OrderDetailClient() {
   }>({ open: false, title: '', message: '', confirmLabel: 'Bəli', danger: false, onConfirm: () => {} })
 
   function showConfirm(opts: { title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void }) {
-    setConfirmDialog({ open: true, confirmLabel: 'Bəli', danger: false, ...opts })
+    setConfirmDialog({ open: true, confirmLabel: t('Bəli'), danger: false, ...opts })
   }
   function closeConfirm() { setConfirmDialog(prev => ({ ...prev, open: false })) }
 
@@ -244,16 +245,16 @@ export default function OrderDetailClient() {
       setShareCopied(true)
       setTimeout(() => setShareCopied(false), 2000)
     } catch {
-      setShareError(`Kopyalamaq alınmadı. Link: ${url}`)
+      setShareError(t('Kopyalamaq alınmadı. Link: {url}', { url }))
     }
   }
 
   function handleResetShareLink() {
     if (!order) return
     showConfirm({
-      title: 'Linki yenilə',
-      message: 'Müştəriyə əvvəl göndərilmiş link işləməyəcək. Yeni link yaradılsın?',
-      confirmLabel: 'Yenilə',
+      title: t('Linki yenilə'),
+      message: t('Müştəriyə əvvəl göndərilmiş link işləməyəcək. Yeni link yaradılsın?'),
+      confirmLabel: t('Yenilə'),
       danger: true,
       onConfirm: async () => {
         closeConfirm()
@@ -385,7 +386,7 @@ export default function OrderDetailClient() {
     e.preventDefault()
     if (!order) return
     setProductError('')
-    if (!newProdSupplier.trim()) { setProductError('Hansı mağazadan alındığını yazın.'); return }
+    if (!newProdSupplier.trim()) { setProductError(t('Hansı mağazadan alındığını yazın.')); return }
     setAddingProduct(true)
     try {
       await purchaseProductForOrder(order.id, {
@@ -413,8 +414,8 @@ export default function OrderDetailClient() {
       const res = await returnOrderProduct(order.id, orderProductId, parseInt(returnQty) || 0)
       const refund = Number(res.data.refund) || 0
       setReturnMessage(refund > 0
-        ? `Qaytarış qeyd olundu. Müştəriyə ${formatCurrency(refund)} qaytarın — kassadan çıxdı.`
-        : 'Qaytarış qeyd olundu. Müştərinin borcu azaldı.')
+        ? t('Qaytarış qeyd olundu. Müştəriyə {amount} qaytarın — kassadan çıxdı.', { amount: formatCurrency(refund) })
+        : t('Qaytarış qeyd olundu. Müştərinin borcu azaldı.'))
       setReturningProductId(null)
       loadOrder()
     } catch (err) {
@@ -437,7 +438,7 @@ export default function OrderDetailClient() {
       return
     }
     showConfirm({
-      title: 'Məhsulu sil', message: 'Bu məhsulu sifarişdən çıxarmaq istəyirsiniz? Stoka qaytarılacaq.', confirmLabel: 'Sil', danger: true,
+      title: t('Məhsulu sil'), message: t('Bu məhsulu sifarişdən çıxarmaq istəyirsiniz? Stoka qaytarılacaq.'), confirmLabel: t('Sil'), danger: true,
       onConfirm: async () => {
         closeConfirm(); setRemovingProductId(orderProductId)
         try { await removeProductFromOrder(order.id, orderProductId); loadOrder() } finally { setRemovingProductId(null) }
@@ -463,7 +464,7 @@ export default function OrderDetailClient() {
     setEditProductError('')
     const newQty = parseInt(editProductQty)
     const line = order.products.find(x => x.id === orderProductId)
-    if (Number.isNaN(newQty) || newQty < 0) { setEditProductError('Miqdar tam ədəd olmalıdır (0 = sətri çıxar).'); return }
+    if (Number.isNaN(newQty) || newQty < 0) { setEditProductError(t('Miqdar tam ədəd olmalıdır (0 = sətri çıxar).')); return }
     if (newQty === 0) {
       // Reducing to nothing is removing the line — same flow (and question) as the bin button.
       setEditingProductId(null)
@@ -512,7 +513,7 @@ export default function OrderDetailClient() {
     const price = parseFloat(v.price) || 0
     const mechanicId = v.mechanicId ? parseInt(v.mechanicId) : null
     const mechanicAmt = (mechanicId !== null || v.templateId !== '') && v.mechanicAmount !== '' ? parseFloat(v.mechanicAmount) || 0 : null
-    if (mechanicAmt !== null && mechanicAmt > price) { setServiceError('Usta payı işin qiymətindən çox ola bilməz.'); return }
+    if (mechanicAmt !== null && mechanicAmt > price) { setServiceError(t('Usta payı işin qiymətindən çox ola bilməz.')); return }
     const templateId = v.templateId ? parseInt(v.templateId) : null
     setAddingService(true)
     try {
@@ -529,7 +530,7 @@ export default function OrderDetailClient() {
   function handleRemoveService(serviceId: number) {
     if (!order) return
     showConfirm({
-      title: 'İşi sil', message: 'Bu işi sifarişdən silmək istəyirsiniz?', confirmLabel: 'Sil', danger: true,
+      title: t('İşi sil'), message: t('Bu işi sifarişdən silmək istəyirsiniz?'), confirmLabel: t('Sil'), danger: true,
       onConfirm: async () => {
         closeConfirm(); setRemovingServiceId(serviceId)
         try { await removeServiceFromOrder(order.id, serviceId); loadOrder() } finally { setRemovingServiceId(null) }
@@ -543,7 +544,7 @@ export default function OrderDetailClient() {
     if (!file) return
     if (imageInputRef.current) imageInputRef.current.value = ''
     setImageError('')
-    if (file.size > 5 * 1024 * 1024) { setImageError('Fayl ölçüsü 5 MB-dan çox ola bilməz.'); return }
+    if (file.size > 5 * 1024 * 1024) { setImageError(t('Fayl ölçüsü 5 MB-dan çox ola bilməz.')); return }
     setUploadingImage(true)
     try { await uploadOrderImage(order.id, file); loadOrder() } catch (err) { setImageError(mapApiError(err)) } finally { setUploadingImage(false) }
   }
@@ -551,7 +552,7 @@ export default function OrderDetailClient() {
   function handleRemoveImage(imageId: number) {
     if (!order) return
     showConfirm({
-      title: 'Şəkli sil', message: 'Bu şəkli silmək istəyirsiniz?', confirmLabel: 'Sil', danger: true,
+      title: t('Şəkli sil'), message: t('Bu şəkli silmək istəyirsiniz?'), confirmLabel: t('Sil'), danger: true,
       onConfirm: async () => {
         closeConfirm(); setRemovingImageId(imageId)
         try { await deleteOrderImage(order.id, imageId); loadOrder() } finally { setRemovingImageId(null) }
@@ -576,9 +577,9 @@ export default function OrderDetailClient() {
       return
     }
     showConfirm({
-      title: 'Sifarişi ləğv et',
-      message: 'Bu sifarişi ləğv etmək istəyirsiniz? Bütün ödəniş qeydləri maliyyədən silinəcək, anbar stoku bərpa ediləcək. Bu əməliyyat geri alına bilməz.',
-      confirmLabel: 'Ləğv et', danger: true,
+      title: t('Sifarişi ləğv et'),
+      message: t('Bu sifarişi ləğv etmək istəyirsiniz? Bütün ödəniş qeydləri maliyyədən silinəcək, anbar stoku bərpa ediləcək. Bu əməliyyat geri alına bilməz.'),
+      confirmLabel: t('Ləğv et@@action'), danger: true,
       onConfirm: async () => {
         closeConfirm(); setDeleting(true)
         try { await deleteOrder(order.id); navigate('/business/orders', { replace: true }) } finally { setDeleting(false) }
@@ -604,7 +605,7 @@ export default function OrderDetailClient() {
 
   const backLink = (
     <button type="button" onClick={goBack} className="btn-ghost !min-h-[36px] !px-2 -ml-2 self-start text-text-2">
-      <ArrowLeft size={18} strokeWidth={1.75} /> Sifarişlər
+      <ArrowLeft size={18} strokeWidth={1.75} /> {t('Sifarişlər')}
     </button>
   )
 
@@ -615,7 +616,7 @@ export default function OrderDetailClient() {
     return (
       <div className="flex flex-col gap-4">
         {backLink}
-        <div className="card p-8 text-center text-text-3">{loadError ? 'Sifariş tapılmadı və ya yüklənmədi.' : '—'}</div>
+        <div className="card p-8 text-center text-text-3">{loadError ? t('Sifariş tapılmadı və ya yüklənmədi.') : '—'}</div>
       </div>
     )
   }
@@ -643,7 +644,7 @@ export default function OrderDetailClient() {
       {backLink}
 
       <header className="flex flex-wrap items-center gap-3">
-        <h1 className="page-title">Sifariş <span className="font-mono">№{orderNo}</span></h1>
+        <h1 className="page-title">{t('Sifariş')} <span className="font-mono">№{orderNo}</span></h1>
         <StatusBadge status={order.status} />
         {order.status === 'done' && <UiStatusBadge status={PAYMENT_WORD[order.payment_status ?? 'unpaid']} />}
         <span className="text-small text-text-3 font-mono">{formatDate(order.created_at)}</span>
@@ -652,39 +653,39 @@ export default function OrderDetailClient() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 items-start">
         {/* LEFT */}
         <div className="flex flex-col gap-4 min-w-0">
-          <SectionCard title="Müştərinin müraciəti">
+          <SectionCard title={t('Müştərinin müraciəti')}>
             <p className="text-body text-text-2 whitespace-pre-line">{order.description || '—'}</p>
           </SectionCard>
 
           {order.diagnosis && (
-            <SectionCard title="Diaqnostika nəticəsi">
+            <SectionCard title={t('Diaqnostika nəticəsi')}>
               <p className="text-body text-text-2 whitespace-pre-line">{order.diagnosis}</p>
             </SectionCard>
           )}
 
           {order.status === 'done' && order.payment_status !== 'paid' && (
             <p className="text-small text-text-2 bg-surface-2 border border-border rounded-lg px-4 py-3">
-              Sifariş tamamlanıb və hesabata yazılıb. İş və ya məhsulu dəyişmək üçün statusu "İcrada" edin; müştəri hissəni geri gətiribsə "Məhsullar" bölməsində "Müştəri qaytarması"nı seçin.
+              {t('Sifariş tamamlanıb və hesabata yazılıb. İş və ya məhsulu dəyişmək üçün statusu "İcrada" edin; müştəri hissəni geri gətiribsə "Məhsullar" bölməsində "Müştəri qaytarması"nı seçin.')}
             </p>
           )}
           {returnMessage && <p className="text-body text-text-1 bg-warning-subtle border border-warning/30 rounded-lg px-4 py-3">{returnMessage}</p>}
 
           {/* Services */}
           <SectionCard
-            title="Xidmətlər"
+            title={t('Xidmətlər')}
             action={linesEditable && (
-              <button onClick={() => { setAddServiceOpen(v => !v); setEditingServiceId(null); setServiceError(''); ensureMechanics(); ensureTemplates() }} className={LINK_BTN}>+ Əlavə et</button>
+              <button onClick={() => { setAddServiceOpen(v => !v); setEditingServiceId(null); setServiceError(''); ensureMechanics(); ensureTemplates() }} className={LINK_BTN}>{t('+ Əlavə et')}</button>
             )}
           >
             {addServiceOpen && linesEditable && (
               <ServiceForm
                 initial={{ name: '', price: '', mechanicId: '', mechanicAmount: '', templateId: '' }}
-                mechanics={mechanics} templates={templates} submitLabel="Əlavə et" loading={addingService} error={serviceError}
+                mechanics={mechanics} templates={templates} submitLabel={t('Əlavə et')} loading={addingService} error={serviceError}
                 onSubmit={v => submitService(v)} onCancel={() => setAddServiceOpen(false)}
               />
             )}
             {!order.services || order.services.length === 0 ? (
-              <p className="text-body text-text-3">İş qeyd edilməyib.</p>
+              <p className="text-body text-text-3">{t('İş qeyd edilməyib.')}</p>
             ) : (
               <div>
                 {order.services.map((svc, i) => (
@@ -692,7 +693,7 @@ export default function OrderDetailClient() {
                     <ServiceForm
                       key={svc.id}
                       initial={{ name: svc.name, price: String(svc.price), mechanicId: svc.mechanic ? String(svc.mechanic) : '', mechanicAmount: svc.mechanic_amount != null ? String(svc.mechanic_amount) : '', templateId: svc.template ? String(svc.template) : '' }}
-                      mechanics={mechanics} templates={[]} submitLabel="Saxla" loading={addingService} error={serviceError}
+                      mechanics={mechanics} templates={[]} submitLabel={t('Saxla')} loading={addingService} error={serviceError}
                       onSubmit={v => submitService(v, svc.id)} onCancel={() => setEditingServiceId(null)}
                     />
                   ) : (
@@ -705,13 +706,13 @@ export default function OrderDetailClient() {
                       {linesEditable && (
                         <div className="flex items-center gap-2 shrink-0">
                           <button
-                            aria-label="Düzəlt"
+                            aria-label={t('Düzəlt')}
                             onClick={() => { setEditingServiceId(svc.id ?? null); setServiceError(''); setAddServiceOpen(false); ensureMechanics() }}
                             className="text-text-3 hover:text-ink"
                           >
                             <Pencil size={16} strokeWidth={1.75} />
                           </button>
-                          <button onClick={() => svc.id && handleRemoveService(svc.id)} disabled={removingServiceId === svc.id} aria-label="Sil" className="text-text-3 hover:text-danger">
+                          <button onClick={() => svc.id && handleRemoveService(svc.id)} disabled={removingServiceId === svc.id} aria-label={t('Sil')} className="text-text-3 hover:text-danger">
                             <X size={16} strokeWidth={1.75} />
                           </button>
                         </div>
@@ -720,7 +721,7 @@ export default function OrderDetailClient() {
                   )
                 ))}
                 <div className="flex items-center justify-between pt-3">
-                  <span className="section-label">Cəmi</span>
+                  <span className="section-label">{t('Cəmi')}</span>
                   <Money value={servicesTotal} className="text-body-l" />
                 </div>
               </div>
@@ -729,26 +730,26 @@ export default function OrderDetailClient() {
 
           {/* Products */}
           <SectionCard
-            title="Məhsullar"
+            title={t('Məhsullar')}
             action={linesEditable ? (
               <div className="flex gap-4">
-                <button onClick={() => { setAddProductOpen(v => !v); setProductTab('warehouse'); setProductError('') }} className={LINK_BTN}>Anbarda var</button>
-                <button onClick={() => { setAddProductOpen(true); setProductTab('new'); setProductError('') }} className="text-small font-semibold text-warning-strong hover:underline underline-offset-2">Anbarda yoxdur</button>
+                <button onClick={() => { setAddProductOpen(v => !v); setProductTab('warehouse'); setProductError('') }} className={LINK_BTN}>{t('Anbarda var')}</button>
+                <button onClick={() => { setAddProductOpen(true); setProductTab('new'); setProductError('') }} className="text-small font-semibold text-warning-strong hover:underline underline-offset-2">{t('Anbarda yoxdur')}</button>
               </div>
             ) : order.status === 'done' && orderProductsList.some(p => p.source !== 'customer') ? (
               returnMode ? (
-                <button onClick={() => { setReturnMode(false); setReturningProductId(null) }} className={LINK_BTN}>Qaytarmanı bağla</button>
+                <button onClick={() => { setReturnMode(false); setReturningProductId(null) }} className={LINK_BTN}>{t('Qaytarmanı bağla')}</button>
               ) : (
                 <button
                   onClick={() => showConfirm({
-                    title: 'Müştəri qaytarması',
-                    message: 'Müştəri hissəni geri gətirib? Qaytarılan hissə stoka qayıdır, hesabatdan çıxılır; ödənilmiş məbləğ kassadan qaytarılır.',
-                    confirmLabel: 'Bəli, qaytarma et',
+                    title: t('Müştəri qaytarması'),
+                    message: t('Müştəri hissəni geri gətirib? Qaytarılan hissə stoka qayıdır, hesabatdan çıxılır; ödənilmiş məbləğ kassadan qaytarılır.'),
+                    confirmLabel: t('Bəli, qaytarma et'),
                     onConfirm: () => { closeConfirm(); setReturnMode(true) },
                   })}
                   className="text-small font-semibold text-warning-strong hover:underline underline-offset-2"
                 >
-                  Müştəri qaytarması
+                  {t('Müştəri qaytarması')}
                 </button>
               )
             ) : null}
@@ -758,40 +759,40 @@ export default function OrderDetailClient() {
                 {productTab === 'warehouse' ? (
                   <form onSubmit={handleAddProduct} className="flex flex-col gap-2">
                     <select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)} required className="input">
-                      <option value="">Seçin...</option>
+                      <option value="">{t('Seçin...')}</option>
                       {warehouseProducts.map(p => (
                         <option key={p.id} value={p.id} disabled={p.stock_quantity === 0}>
-                          {p.name} — {p.stock_quantity > 0 ? `${p.stock_quantity} ${p.unit}, ${formatCurrency(p.sell_price)}` : 'stokda yoxdur'}
+                          {p.name} — {p.stock_quantity > 0 ? `${p.stock_quantity} ${p.unit}, ${formatCurrency(p.sell_price)}` : t('stokda yoxdur')}
                         </option>
                       ))}
                     </select>
-                    <p className="text-small text-text-3">Stokda olmayan hissə üçün yuxarıdakı <span className="font-semibold text-warning-strong">"Anbarda yoxdur"</span> düyməsini basın.</p>
-                    <input value={qty} onChange={e => setQty(e.target.value)} type="number" min="1" required placeholder="Miqdar" className="input-mono" />
+                    <p className="text-small text-text-3">{t('Stokda olmayan hissə üçün yuxarıdakı')} <span className="font-semibold text-warning-strong">"{t('Anbarda yoxdur')}"</span> {t('düyməsini basın.')}</p>
+                    <input value={qty} onChange={e => setQty(e.target.value)} type="number" min="1" required placeholder={t('Miqdar')} className="input-mono" />
                     {productError && <p className="text-small text-danger">{productError}</p>}
                     <div className="flex gap-2 justify-end">
-                      <Button type="button" variant="secondary" size="sm" onClick={() => setAddProductOpen(false)}>Ləğv</Button>
-                      <Button type="submit" size="sm" loading={addingProduct}>Əlavə et</Button>
+                      <Button type="button" variant="secondary" size="sm" onClick={() => setAddProductOpen(false)}>{t('Ləğv')}</Button>
+                      <Button type="submit" size="sm" loading={addingProduct}>{t('Əlavə et')}</Button>
                     </div>
                   </form>
                 ) : (
                   <form onSubmit={handleAddNewProduct} className="flex flex-col gap-2">
-                    <p className="text-small text-text-3">Hissə indi mağazadan alınıb bu sifarişə qoyulur. Eyni adlı məhsul varsa, yenisi yaradılmır.</p>
-                    <input value={newProdName} onChange={e => setNewProdName(e.target.value)} required placeholder="Məhsul adı" className="input" autoFocus />
+                    <p className="text-small text-text-3">{t('Hissə indi mağazadan alınıb bu sifarişə qoyulur. Eyni adlı məhsul varsa, yenisi yaradılmır.')}</p>
+                    <input value={newProdName} onChange={e => setNewProdName(e.target.value)} required placeholder={t('Məhsul adı')} className="input" autoFocus />
                     <div className="flex gap-2">
-                      <input value={newProdPurchase} onChange={e => setNewProdPurchase(e.target.value)} type="number" min="0" step="0.01" placeholder="Alış ₼" className="input-mono flex-1 min-w-0" />
-                      <input value={newProdSell} onChange={e => setNewProdSell(e.target.value)} type="number" min="0" step="0.01" placeholder="Satış ₼" className="input-mono flex-1 min-w-0" />
-                      <input value={newProdQty} onChange={e => setNewProdQty(e.target.value)} type="number" min="1" placeholder="Ədəd" className="input-mono w-20 shrink-0" />
+                      <input value={newProdPurchase} onChange={e => setNewProdPurchase(e.target.value)} type="number" min="0" step="0.01" placeholder={t('Alış ₼')} className="input-mono flex-1 min-w-0" />
+                      <input value={newProdSell} onChange={e => setNewProdSell(e.target.value)} type="number" min="0" step="0.01" placeholder={t('Satış ₼')} className="input-mono flex-1 min-w-0" />
+                      <input value={newProdQty} onChange={e => setNewProdQty(e.target.value)} type="number" min="1" placeholder={t('Ədəd')} className="input-mono w-20 shrink-0" />
                     </div>
-                    <ComboboxInput value={newProdSupplier} onChange={setNewProdSupplier} options={stores.map(s => s.name)} placeholder="Mağaza (məcburi)" />
+                    <ComboboxInput value={newProdSupplier} onChange={setNewProdSupplier} options={stores.map(s => s.name)} placeholder={t('Mağaza (məcburi)')} />
                     <label className="flex items-center gap-2 text-body text-text-1 cursor-pointer">
                       <input type="checkbox" checked={newProdOnCredit} onChange={e => setNewProdOnCredit(e.target.checked)} className="w-4 h-4 accent-ink" />
-                      Nisyə alınıb
-                      <span className="text-small text-text-3">{newProdOnCredit ? '— kreditor borcu yaranacaq' : '— kassadan çıxacaq'}</span>
+                      {t('Nisyə alınıb')}
+                      <span className="text-small text-text-3">{newProdOnCredit ? t('— kreditor borcu yaranacaq') : t('— kassadan çıxacaq')}</span>
                     </label>
                     {productError && <p className="text-small text-danger">{productError}</p>}
                     <div className="flex gap-2 justify-end">
-                      <Button type="button" variant="secondary" size="sm" onClick={() => setAddProductOpen(false)}>Ləğv</Button>
-                      <Button type="submit" size="sm" loading={addingProduct}>Əlavə et</Button>
+                      <Button type="button" variant="secondary" size="sm" onClick={() => setAddProductOpen(false)}>{t('Ləğv')}</Button>
+                      <Button type="submit" size="sm" loading={addingProduct}>{t('Əlavə et')}</Button>
                     </div>
                   </form>
                 )}
@@ -799,7 +800,7 @@ export default function OrderDetailClient() {
             )}
 
             {orderProductsList.length === 0 ? (
-              <p className="text-body text-text-3">Məhsul əlavə edilməyib.</p>
+              <p className="text-body text-text-3">{t('Məhsul əlavə edilməyib.')}</p>
             ) : (
               <div>
                 {orderProductsList.map(p => (
@@ -809,19 +810,19 @@ export default function OrderDetailClient() {
                         <p className="text-body font-semibold text-text-1">{p.product_name}</p>
                         <div className="flex gap-2">
                           <label className="flex flex-col flex-1">
-                            <span className="label">Bu sifarişdə satış qiyməti (₼)</span>
+                            <span className="label">{t('Bu sifarişdə satış qiyməti (₼)')}</span>
                             <input value={editProductSell} onChange={e => setEditProductSell(e.target.value)} type="number" min="0" step="0.01" className="input-mono" autoFocus />
                           </label>
                           <label className="flex flex-col w-24">
-                            <span className="label">Ədəd</span>
+                            <span className="label">{t('Ədəd')}</span>
                             <input value={editProductQty} onChange={e => setEditProductQty(e.target.value)} type="number" min="0" className="input-mono" />
                           </label>
                         </div>
-                        <p className="text-small text-text-3">Qiymət yalnız bu sifarişdə dəyişir. Miqdar artsa, fərq stokdan çıxılır; azalsa, stoka qayıdır. 0 yazsanız, sətir sifarişdən çıxır.</p>
+                        <p className="text-small text-text-3">{t('Qiymət yalnız bu sifarişdə dəyişir. Miqdar artsa, fərq stokdan çıxılır; azalsa, stoka qayıdır. 0 yazsanız, sətir sifarişdən çıxır.')}</p>
                         {editProductError && <p className="text-small text-danger">{editProductError}</p>}
                         <div className="flex gap-2 justify-end">
-                          <Button type="button" variant="secondary" size="sm" onClick={() => setEditingProductId(null)}>Ləğv</Button>
-                          <Button type="button" size="sm" loading={savingProductEdit} onClick={() => handleSaveProductEdit(p.id)}>Saxla</Button>
+                          <Button type="button" variant="secondary" size="sm" onClick={() => setEditingProductId(null)}>{t('Ləğv')}</Button>
+                          <Button type="button" size="sm" loading={savingProductEdit} onClick={() => handleSaveProductEdit(p.id)}>{t('Saxla')}</Button>
                         </div>
                       </div>
                     ) : (
@@ -829,33 +830,33 @@ export default function OrderDetailClient() {
                         <div className="min-w-0 flex-1">
                           <p className="text-body text-text-1">{p.product_name}</p>
                           {p.source === 'customer'
-                            ? <p className="text-small text-text-3 font-mono">{p.quantity} ədəd</p>
+                            ? <p className="text-small text-text-3 font-mono">{t('{n} ədəd', { n: p.quantity })}</p>
                             : (
                               <p className="text-small text-text-3 font-mono">
                                 {p.quantity} × {formatCurrency(Number(p.sell_price))}
-                                <span className="font-sans"> satış</span>
+                                <span className="font-sans"> {t('satış')}</span>
                                 <span aria-hidden> · </span>
                                 {formatCurrency(Number(p.purchase_price ?? 0))}
-                                <span className="font-sans"> alış</span>
+                                <span className="font-sans"> {t('alış')}</span>
                               </p>
                             )}
                         </div>
                         {p.source === 'customer'
-                          ? <span className="text-small font-semibold text-text-2 bg-surface-2 border border-border rounded-sm px-2 py-0.5 shrink-0">Müştəri gətirib</span>
+                          ? <span className="text-small font-semibold text-text-2 bg-surface-2 border border-border rounded-sm px-2 py-0.5 shrink-0">{t('Müştəri gətirib')}</span>
                           : <Money value={p.sell_price * p.quantity} />}
                         {order.status === 'done' && returnMode && p.source !== 'customer' && (
                           <button
                             onClick={() => { setReturningProductId(returningProductId === p.id ? null : p.id); setReturnQty('1'); setReturnMessage('') }}
                             className="text-small font-semibold text-warning-strong hover:underline shrink-0"
                           >
-                            Qaytar
+                            {t('Qaytar')}
                           </button>
                         )}
                         {linesEditable && (
                           <div className="flex items-center gap-2 shrink-0">
                             {p.source !== 'customer' && (
                               <button
-                                aria-label="Düzəlt"
+                                aria-label={t('Düzəlt')}
                                 onClick={() => {
                                   setEditingProductId(p.id)
                                   setEditProductSell(String(p.sell_price)); setEditProductQty(String(p.quantity)); setEditProductError('')
@@ -865,7 +866,7 @@ export default function OrderDetailClient() {
                                 <Pencil size={16} strokeWidth={1.75} />
                               </button>
                             )}
-                            <button aria-label="Sil" onClick={() => handleRemoveProduct(p.id)} disabled={removingProductId === p.id} className="text-text-3 hover:text-danger">
+                            <button aria-label={t('Sil')} onClick={() => handleRemoveProduct(p.id)} disabled={removingProductId === p.id} className="text-text-3 hover:text-danger">
                               <X size={16} strokeWidth={1.75} />
                             </button>
                           </div>
@@ -874,18 +875,18 @@ export default function OrderDetailClient() {
                     )}
                     {returningProductId === p.id && (
                       <form onSubmit={e => { e.preventDefault(); handleReturnProduct(p.id) }} className="pb-3 flex flex-col gap-2">
-                        <p className="text-small text-text-2">Müştəri neçə ədədi geri gətirib? Hissə stoka qayıdır, hesabatdan çıxılır; artıq ödənilmiş məbləğ kassadan qaytarılır.</p>
+                        <p className="text-small text-text-2">{t('Müştəri neçə ədədi geri gətirib? Hissə stoka qayıdır, hesabatdan çıxılır; artıq ödənilmiş məbləğ kassadan qaytarılır.')}</p>
                         <div className="flex gap-2">
                           <input type="number" min={1} max={p.quantity} value={returnQty} onChange={e => setReturnQty(e.target.value)} className="input-mono w-24" />
-                          <Button type="submit" size="sm" loading={returnBusy} className="flex-1 !min-h-[44px]">Qaytarışı qeyd et</Button>
-                          <Button type="button" variant="secondary" size="sm" className="!min-h-[44px]" onClick={() => setReturningProductId(null)}>Ləğv</Button>
+                          <Button type="submit" size="sm" loading={returnBusy} className="flex-1 !min-h-[44px]">{t('Qaytarışı qeyd et')}</Button>
+                          <Button type="button" variant="secondary" size="sm" className="!min-h-[44px]" onClick={() => setReturningProductId(null)}>{t('Ləğv')}</Button>
                         </div>
                       </form>
                     )}
                   </div>
                 ))}
                 <div className="flex items-center justify-between pt-3">
-                  <span className="section-label">Cəmi</span>
+                  <span className="section-label">{t('Cəmi')}</span>
                   <Money value={productsTotal} className="text-body-l" />
                 </div>
               </div>
@@ -894,29 +895,29 @@ export default function OrderDetailClient() {
 
           {/* Images */}
           <SectionCard
-            title={`Şəkillər${order.images && order.images.length > 0 ? ` (${order.images.length}/3)` : ''}`}
+            title={`${t('Şəkillər')}${order.images && order.images.length > 0 ? ` (${order.images.length}/3)` : ''}`}
             action={order.payment_status !== 'paid' && (order.images?.length ?? 0) < 3 && (
               <>
                 <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 <button onClick={() => { setImageError(''); imageInputRef.current?.click() }} disabled={uploadingImage} className={`${LINK_BTN} disabled:opacity-50`}>
-                  {uploadingImage ? 'Yüklənir...' : '+ Şəkil'}
+                  {uploadingImage ? t('Yüklənir...') : t('+ Şəkil')}
                 </button>
               </>
             )}
           >
             {imageError && <p className="text-small text-danger mb-2">{imageError}</p>}
             {!order.images || order.images.length === 0 ? (
-              <p className="text-body text-text-3">Şəkil əlavə edilməyib.</p>
+              <p className="text-body text-text-3">{t('Şəkil əlavə edilməyib.')}</p>
             ) : (
               <div className="flex flex-wrap gap-3">
                 {order.images.map(img => (
                   <div key={img.id} className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group shrink-0">
                     <a href={mediaUrl(img.image)} target="_blank" rel="noreferrer">
-                      <img src={mediaUrl(img.image)} alt="Şəkil" className="w-full h-full object-cover" />
+                      <img src={mediaUrl(img.image)} alt={t('Şəkil')} className="w-full h-full object-cover" />
                     </a>
                     {order.payment_status !== 'paid' && (
                       <button
-                        aria-label="Şəkli sil"
+                        aria-label={t('Şəkli sil')}
                         onClick={() => handleRemoveImage(img.id)}
                         disabled={removingImageId === img.id}
                         className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink/80 text-paper flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
@@ -931,13 +932,13 @@ export default function OrderDetailClient() {
           </SectionCard>
 
           {order.notes && (
-            <SectionCard title="Əlavə qeydlər" tone="warning">
+            <SectionCard title={t('Əlavə qeydlər')} tone="warning">
               <p className="text-body text-text-1 whitespace-pre-line">{order.notes}</p>
             </SectionCard>
           )}
 
           {order.recommendations && (
-            <SectionCard title="Tövsiyə olunan işlər">
+            <SectionCard title={t('Tövsiyə olunan işlər')}>
               <p className="text-body text-text-2 whitespace-pre-line">{order.recommendations}</p>
             </SectionCard>
           )}
@@ -947,11 +948,11 @@ export default function OrderDetailClient() {
         <div className="flex flex-col gap-4 min-w-0 lg:sticky lg:top-6">
           <div className="bg-ink rounded-lg p-6 flex flex-col gap-4">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="font-sans text-label uppercase text-text-4">Hesab</span>
+              <span className="font-sans text-label uppercase text-text-4">{t('Hesab@@order')}</span>
               <span className="font-mono text-small text-text-4">№{orderNo}</span>
             </div>
             <div className="flex flex-col gap-1">
-              <span className="font-sans text-label uppercase text-text-4">Ümumi məbləğ</span>
+              <span className="font-sans text-label uppercase text-text-4">{t('Ümumi məbləğ')}</span>
               <span className="font-mono font-semibold tabular-nums text-[26px] leading-9 sm:text-[34px] sm:leading-10 text-paper">{formatCurrency(effectiveOrderTotal)}</span>
               {Number(order.discount_amount ?? 0) > 0 && (
                 <span className="font-mono text-small text-text-4 line-through">{formatCurrency(grandTotal)}</span>
@@ -959,17 +960,17 @@ export default function OrderDetailClient() {
             </div>
             <div className="grid grid-cols-2 gap-4 border-t border-ink-up pt-4">
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-label uppercase text-text-4">Ödənilib</span>
+                <span className="font-sans text-label uppercase text-text-4">{t('Ödənilib')}</span>
                 <span className="font-mono font-semibold tabular-nums text-[20px] text-paper">{formatCurrency(Number(order.paid_amount ?? 0))}</span>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-label uppercase text-text-4">Qalıq</span>
+                <span className="font-sans text-label uppercase text-text-4">{t('Qalıq')}</span>
                 <span className="font-mono font-semibold tabular-nums text-[20px] text-paper">{formatCurrency(Math.max(0, debt))}</span>
               </div>
             </div>
             {/* Net profit — business owner only, never printed on the customer PDF */}
             <div className="flex items-baseline justify-between gap-3 border-t border-ink-up pt-4">
-              <span className="font-sans text-label uppercase text-text-4">Xalis mənfəət</span>
+              <span className="font-sans text-label uppercase text-text-4">{t('Xalis mənfəət')}</span>
               <span className="font-mono font-semibold tabular-nums text-body-l text-paper">{netProfit < 0 ? '−' : ''}{formatCurrency(Math.abs(netProfit))}</span>
             </div>
           </div>
@@ -985,63 +986,63 @@ export default function OrderDetailClient() {
                 <p className="text-body font-semibold text-text-1 truncate">{[order.car_brand, order.car_model, order.car_year].filter(Boolean).join(' ') || '—'}</p>
                 <p className="text-small text-text-3 truncate">
                   {order.customer
-                    ? <Link to={`/business/customers/${order.customer}`} className="hover:underline underline-offset-2">{customerName || 'Müştəri'}</Link>
+                    ? <Link to={`/business/customers/${order.customer}`} className="hover:underline underline-offset-2">{customerName || t('Müştəri')}</Link>
                     : (customerName || '—')}
                   {order.customer_phone && <span className="font-mono"> · {formatPhone(order.customer_phone)}</span>}
                 </p>
               </div>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="section-label">Nişan</span>
+              <span className="section-label">{t('Nişan')}</span>
               <Plate value={order.plate_number} size={14} />
             </div>
             <div className="flex items-baseline justify-between gap-3">
-              <span className="section-label">Usta</span>
-              <span className="text-body text-right">{mechanicName ?? <span className="text-warning-strong">təyin edilməyib</span>}</span>
+              <span className="section-label">{t('Usta')}</span>
+              <span className="text-body text-right">{mechanicName ?? <span className="text-warning-strong">{t('təyin edilməyib')}</span>}</span>
             </div>
             <div className="flex items-baseline justify-between gap-3">
-              <span className="section-label">Tarix</span>
+              <span className="section-label">{t('Tarix')}</span>
               <span className="text-body font-mono">{formatDate(order.created_at)}</span>
             </div>
             {order.completed_on && (
               <div className="flex items-baseline justify-between gap-3">
-                <span className="section-label">Təhvil</span>
+                <span className="section-label">{t('Təhvil')}</span>
                 <span className="text-body font-mono">{formatDate(order.completed_on)}</span>
               </div>
             )}
             {order.mileage != null && (
               <div className="flex items-baseline justify-between gap-3">
-                <span className="section-label">Yürüş</span>
+                <span className="section-label">{t('Yürüş')}</span>
                 <span className="text-body font-mono">{order.mileage.toLocaleString()} {order.mileage_unit ?? 'km'}</span>
               </div>
             )}
             <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-              <span className="section-label">Zəmanət</span>
+              <span className="section-label">{t('Zəmanət')}</span>
               <button
                 onClick={async () => { try { await updateOrder(order.id, { has_guarantee: !order.has_guarantee }); loadOrder() } catch { /* ignore */ } }}
-                title="Dəyişmək üçün basın"
+                title={t('Dəyişmək üçün basın')}
                 className={`text-small font-semibold tracking-wide px-2.5 h-7 rounded-sm border ${order.has_guarantee ? 'border-success bg-success-subtle text-success-strong' : 'border-border-strong text-text-3 hover:bg-surface-2'}`}
               >
-                {order.has_guarantee ? 'ZƏMANƏTLİ' : 'ZƏMANƏTSİZ'}
+                {order.has_guarantee ? t('ZƏMANƏTLİ') : t('ZƏMANƏTSİZ')}
               </button>
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
             {order.status === 'done' && order.payment_status !== 'paid' && (
-              <Button icon={Wallet} onClick={openPaymentPanel} className="w-full">Ödəniş qeyd et</Button>
+              <Button icon={Wallet} onClick={openPaymentPanel} className="w-full">{t('Ödəniş qeyd et')}</Button>
             )}
             {order.payment_status === 'paid' && (
-              <p className="text-body font-semibold text-success-strong bg-success-subtle rounded-lg px-4 py-3">Bu sifariş tam ödənilib və bağlanıb.</p>
+              <p className="text-body font-semibold text-success-strong bg-success-subtle rounded-lg px-4 py-3">{t('Bu sifariş tam ödənilib və bağlanıb.')}</p>
             )}
             {order.payment_status !== 'paid' && (
               <>
-                <Button variant="secondary" icon={RefreshCw} className="w-full" disabled={changingStatus} onClick={() => setStatusOpen(true)}>Status dəyiş</Button>
-                <Button variant="secondary" icon={Wrench} className="w-full" onClick={() => { ensureMechanics(); setAssignOpen(true) }}>Usta təyin et</Button>
+                <Button variant="secondary" icon={RefreshCw} className="w-full" disabled={changingStatus} onClick={() => setStatusOpen(true)}>{t('Status dəyiş')}</Button>
+                <Button variant="secondary" icon={Wrench} className="w-full" onClick={() => { ensureMechanics(); setAssignOpen(true) }}>{t('Usta təyin et')}</Button>
               </>
             )}
             {linesEditable && (
-              <Button variant="secondary" icon={Pencil} className="w-full" onClick={() => setEditing(true)}>Düzəlt</Button>
+              <Button variant="secondary" icon={Pencil} className="w-full" onClick={() => setEditing(true)}>{t('Düzəlt')}</Button>
             )}
             <Button
               variant="secondary"
@@ -1050,7 +1051,7 @@ export default function OrderDetailClient() {
               loading={generatingPdf}
               onClick={async () => { setGeneratingPdf(true); try { await printOrderPDF(order, business) } finally { setGeneratingPdf(false) } }}
             >
-              {generatingPdf ? 'Hazırlanır...' : 'PDF'}
+              {generatingPdf ? t('Hazırlanır...') : 'PDF'}
             </Button>
             <Button
               variant="secondary"
@@ -1058,21 +1059,21 @@ export default function OrderDetailClient() {
               className="w-full"
               onClick={() => { if (!waMenuOpen) loadShareUrl(); setWaMenuOpen(true) }}
               disabled={!hasWhatsAppNumber(order.customer_phone)}
-              title={hasWhatsAppNumber(order.customer_phone) ? undefined : 'Telefon nömrəsi yoxdur'}
+              title={hasWhatsAppNumber(order.customer_phone) ? undefined : t('Telefon nömrəsi yoxdur')}
             >
               WhatsApp
             </Button>
-            <Button variant="secondary" icon={shareCopied ? Check : Link2} className="w-full" onClick={handleCopyShareLink} title="Müştəri üçün sifariş linkini kopyala">
-              {shareCopied ? 'Kopyalandı' : 'Link'}
+            <Button variant="secondary" icon={shareCopied ? Check : Link2} className="w-full" onClick={handleCopyShareLink} title={t('Müştəri üçün sifariş linkini kopyala')}>
+              {shareCopied ? t('Kopyalandı') : t('Link')}
             </Button>
-            <Button variant="danger" icon={XCircle} className="w-full" loading={deleting} onClick={handleDeleteOrder}>Sifarişi ləğv et</Button>
+            <Button variant="danger" icon={XCircle} className="w-full" loading={deleting} onClick={handleDeleteOrder}>{t('Sifarişi ləğv et')}</Button>
             {shareError && <p className="text-small text-danger bg-danger-subtle rounded-lg px-3 py-2">{shareError}</p>}
           </div>
         </div>
       </div>
 
       {/* Status dialog */}
-      <Modal open={statusOpen} title="Status dəyiş" subtitle={`№${orderNo}`} onClose={() => setStatusOpen(false)}>
+      <Modal open={statusOpen} title={t('Status dəyiş')} subtitle={`№${orderNo}`} onClose={() => setStatusOpen(false)}>
         <div className="flex flex-col gap-2 pb-2">
           {([{ value: 'pending', label: 'Gözləyir' }, { value: 'in_progress', label: 'İcrada' }, { value: 'done', label: 'Tamamlandı' }] as const).map(s => (
             <button
@@ -1081,7 +1082,7 @@ export default function OrderDetailClient() {
               disabled={changingStatus || order.status === s.value}
               className={`h-11 px-3 rounded text-body text-left border flex items-center justify-between ${order.status === s.value ? 'bg-surface-2 border-ink text-ink font-semibold' : 'border-border-strong text-text-2 hover:bg-surface-2'} disabled:cursor-default`}
             >
-              {s.label}
+              {t(s.label)}
               {order.status === s.value && <Check size={18} strokeWidth={1.75} />}
             </button>
           ))}
@@ -1091,18 +1092,18 @@ export default function OrderDetailClient() {
       {/* Mechanic dialog */}
       <Modal
         open={assignOpen}
-        title="Usta təyin et"
+        title={t('Usta təyin et')}
         subtitle={`№${orderNo}`}
         onClose={() => setAssignOpen(false)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setAssignOpen(false)}>Ləğv et</Button>
-            <Button onClick={handleAssign} disabled={!selectedMechanic} loading={assigningMechanic}>Təyin et</Button>
+            <Button variant="secondary" onClick={() => setAssignOpen(false)}>{t('Ləğv et')}</Button>
+            <Button onClick={handleAssign} disabled={!selectedMechanic} loading={assigningMechanic}>{t('Təyin et')}</Button>
           </>
         }
       >
         <select value={selectedMechanic} onChange={e => setSelectedMechanic(e.target.value)} onFocus={ensureMechanics} className="input">
-          <option value="">Seçilməyib</option>
+          <option value="">{t('Seçilməyib')}</option>
           {mechanics.filter(m => m.is_active).map(m => <option key={m.id} value={m.id}>{m.full_name ?? m.phone}</option>)}
         </select>
       </Modal>
@@ -1111,13 +1112,13 @@ export default function OrderDetailClient() {
       {order.customer_phone && business && (() => {
         const phone = order.customer_phone
         const options = [
-          order.status === 'done' && { label: 'Maşın hazırdır', text: carReadyMessage(order, business) },
+          order.status === 'done' && { label: t('Maşın hazırdır'), text: carReadyMessage(order, business) },
           order.status === 'done' && due > 0 && {
-            label: `Borc xatırlatması (${formatCurrency(due)})`,
+            label: t('Borc xatırlatması ({amount})', { amount: formatCurrency(due) }),
             text: debtReminderMessage({ customer_name: order.customer_name, plate_number: order.plate_number, amount: due }, business),
           },
-          shareUrl && { label: 'Qaimə linki', text: orderLinkMessage(order, shareUrl, business) },
-          { label: 'Mətnsiz yaz', text: undefined },
+          shareUrl && { label: t('Qaimə linki'), text: orderLinkMessage(order, shareUrl, business) },
+          { label: t('Mətnsiz yaz'), text: undefined },
         ].filter((o): o is { label: string; text: string | undefined } => !!o)
         return (
           <Modal open={waMenuOpen} title="WhatsApp" subtitle={formatPhone(phone)} onClose={() => setWaMenuOpen(false)}>
@@ -1134,10 +1135,10 @@ export default function OrderDetailClient() {
                   <MessageCircle size={18} strokeWidth={1.75} className="shrink-0" /> {o.label}
                 </a>
               ))}
-              <p className="text-small text-text-3 pt-1">WhatsApp mətnlə açılır — göndərməzdən əvvəl düzəldə bilərsiniz.</p>
+              <p className="text-small text-text-3 pt-1">{t('WhatsApp mətnlə açılır — göndərməzdən əvvəl düzəldə bilərsiniz.')}</p>
               {shareUrl && (
                 <button onClick={() => { setWaMenuOpen(false); handleResetShareLink() }} className="text-left text-small text-text-3 hover:text-danger underline">
-                  Linki yenilə (köhnə link işləməyəcək)
+                  {t('Linki yenilə (köhnə link işləməyəcək)')}
                 </button>
               )}
             </div>
@@ -1153,55 +1154,55 @@ export default function OrderDetailClient() {
         return (
           <Modal
             open
-            title="Ödəniş qeydi"
-            subtitle={`№${orderNo} · Sifariş tamamlandı`}
+            title={t('Ödəniş qeydi')}
+            subtitle={`№${orderNo} · ${t('Sifariş tamamlandı')}`}
             onClose={() => setPaymentOpen(false)}
             footer={
               <>
-                <Button type="button" variant="secondary" onClick={() => setPaymentOpen(false)}>Sonra</Button>
-                <Button type="submit" form="payment-form" loading={recordingPayment}>{recordingPayment ? 'Saxlanılır...' : 'Qeyd et'}</Button>
+                <Button type="button" variant="secondary" onClick={() => setPaymentOpen(false)}>{t('Sonra')}</Button>
+                <Button type="submit" form="payment-form" loading={recordingPayment}>{recordingPayment ? t('Saxlanılır...') : t('Qeyd et')}</Button>
               </>
             }
           >
             <form id="payment-form" onSubmit={handleRecordPayment} className="flex flex-col gap-3 pb-2">
               <div className="flex items-center justify-between bg-surface-2 rounded px-3 py-2.5">
-                <span className="text-body text-text-3">Ümumi məbləğ</span>
+                <span className="text-body text-text-3">{t('Ümumi məbləğ')}</span>
                 <span className={`font-mono font-semibold ${discountEnabled && discountAmt > 0 ? 'line-through text-text-3' : 'text-text-1'}`}>{formatCurrency(paymentTotal)}</span>
               </div>
               <label className="flex items-center gap-2 text-body text-text-1 cursor-pointer select-none">
                 <input type="checkbox" checked={discountEnabled} onChange={e => { setDiscountEnabled(e.target.checked); setPaidInput(e.target.checked ? discountPrice : paymentTotal.toFixed(2)) }} className="w-4 h-4 accent-ink" />
-                Endirimli qiymət
+                {t('Endirimli qiymət')}
               </label>
               {discountEnabled && (
                 <div>
-                  <p className="label">Yeni qiymət (endirimli)</p>
+                  <p className="label">{t('Yeni qiymət (endirimli)')}</p>
                   <input type="number" min="0.01" max={paymentTotal - 0.01} step="0.01" value={discountPrice} onChange={e => { setDiscountPrice(e.target.value); setPaidInput(e.target.value) }} className="input-mono text-body-l" autoFocus />
                   {discountAmt > 0 && (
                     <div className="flex items-center justify-between bg-surface-2 rounded px-3 py-2 mt-2">
-                      <span className="text-body text-text-3">Endirim məbləği</span>
+                      <span className="text-body text-text-3">{t('Endirim məbləği')}</span>
                       <Money value={-discountAmt} />
                     </div>
                   )}
                 </div>
               )}
               <div>
-                <p className="label">Ödənilən məbləğ</p>
+                <p className="label">{t('Ödənilən məbləğ')}</p>
                 <input type="number" min="0" max={effectiveTotal} step="0.01" value={paidInput} onChange={e => setPaidInput(e.target.value)} className="input-mono text-body-l" autoFocus={!discountEnabled} />
                 <div className="flex gap-2 mt-2">
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setPaidInput('0')}>Borc</Button>
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setPaidInput((effectiveTotal / 2).toFixed(2))}>Yarısı</Button>
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setPaidInput(effectiveTotal.toFixed(2))}>Tam</Button>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setPaidInput('0')}>{t('Borc')}</Button>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setPaidInput((effectiveTotal / 2).toFixed(2))}>{t('Yarısı')}</Button>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setPaidInput(effectiveTotal.toFixed(2))}>{t('Tam')}</Button>
                 </div>
               </div>
               {paid < effectiveTotal && paid >= 0 && (
                 <div className="flex items-center justify-between bg-warning-subtle rounded px-3 py-2">
-                  <span className="text-body text-warning-strong font-semibold">Borc qalır</span>
+                  <span className="text-body text-warning-strong font-semibold">{t('Borc qalır')}</span>
                   <span className="font-mono font-semibold text-warning-strong">{formatCurrency(effectiveTotal - paid)}</span>
                 </div>
               )}
               {paid >= effectiveTotal && (
                 <div className="flex items-center gap-2 bg-success-subtle rounded px-3 py-2">
-                  <span className="text-body text-success-strong font-semibold">Tam ödənilib</span>
+                  <span className="text-body text-success-strong font-semibold">{t('Tam ödənilib')}</span>
                 </div>
               )}
               {paymentError && <p className="text-body text-danger bg-danger-subtle rounded px-3 py-2">{paymentError}</p>}

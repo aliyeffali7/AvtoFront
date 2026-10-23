@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, Clock } from 'lucide-react'
 import api from '@/lib/axios'
 import { SubscriptionStatus } from '@/types'
+import { t, getLang } from '@/i18n'
 
 const MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avqust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr']
 const WARN_DAYS = 3
@@ -10,6 +11,7 @@ const WARN_DAYS = 3
 function azDate(iso: string, locative = false) {
   const d = new Date(iso)
   const month = MONTHS[d.getMonth()]
+  if (getLang() === 'ru') return `${d.getDate()} ${t(month)}`
   const suffix = locative ? (month === 'aprel' ? 'də' : 'da') : ''
   return `${d.getDate()} ${month}${suffix}`
 }
@@ -29,17 +31,17 @@ export default function SubscriptionBanner() {
   let text = ''
   if (status.state === 'suspended') {
     tone = 'danger'
-    text = 'Hesabınız admin tərəfindən dayandırılıb. Hazırda yalnız baxa bilərsiniz — ətraflı məlumat üçün bizimlə əlaqə saxlayın.'
+    text = t('Hesabınız admin tərəfindən dayandırılıb. Hazırda yalnız baxa bilərsiniz — ətraflı məlumat üçün bizimlə əlaqə saxlayın.')
   } else if (status.state === 'expired') {
     tone = 'danger'
     text = status.ends_at
-      ? `Abunəliyinizin müddəti ${azDate(status.ends_at, true)} bitib. Hazırda yalnız baxa bilərsiniz — davam etmək üçün bizimlə əlaqə saxlayın.`
-      : 'Abunəliyinizin müddəti bitib. Hazırda yalnız baxa bilərsiniz — davam etmək üçün bizimlə əlaqə saxlayın.'
+      ? t('Abunəliyinizin müddəti {date} bitib. Hazırda yalnız baxa bilərsiniz — davam etmək üçün bizimlə əlaqə saxlayın.', { date: azDate(status.ends_at, true) })
+      : t('Abunəliyinizin müddəti bitib. Hazırda yalnız baxa bilərsiniz — davam etmək üçün bizimlə əlaqə saxlayın.')
   } else if (status.ends_at && status.days_left !== null && status.days_left <= WARN_DAYS) {
     tone = 'warning'
-    if (status.days_left <= 0) text = 'Abunəliyiniz bu gün bitir.'
-    else if (status.days_left === 1) text = `Abunəliyiniz sabah (${azDate(status.ends_at)}) bitir.`
-    else text = `Abunəliyiniz ${azDate(status.ends_at, true)} bitir — ${status.days_left} gün qalıb.`
+    if (status.days_left <= 0) text = t('Abunəliyiniz bu gün bitir.')
+    else if (status.days_left === 1) text = t('Abunəliyiniz sabah ({date}) bitir.', { date: azDate(status.ends_at) })
+    else text = t('Abunəliyiniz {date} bitir — {n} gün qalıb.', { date: azDate(status.ends_at, true), n: status.days_left })
   }
 
   if (!tone) return null

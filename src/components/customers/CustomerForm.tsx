@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useEffect } from 'react'
 import { Customer, CustomerDetail } from '@/types'
 import { createCustomer, updateCustomer } from '@/services/customers.service'
@@ -86,36 +87,36 @@ export default function CustomerForm({ customer, onDone, onCancel }: {
   return (
     <Modal
       open
-      title={isEdit ? 'Müştəri redaktəsi' : 'Yeni müştəri'}
+      title={isEdit ? t('Müştəri redaktəsi') : t('Yeni müştəri')}
       onClose={handleCancel}
       width="max-w-[560px]"
       footer={
         <>
-          <Button type="button" variant="secondary" onClick={handleCancel}>Ləğv et</Button>
-          <Button type="submit" form="customer-form" loading={loading}>{loading ? 'Saxlanılır...' : isEdit ? 'Saxla' : 'Müştəri əlavə et'}</Button>
+          <Button type="button" variant="secondary" onClick={handleCancel}>{t('Ləğv et')}</Button>
+          <Button type="submit" form="customer-form" loading={loading}>{loading ? t('Saxlanılır...') : isEdit ? t('Saxla') : t('Müştəri əlavə et')}</Button>
         </>
       }
     >
       <form id="customer-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
         {draftRestored && (
           <div className="flex items-center justify-between gap-2 bg-surface-2 border border-border rounded px-3 py-2 text-small">
-            <span className="text-text-3">Yarımçıq qalmış qaralama bərpa edildi.</span>
-            <button type="button" onClick={discardDraft} className="font-semibold text-danger hover:underline shrink-0">Təmizlə</button>
+            <span className="text-text-3">{t('Yarımçıq qalmış qaralama bərpa edildi.')}</span>
+            <button type="button" onClick={discardDraft} className="font-semibold text-danger hover:underline shrink-0">{t('Təmizlə')}</button>
           </div>
         )}
 
-        <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder="Ad Soyad" className="input" />
+        <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder={t('Ad Soyad')} className="input" />
         <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input-mono" />
 
         <div className="border-t border-border pt-3">
-          <p className="section-label mb-2">Avtomobil</p>
+          <p className="section-label mb-2">{t('Avtomobil')}</p>
           <div className="flex flex-col gap-2.5">
             <CarBrandModelInputs brand={carBrand} model={carModel} onBrandChange={setCarBrand} onModelChange={setCarModel} />
             <div className="flex gap-2.5">
-              <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="İl" maxLength={4} className="input-mono flex-1" />
+              <input value={carYear} onChange={e => setCarYear(e.target.value)} placeholder={t('İl')} maxLength={4} className="input-mono flex-1" />
               <PlateInput value={carPlate} onChange={setCarPlate} className="input-mono tracking-wider flex-1" />
             </div>
-            <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="VIN kod" maxLength={17} className="input-mono" />
+            <input value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder={t('VIN kod')} maxLength={17} className="input-mono" />
           </div>
         </div>
 

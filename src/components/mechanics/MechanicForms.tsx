@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState } from 'react'
 import { Mechanic } from '@/types'
 import { createMechanic, updateMechanic } from '@/services/mechanics.service'
@@ -18,7 +19,7 @@ export function MechanicAvatar({ mechanic, size = 36 }: { mechanic: Pick<Mechani
   // A photo that fails to load (deleted file, missing media) falls back to initials.
   const [failed, setFailed] = useState(false)
   if (url && !failed) {
-    return <img src={url} alt={mechanic.full_name ?? 'Usta'} onError={() => setFailed(true)} style={{ width: size, height: size }} className="rounded-full object-cover shrink-0 border border-border" />
+    return <img src={url} alt={mechanic.full_name ?? t('Usta')} onError={() => setFailed(true)} style={{ width: size, height: size }} className="rounded-full object-cover shrink-0 border border-border" />
   }
   return <Avatar name={mechanic.full_name ?? mechanic.phone ?? '?'} tone="ink" size={size} />
 }
@@ -26,11 +27,11 @@ export function MechanicAvatar({ mechanic, size = 36 }: { mechanic: Pick<Mechani
 function PhotoField({ preview, onPick }: { preview: string; onPick: (file: File | null) => void }) {
   return (
     <div>
-      <label className="label">Usta şəkli</label>
+      <label className="label">{t('Usta şəkli')}</label>
       <input type="file" accept="image/*" className="input" onChange={e => onPick(e.target.files?.[0] ?? null)} />
       {preview && (
         <div className="w-16 h-16 rounded overflow-hidden border border-border mt-2">
-          <img src={preview} alt="Usta şəkli" className="w-full h-full object-cover" />
+          <img src={preview} alt={t('Usta şəkli')} className="w-full h-full object-cover" />
         </div>
       )}
     </div>
@@ -53,12 +54,12 @@ export function AddMechanicModal({ onAdded, onCancel }: { onAdded: (created: Mec
     e.preventDefault()
     setError('')
     if (password !== confirmPassword) {
-      setError('Şifrələr uyğun gəlmir.')
+      setError(t('Şifrələr uyğun gəlmir.'))
       return
     }
     const percent = Number(workPercent)
     if (isNaN(percent) || percent < 0 || percent > 100) {
-      setError('İş faizi 0 ilə 100 arasında olmalıdır.')
+      setError(t('İş faizi 0 ilə 100 arasında olmalıdır.'))
       return
     }
     setLoading(true)
@@ -75,23 +76,23 @@ export function AddMechanicModal({ onAdded, onCancel }: { onAdded: (created: Mec
   return (
     <Modal
       open
-      title="Yeni usta"
+      title={t('Yeni usta')}
       onClose={onCancel}
       width="max-w-[560px]"
       footer={
         <>
-          <Button type="button" variant="secondary" onClick={onCancel}>Ləğv et</Button>
-          <Button type="submit" form="add-mechanic-form" loading={loading}>{loading ? 'Əlavə edilir...' : 'Usta əlavə et'}</Button>
+          <Button type="button" variant="secondary" onClick={onCancel}>{t('Ləğv et')}</Button>
+          <Button type="submit" form="add-mechanic-form" loading={loading}>{loading ? t('Əlavə edilir...') : t('Usta əlavə et')}</Button>
         </>
       }
     >
       <form id="add-mechanic-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
         <div>
-          <label className="label">Ad Soyad</label>
-          <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder="Rauf Əliyev" className="input" />
+          <label className="label">{t('Ad Soyad')}</label>
+          <input value={fullName} onChange={e => setFullName(e.target.value)} required autoFocus placeholder={t('Rauf Əliyev')} className="input" />
         </div>
         <div>
-          <label className="label">Əlaqə nömrəsi</label>
+          <label className="label">{t('Əlaqə nömrəsi')}</label>
           <input value={phone} onChange={e => setPhone(e.target.value)} required type="tel" placeholder="+994 50 000 00 00" className="input-mono" />
         </div>
         <PhotoField
@@ -99,25 +100,25 @@ export function AddMechanicModal({ onAdded, onCancel }: { onAdded: (created: Mec
           onPick={file => { setImageFile(file); setImagePreview(file ? URL.createObjectURL(file) : '') }}
         />
         <div>
-          <label className="label">İş faizi (%)</label>
-          <input value={workPercent} onChange={e => setWorkPercent(e.target.value)} required type="number" min={0} max={100} placeholder="Məs: 40" className="input-mono" />
-          <p className="text-small text-text-3 mt-1.5">Ödəniş qəbul ediləndə ustanın payı avtomatik xərc kimi qeyd ediləcək.</p>
+          <label className="label">{t('İş faizi (%)')}</label>
+          <input value={workPercent} onChange={e => setWorkPercent(e.target.value)} required type="number" min={0} max={100} placeholder={t('Məs: 40')} className="input-mono" />
+          <p className="text-small text-text-3 mt-1.5">{t('Ödəniş qəbul ediləndə ustanın payı avtomatik xərc kimi qeyd ediləcək.')}</p>
         </div>
         <div>
-          <label className="label">Şifrə</label>
-          <input value={password} onChange={e => setPassword(e.target.value)} required type="password" placeholder="Minimum 8 simvol" minLength={8} className="input" />
+          <label className="label">{t('Şifrə')}</label>
+          <input value={password} onChange={e => setPassword(e.target.value)} required type="password" placeholder={t('Minimum 8 simvol')} minLength={8} className="input" />
         </div>
         <div>
-          <label className="label">Şifrəni təsdiqlə</label>
+          <label className="label">{t('Şifrəni təsdiqlə')}</label>
           <input
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
             required
             type="password"
-            placeholder="Şifrəni təkrar daxil edin"
+            placeholder={t('Şifrəni təkrar daxil edin')}
             className={`input ${confirmPassword && confirmPassword !== password ? '!border-danger' : ''}`}
           />
-          {confirmPassword && confirmPassword !== password && <p className="text-small text-danger mt-1.5">Şifrələr uyğun gəlmir</p>}
+          {confirmPassword && confirmPassword !== password && <p className="text-small text-danger mt-1.5">{t('Şifrələr uyğun gəlmir')}</p>}
         </div>
         {error && <p className="text-body text-danger bg-danger-subtle rounded px-3 py-2">{error}</p>}
       </form>
@@ -140,7 +141,7 @@ export function EditMechanicModal({ mechanic, onSaved, onCancel }: { mechanic: M
     setError('')
     const percent = Number(workPercent)
     if (isNaN(percent) || percent < 0 || percent > 100) {
-      setError('İş faizi 0 ilə 100 arasında olmalıdır.')
+      setError(t('İş faizi 0 ilə 100 arasında olmalıdır.'))
       return
     }
     setLoading(true)
@@ -157,23 +158,23 @@ export function EditMechanicModal({ mechanic, onSaved, onCancel }: { mechanic: M
   return (
     <Modal
       open
-      title="Məlumatları düzəlt"
+      title={t('Məlumatları düzəlt')}
       onClose={onCancel}
       width="max-w-[560px]"
       footer={
         <>
-          <Button type="button" variant="secondary" onClick={onCancel}>Ləğv et</Button>
-          <Button type="submit" form="edit-mechanic-form" loading={loading}>{loading ? 'Saxlanılır...' : 'Saxla'}</Button>
+          <Button type="button" variant="secondary" onClick={onCancel}>{t('Ləğv et')}</Button>
+          <Button type="submit" form="edit-mechanic-form" loading={loading}>{loading ? t('Saxlanılır...') : t('Saxla')}</Button>
         </>
       }
     >
       <form id="edit-mechanic-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
         <div>
-          <label className="label">Ad Soyad</label>
-          <input value={fullName} onChange={e => setFullName(e.target.value)} required placeholder="Rauf Əliyev" className="input" />
+          <label className="label">{t('Ad Soyad')}</label>
+          <input value={fullName} onChange={e => setFullName(e.target.value)} required placeholder={t('Rauf Əliyev')} className="input" />
         </div>
         <div>
-          <label className="label">Əlaqə nömrəsi</label>
+          <label className="label">{t('Əlaqə nömrəsi')}</label>
           <input value={phone} onChange={e => setPhone(e.target.value)} required type="tel" placeholder="+994 50 000 00 00" className="input-mono" />
         </div>
         <PhotoField
@@ -181,8 +182,8 @@ export function EditMechanicModal({ mechanic, onSaved, onCancel }: { mechanic: M
           onPick={file => { setImageFile(file); setImagePreview(file ? URL.createObjectURL(file) : getMechanicImageUrl(mechanic.image)) }}
         />
         <div>
-          <label className="label">İş faizi (%)</label>
-          <input value={workPercent} onChange={e => setWorkPercent(e.target.value)} required type="number" min={0} max={100} placeholder="Məs: 40" className="input-mono" />
+          <label className="label">{t('İş faizi (%)')}</label>
+          <input value={workPercent} onChange={e => setWorkPercent(e.target.value)} required type="number" min={0} max={100} placeholder={t('Məs: 40')} className="input-mono" />
         </div>
         {error && <p className="text-body text-danger bg-danger-subtle rounded px-3 py-2">{error}</p>}
       </form>

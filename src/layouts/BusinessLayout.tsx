@@ -5,6 +5,7 @@ import BusinessSidebar from '@/components/layout/BusinessSidebar'
 import SubscriptionBanner from '@/components/layout/SubscriptionBanner'
 import ImpersonationBanner from '@/components/layout/ImpersonationBanner'
 import ServoLogo from '@/components/ui/ServoLogo'
+import { t } from '@/i18n'
 
 const PAGE_TITLES: Record<string, string> = {
   '/business/dashboard':    'Ana səhifə',
@@ -28,7 +29,7 @@ function getPageTitle(pathname: string) {
 export default function BusinessLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { pathname } = useLocation()
-  const pageTitle = getPageTitle(pathname)
+  const pageTitle = t(getPageTitle(pathname))
 
   return (
     <div className="min-h-screen bg-paper flex">
@@ -52,7 +53,7 @@ export default function BusinessLayout() {
         <div className="lg:hidden flex items-center gap-3 px-3 h-14 bg-ink sticky top-0 z-10">
           <button
             onClick={() => setSidebarOpen(true)}
-            aria-label="Menyu"
+            aria-label={t('Menyu')}
             className="w-10 h-10 flex items-center justify-center rounded-md text-paper hover:bg-ink-up transition-colors"
           >
             <Menu className="w-5 h-5" strokeWidth={1.75} />

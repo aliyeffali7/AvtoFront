@@ -1,3 +1,5 @@
+import { t, localeOf } from '@/i18n'
+
 /** YYYY-MM-DD in the user's own timezone. toISOString() is UTC — in Baku
  * (UTC+4) it returns yesterday between 00:00 and 04:00, and local month-start
  * midnight becomes the previous month's last day. */
@@ -23,7 +25,7 @@ export function formatCurrency(amount: number | string): string {
 
 export function formatDate(dateString: string): string {
   const date = new Date(dateString)
-  return date.toLocaleDateString('az-AZ', {
+  return date.toLocaleDateString(localeOf(), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -36,7 +38,7 @@ export function getStatusLabel(status: 'pending' | 'in_progress' | 'done'): stri
     in_progress: 'İcrada',
     done: 'Tamamlandı',
   }
-  return labels[status]
+  return t(labels[status])
 }
 
 /**
@@ -64,7 +66,7 @@ export function autoFormatSearch(value: string): string {
 }
 
 export function mapApiError(error: unknown): string {
-  const genericMessage = 'Xəta baş verdi. Yenidən cəhd edin.'
+  const genericMessage = t('Xəta baş verdi. Yenidən cəhd edin.')
 
   if (!error || typeof error !== 'object') return genericMessage
 
@@ -75,12 +77,12 @@ export function mapApiError(error: unknown): string {
 
   if (!err.response) {
     if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
-      return 'Server vaxtında cavab vermədi. Yenidən cəhd edin.'
+      return t('Server vaxtında cavab vermədi. Yenidən cəhd edin.')
     }
-    return 'Bağlantı xətası. İnterneti yoxlayıb yenidən cəhd edin.'
+    return t('Bağlantı xətası. İnterneti yoxlayıb yenidən cəhd edin.')
   }
   if (err.response.status === 429) {
-    return 'Çox sayda sorğu göndərildi. Bir neçə saniyə gözləyib yenidən cəhd edin.'
+    return t('Çox sayda sorğu göndərildi. Bir neçə saniyə gözləyib yenidən cəhd edin.')
   }
   if (!err.response.data) return genericMessage
 
@@ -88,11 +90,11 @@ export function mapApiError(error: unknown): string {
   const status = err.response.status
 
   if (status === 401) {
-    return 'Email və ya şifrə yanlışdır'
+    return t('Email və ya şifrə yanlışdır')
   }
 
   if (typeof data.detail === 'string') {
-    return data.detail
+    return t(data.detail)
   }
 
   const firstKey = Object.keys(data)[0]
@@ -101,9 +103,9 @@ export function mapApiError(error: unknown): string {
     const msg = Array.isArray(val) ? val[0] : typeof val === 'string' ? val : null
     if (typeof msg === 'string') {
       if (msg.includes('stok') || msg.includes('kifayət')) {
-        return 'Kifayət qədər məhsul yoxdur'
+        return t('Kifayət qədər məhsul yoxdur')
       }
-      return msg
+      return t(msg)
     }
   }
 

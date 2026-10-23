@@ -16,6 +16,7 @@ import Modal from '@/components/ui/Modal'
 import Money from '@/components/ui/Money'
 import Spinner from '@/components/ui/Spinner'
 import StoreFormModal from '@/components/stores/StoreFormModal'
+import { t } from '@/i18n'
 
 /** Full-page supplier: header, KPIs, purchase history, merge and delete. */
 export default function StoreDetailPage() {
@@ -86,7 +87,7 @@ export default function StoreDetailPage() {
 
   const backBtn = (
     <div>
-      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={goBack}>Geri — Tədarükçülər</Button>
+      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={goBack}>{t('Geri — Tədarükçülər')}</Button>
     </div>
   )
 
@@ -95,7 +96,7 @@ export default function StoreDetailPage() {
     return (
       <div className="flex flex-col gap-4">
         {backBtn}
-        <EmptyState title="Tədarükçü tapılmadı" subtitle="Bu tədarükçü silinib və ya əlçatan deyil." />
+        <EmptyState title={t('Tədarükçü tapılmadı')} subtitle={t('Bu tədarükçü silinib və ya əlçatan deyil.')} />
       </div>
     )
   }
@@ -119,12 +120,12 @@ export default function StoreDetailPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {store.phone && (
-            <a href={`tel:${store.phone}`} className="btn-secondary"><Phone size={18} strokeWidth={1.75} />Zəng et</a>
+            <a href={`tel:${store.phone}`} className="btn-secondary"><Phone size={18} strokeWidth={1.75} />{t('Zəng et')}</a>
           )}
           {hasWhatsAppNumber(store.phone) && (
             <a href={whatsappLink(store.phone!)} target="_blank" rel="noreferrer" className="btn-secondary"><MessageCircle size={18} strokeWidth={1.75} />WhatsApp</a>
           )}
-          <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>Düzəlt</Button>
+          <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>{t('Düzəlt')}</Button>
         </div>
       </div>
 
@@ -132,28 +133,28 @@ export default function StoreDetailPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <KpiCard label="Cəmi alış" value={Number(data.total_purchased)} money note={`Nağd ${formatCurrency(data.cash_total)} · Nisyə ${formatCurrency(data.credit_total)}`} />
-        <KpiCard label="Ödənilib" value={paid} money meaning="income" />
-        <KpiCard label="Borc qalığı" value={debt} money meaning={debt > 0 ? 'payable' : 'neutral'} accent={debt > 0} note={debt > 0 ? 'Ödəniləcək' : undefined} />
+        <KpiCard label={t('Cəmi alış')} value={Number(data.total_purchased)} money note={`${t('Nağd')} ${formatCurrency(data.cash_total)} · ${t('Nisyə')} ${formatCurrency(data.credit_total)}`} />
+        <KpiCard label={t('Ödənilib')} value={paid} money meaning="income" />
+        <KpiCard label={t('Borc qalığı')} value={debt} money meaning={debt > 0 ? 'payable' : 'neutral'} accent={debt > 0} note={debt > 0 ? t('Ödəniləcək') : undefined} />
       </div>
 
       {/* Purchases */}
       <section className="card overflow-hidden">
         <div className="px-5 py-4">
-          <h2 className="section-label">Alınan məhsullar ({data.purchases.length})</h2>
+          <h2 className="section-label">{t('Alınan məhsullar')} ({data.purchases.length})</h2>
         </div>
         {!hasPurchases ? (
-          <p className="px-5 pb-5 text-body text-text-3">Bu mağazadan hələ məhsul alınmayıb.</p>
+          <p className="px-5 pb-5 text-body text-text-3">{t('Bu mağazadan hələ məhsul alınmayıb.')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="ledger-table min-w-[640px]">
               <thead>
                 <tr>
-                  <th className="ledger-th">Tarix</th>
-                  <th className="ledger-th">Məhsul</th>
-                  <th className="ledger-th text-right">Miqdar</th>
-                  <th className="ledger-th">Ödəniş</th>
-                  <th className="ledger-th text-right">Məbləğ</th>
+                  <th className="ledger-th">{t('Tarix')}</th>
+                  <th className="ledger-th">{t('Məhsul')}</th>
+                  <th className="ledger-th text-right">{t('Miqdar')}</th>
+                  <th className="ledger-th">{t('Ödəniş')}</th>
+                  <th className="ledger-th text-right">{t('Məbləğ')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -162,14 +163,14 @@ export default function StoreDetailPage() {
                     <td className="ledger-td font-mono text-text-2">{formatDate(p.date)}</td>
                     <td className="ledger-td whitespace-normal font-semibold">{p.product_name}</td>
                     <td className="ledger-td text-right font-mono tabular-nums">{p.quantity}{p.returned_quantity > 0 ? ` (−${p.returned_quantity})` : ''}</td>
-                    <td className="ledger-td"><Badge variant={p.on_credit ? 'warning' : 'success'}>{p.on_credit ? 'Nisyə' : 'Nağd'}</Badge></td>
+                    <td className="ledger-td"><Badge variant={p.on_credit ? 'warning' : 'success'}>{p.on_credit ? t('Nisyə') : t('Nağd')}</Badge></td>
                     <td className="ledger-td text-right"><Money value={p.line_total} /></td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={4}>Cəmi alış</td>
+                  <td className="ledger-td font-semibold" colSpan={4}>{t('Cəmi alış')}</td>
                   <td className="ledger-td text-right"><Money value={data.total_purchased} className="font-bold" /></td>
                 </tr>
               </tfoot>
@@ -180,31 +181,31 @@ export default function StoreDetailPage() {
 
       {/* Merge / delete */}
       <section className="card p-5 flex flex-wrap items-center gap-3">
-        <Button variant="secondary" icon={GitMerge} onClick={() => { setMergeOpen(true); setActionError('') }}>Başqa tədarükçü ilə birləşdir</Button>
-        <Button variant="danger" icon={Trash2} disabled={hasPurchases} onClick={() => { setConfirmDelete(true); setActionError('') }}>Sil</Button>
-        {hasPurchases && <p className="text-small text-text-3">Alışı olan tədarükçünü silmək olmaz — lazım olsa başqa tədarükçü ilə birləşdirin.</p>}
+        <Button variant="secondary" icon={GitMerge} onClick={() => { setMergeOpen(true); setActionError('') }}>{t('Başqa tədarükçü ilə birləşdir')}</Button>
+        <Button variant="danger" icon={Trash2} disabled={hasPurchases} onClick={() => { setConfirmDelete(true); setActionError('') }}>{t('Sil')}</Button>
+        {hasPurchases && <p className="text-small text-text-3">{t('Alışı olan tədarükçünü silmək olmaz — lazım olsa başqa tədarükçü ilə birləşdirin.')}</p>}
       </section>
 
       <Modal
         open={mergeOpen}
         onClose={() => setMergeOpen(false)}
-        title="Tədarükçüləri birləşdir"
+        title={t('Tədarükçüləri birləşdir')}
         subtitle={store.name}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setMergeOpen(false)}>Ləğv et</Button>
-            <Button loading={busy} disabled={!mergeInto} onClick={handleMerge}>Birləşdir</Button>
+            <Button variant="secondary" onClick={() => setMergeOpen(false)}>{t('Ləğv et')}</Button>
+            <Button loading={busy} disabled={!mergeInto} onClick={handleMerge}>{t('Birləşdir')}</Button>
           </>
         }
       >
         <div className="flex flex-col gap-4 pb-2">
           <p className="text-body text-text-2">
-            Eyni mağaza iki dəfə yazılıbsa (məs. "Avto ehtiyat" və "Avtoehtiyat"), bunun bütün alışları, borcları və tarixçəsi seçdiyinizə köçürüləcək, bu qeyd silinəcək.
+            {t('Eyni mağaza iki dəfə yazılıbsa (məs. "Avto ehtiyat" və "Avtoehtiyat"), bunun bütün alışları, borcları və tarixçəsi seçdiyinizə köçürüləcək, bu qeyd silinəcək.')}
           </p>
           <div>
-            <label className="label">Hansı tədarükçüyə?</label>
+            <label className="label">{t('Hansı tədarükçüyə?')}</label>
             <select value={mergeInto} onChange={e => setMergeInto(e.target.value)} className="input">
-              <option value="">Seçin...</option>
+              <option value="">{t('Seçin...')}</option>
               {stores.filter(st => st.id !== store.id).map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
             </select>
           </div>
@@ -213,10 +214,10 @@ export default function StoreDetailPage() {
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Tədarükçünü sil"
-        message={`"${store.name}" tədarükçüsü silinsin? Bu əməliyyat geri qaytarıla bilməz.`}
-        confirmLabel={busy ? '...' : 'Bəli, sil'}
-        cancelLabel="Xeyr"
+        title={t('Tədarükçünü sil')}
+        message={t('"{name}" tədarükçüsü silinsin? Bu əməliyyat geri qaytarıla bilməz.', { name: store.name })}
+        confirmLabel={busy ? '...' : t('Bəli, sil')}
+        cancelLabel={t('Xeyr')}
         danger
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(false)}

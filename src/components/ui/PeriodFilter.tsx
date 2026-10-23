@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { PERIOD_OPTIONS, Period } from '@/lib/period'
 import { toLocalISODate } from '@/lib/utils'
 
@@ -14,7 +15,7 @@ export default function PeriodFilter({ value, onChange, withAll = false, classNa
 
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-      <div className="flex flex-wrap gap-1 border border-rule rounded p-1 bg-surface-alt" role="group" aria-label="Dövr">
+      <div className="flex flex-wrap gap-1 border border-rule rounded p-1 bg-surface-alt" role="group" aria-label={t('Dövr')}>
         {options.map(o => (
           <button
             key={o.key}
@@ -25,7 +26,7 @@ export default function PeriodFilter({ value, onChange, withAll = false, classNa
               value.key === o.key ? 'bg-surface text-ink border border-rule' : 'text-ink-muted hover:text-ink border border-transparent'
             }`}
           >
-            {o.label}
+            {t(o.label)}
           </button>
         ))}
       </div>
@@ -37,7 +38,7 @@ export default function PeriodFilter({ value, onChange, withAll = false, classNa
             max={today}
             onChange={e => e.target.value && onChange({ ...value, from: e.target.value })}
             className="input-mono text-sm py-1.5 px-2 w-auto"
-            aria-label="Başlanğıc tarixi"
+            aria-label={t('Başlanğıc tarixi')}
           />
           <span className="text-ink-muted text-sm">–</span>
           <input
@@ -46,7 +47,7 @@ export default function PeriodFilter({ value, onChange, withAll = false, classNa
             max={today}
             onChange={e => e.target.value && onChange({ ...value, to: e.target.value })}
             className="input-mono text-sm py-1.5 px-2 w-auto"
-            aria-label="Son tarix"
+            aria-label={t('Son tarix')}
           />
         </div>
       )}

@@ -1,4 +1,5 @@
 import { formatCurrency } from '@/lib/utils'
+import { docLang, translate } from '@/i18n'
 
 // wa.me links only: WhatsApp opens with the text filled in and the user
 // presses Send themselves — nothing is ever sent from Servo automatically.
@@ -25,35 +26,47 @@ export function whatsappLink(phone: string, text?: string): string {
 interface Sender {
   name: string
   phone?: string
+  /** Customer-facing text follows the business's document language. */
+  document_language?: string | null
 }
 
 function signature(business: Sender): string {
   return business.phone ? `— ${business.name}, ${business.phone}` : `— ${business.name}`
 }
 
-function greeting(name?: string): string {
-  return name?.trim() ? `Salam, ${name.trim()}!` : 'Salam!'
+function greeting(business: Sender, name?: string): string {
+  const lang = docLang(business)
+  return name?.trim() ? translate(lang, 'Salam, {name}!', { name: name.trim() }) : translate(lang, 'Salam!')
 }
 
 export function carReadyMessage(
   order: { customer_name?: string; car_brand?: string; car_model?: string; plate_number: string; amount_due?: number },
   business: Sender,
 ): string {
+  const lang = docLang(business)
   const car = [order.car_brand, order.car_model].filter(Boolean).join(' ')
   const vehicle = car ? `${car} (${order.plate_number})` : order.plate_number
   const due = Number(order.amount_due ?? 0)
-  const amount = due > 0 ? ` Ödəniləcək məbləğ: ${formatCurrency(due)}.` : ''
-  return `${greeting(order.customer_name)} ${vehicle} hazırdır, gəlib götürə bilərsiniz.${amount}\n${signature(business)}`
+  const amount = due > 0 ? ` ${translate(lang, 'Ödəniləcək məbləğ: {amount}.', { amount: formatCurrency(due) })}` : ''
+  return `${greeting(business, order.customer_name)} ${translate(lang, '{vehicle} hazırdır, gəlib götürə bilərsiniz.', { vehicle })}${amount}
+${signature(business)}`
 }
 
 export function debtReminderMessage(
   debt: { customer_name?: string; plate_number?: string; amount: number },
   business: Sender,
 ): string {
-  const scope = debt.plate_number ? `${debt.plate_number} üzrə ` : ''
-  return `${greeting(debt.customer_name)} ${scope}${formatCurrency(debt.amount)} ödənilməmiş məbləğ qalıb. Xahiş edirik, ödənişi edəsiniz.\n${signature(business)}`
+  const lang = docLang(business)
+  const amount = formatCurrency(debt.amount)
+  const body = debt.plate_number
+    ? translate(lang, '{plate} üzrə {amount} ödənilməmiş məbləğ qalıb. Xahiş edirik, ödənişi edəsiniz.', { plate: debt.plate_number, amount })
+    : translate(lang, '{amount} ödənilməmiş məbləğ qalıb. Xahiş edirik, ödənişi edəsiniz.', { amount })
+  return `${greeting(business, debt.customer_name)} ${body}
+${signature(business)}`
 }
 
 export function orderLinkMessage(order: { customer_name?: string; plate_number: string }, url: string, business: Sender): string {
-  return `${greeting(order.customer_name)} ${order.plate_number} üzrə sifarişinizin detalları: ${url}\n${signature(business)}`
+  const body = translate(docLang(business), '{plate} üzrə sifarişinizin detalları: {url}', { plate: order.plate_number, url })
+  return `${greeting(business, order.customer_name)} ${body}
+${signature(business)}`
 }

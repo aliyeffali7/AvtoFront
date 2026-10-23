@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
@@ -55,9 +56,9 @@ export default function CustomersClient() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Müştərilər"
-        subtitle={`${totalCount} müştəri`}
-        actions={<Button icon={Plus} onClick={() => setCreating(true)}>Yeni Müştəri</Button>}
+        title={t('Müştərilər')}
+        subtitle={t('{n} müştəri', { n: totalCount })}
+        actions={<Button icon={Plus} onClick={() => setCreating(true)}>{t('Yeni Müştəri')}</Button>}
       />
 
       <div className="relative w-full sm:w-80">
@@ -65,17 +66,17 @@ export default function CustomersClient() {
         <input
           value={search}
           onChange={e => setSearch(autoFormatSearch(e.target.value))}
-          placeholder="Ad, telefon və ya nişan ilə axtar..."
-          aria-label="Axtar"
+          placeholder={t('Ad, telefon və ya nişan ilə axtar...')}
+          aria-label={t('Axtar')}
           className="input !pl-10"
         />
       </div>
 
       {loading && customers.length === 0 ? <Spinner /> : customers.length === 0 ? (
         <EmptyState
-          title={debouncedSearch ? 'Axtarışa uyğun müştəri tapılmadı' : 'Hələ müştəri yoxdur'}
-          subtitle={!debouncedSearch ? 'Yeni müştəri əlavə etmək üçün “Yeni Müştəri” düyməsini basın.' : undefined}
-          action={!debouncedSearch ? <Button icon={Plus} onClick={() => setCreating(true)}>Yeni Müştəri</Button> : undefined}
+          title={debouncedSearch ? t('Axtarışa uyğun müştəri tapılmadı') : t('Hələ müştəri yoxdur')}
+          subtitle={!debouncedSearch ? t('Yeni müştəri əlavə etmək üçün “Yeni Müştəri” düyməsini basın.') : undefined}
+          action={!debouncedSearch ? <Button icon={Plus} onClick={() => setCreating(true)}>{t('Yeni Müştəri')}</Button> : undefined}
         />
       ) : (
         <div className="card overflow-hidden">
@@ -83,14 +84,14 @@ export default function CustomersClient() {
             <table className="ledger-table">
               <thead>
                 <tr>
-                  <th className="ledger-th">Müştəri</th>
-                  <th className="ledger-th">Telefon</th>
-                  <th className="ledger-th">Avtomobil</th>
-                  <th className="ledger-th">Nişan</th>
-                  <th className="ledger-th text-right">Sifariş</th>
-                  <th className="ledger-th">Son ziyarət</th>
-                  <th className="ledger-th text-right">Cəmi ödəniş</th>
-                  <th className="ledger-th text-right">Borc</th>
+                  <th className="ledger-th">{t('Müştəri')}</th>
+                  <th className="ledger-th">{t('Telefon')}</th>
+                  <th className="ledger-th">{t('Avtomobil')}</th>
+                  <th className="ledger-th">{t('Nişan')}</th>
+                  <th className="ledger-th text-right">{t('Sifariş')}</th>
+                  <th className="ledger-th">{t('Son ziyarət')}</th>
+                  <th className="ledger-th text-right">{t('Cəmi ödəniş')}</th>
+                  <th className="ledger-th text-right">{t('Borc')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -124,7 +125,7 @@ export default function CustomersClient() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={4}>Bu səhifədə cəmi · {customers.length} müştəri</td>
+                  <td className="ledger-td font-semibold" colSpan={4}>{t('Bu səhifədə cəmi')} · {t('{n} müştəri', { n: customers.length })}</td>
                   <td className="ledger-td text-right font-mono font-bold tabular-nums">{pageOrders}</td>
                   <td className="ledger-td" colSpan={2} />
                   <td className="ledger-td text-right">

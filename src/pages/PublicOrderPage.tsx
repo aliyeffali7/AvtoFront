@@ -4,13 +4,14 @@ import { CheckCircle2, Clock, Wrench } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { PublicOrder } from '@/types'
 import { getPublicOrder } from '@/services/orders.service'
-import { formatCurrency, formatDate, formatPhone } from '@/lib/utils'
+import { formatCurrency, formatPhone } from '@/lib/utils'
 import StatusBadge, { StatusTone } from '@/components/ui/StatusBadge'
 import Spinner from '@/components/ui/Spinner'
 import Plate from '@/components/ui/Plate'
 import Money from '@/components/ui/Money'
 import ServoLogo from '@/components/ui/ServoLogo'
 import { mediaUrl } from '@/lib/apiUrl'
+import { docLang, localeOf, t, translate, type Lang } from '@/i18n'
 
 const STATUS: Record<PublicOrder['status'], { label: string; tone: StatusTone; icon: LucideIcon }> = {
   pending: { label: 'Gözləyir', tone: 'info', icon: Clock },
@@ -22,6 +23,10 @@ const PAYMENT_LABEL: Record<PublicOrder['payment_status'], string> = {
   unpaid: 'Ödənilməyib',
   partial: 'Qismən ödənilib',
   paid: 'Ödənilib',
+}
+
+function formatDocDate(value: string, lang: Lang) {
+  return new Date(value).toLocaleDateString(localeOf(lang), { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 /** Customer's read-only view of one order, opened from a WhatsApp link. No login. */
@@ -43,9 +48,9 @@ export default function PublicOrderPage() {
     getPublicOrder(token)
       .then(res => {
         setOrder(res.data)
-        document.title = `${res.data.business.name} — Sifariş №${res.data.number}`
+        document.title = `${res.data.business.name} — ${translate(docLang(res.data.business), 'Sifariş №{number}', { number: res.data.number })}`
       })
-      .catch(() => setError('Bu link tapılmadı və ya artıq etibarsızdır. Servislə əlaqə saxlayın.'))
+      .catch(() => setError(t('Bu link tapılmadı və ya artıq etibarsızdır. Servislə əlaqə saxlayın.')))
   }, [token])
 
   if (error) {
@@ -64,6 +69,8 @@ export default function PublicOrderPage() {
   }
 
   const { business } = order
+  const lang = docLang(business)
+  const tr = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars)
   const car = [order.car_brand, order.car_model, order.car_year].filter(Boolean).join(' ')
   const logo = business.logo && mediaUrl(business.logo)
   const st = STATUS[order.status]
@@ -84,23 +91,23 @@ export default function PublicOrderPage() {
         <section className="card p-4 flex flex-col gap-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <Plate value={order.plate_number} size={18} />
-            <StatusBadge status={st.label} tone={st.tone} icon={st.icon} />
+            <StatusBadge status={tr(st.label)} tone={st.tone} icon={st.icon} />
           </div>
           {car && <p className="font-display text-h3 text-ink">{car}</p>}
           <div className="text-small text-text-3">
             <p>
-              <span className="font-mono">Sifariş №{order.number}</span> · {formatDate(order.created_at)}
-              {order.mileage != null && <> · <span className="font-mono">{order.mileage.toLocaleString()} {order.mileage_unit}</span></>}
+              <span className="font-mono">{tr('Sifariş №{number}', { number: order.number })}</span> · {formatDocDate(order.created_at, lang)}
+              {order.mileage != null && <> · <span className="font-mono">{order.mileage.toLocaleString()} {tr(order.mileage_unit)}</span></>}
             </p>
-            {order.customer_name && <p className="mt-0.5">Müştəri: {order.customer_name}</p>}
+            {order.customer_name && <p className="mt-0.5">{tr('Müştəri: {name}', { name: order.customer_name })}</p>}
           </div>
         </section>
 
         {(order.description || order.diagnosis || order.recommendations) && (
           <section className="card p-4 flex flex-col gap-4">
-            {order.description && <TextBlock label="Müraciət" text={order.description} />}
-            {order.diagnosis && <TextBlock label="Diaqnostika nəticəsi" text={order.diagnosis} />}
-            {order.recommendations && <TextBlock label="Tövsiyələr" text={order.recommendations} />}
+            {order.description && <TextBlock label={tr('Müraciət')} text={order.description} />}
+            {order.diagnosis && <TextBlock label={tr('Diaqnostika nəticəsi')} text={order.diagnosis} />}
+            {order.recommendations && <TextBlock label={tr('Tövsiyələr')} text={order.recommendations} />}
           </section>
         )}
 
@@ -109,7 +116,7 @@ export default function PublicOrderPage() {
           <section className="card p-4 flex flex-col gap-4">
             {order.services.length > 0 && (
               <div>
-                <p className="section-label mb-2">Görülən işlər</p>
+                <p className="section-label mb-2">{tr('Görülən işlər')}</p>
                 <ul className="flex flex-col divide-y divide-border">
                   {order.services.map((s, i) => (
                     <li key={i} className="flex justify-between gap-3 py-2 text-body">
@@ -122,13 +129,13 @@ export default function PublicOrderPage() {
             )}
             {order.products.length > 0 && (
               <div>
-                <p className="section-label mb-2">Hissələr</p>
+                <p className="section-label mb-2">{tr('Hissələr')}</p>
                 <ul className="flex flex-col divide-y divide-border">
                   {order.products.map((p, i) => (
                     <li key={i} className="flex justify-between gap-3 py-2 text-body">
                       <span className="text-text-1 min-w-0">
                         {p.name} <span className="text-text-3 font-mono">× {p.quantity}</span>
-                        {p.customer_supplied && <span className="text-small text-text-3"> (müştərinin öz hissəsi)</span>}
+                        {p.customer_supplied && <span className="text-small text-text-3"> ({tr('müştərinin öz hissəsi')})</span>}
                       </span>
                       <span className="font-mono font-semibold tabular-nums text-text-1 shrink-0">
                         {p.customer_supplied ? '—' : formatCurrency(Number(p.sell_price) * p.quantity)}
@@ -143,13 +150,13 @@ export default function PublicOrderPage() {
 
         {/* Totals */}
         <section className="card p-4 flex flex-col gap-2 text-body">
-          <Row label="Cəmi" value={<Money value={order.total} />} />
-          {Number(order.discount_amount) > 0 && <Row label="Endirim" value={<Money value={-Number(order.discount_amount)} />} />}
-          <Row label="Ödənilib" value={<Money value={order.paid_amount} />} />
+          <Row label={tr('Cəmi')} value={<Money value={order.total} />} />
+          {Number(order.discount_amount) > 0 && <Row label={tr('Endirim')} value={<Money value={-Number(order.discount_amount)} />} />}
+          <Row label={tr('Ödənilib')} value={<Money value={order.paid_amount} />} />
           <div className="flex justify-between items-center gap-3 pt-3 mt-1 border-t border-border">
-            <span className="font-semibold text-text-1">Qalıq</span>
+            <span className="font-semibold text-text-1">{tr('Qalıq')}</span>
             <span className="flex items-center gap-2 flex-wrap justify-end">
-              {order.status === 'done' && <StatusBadge status={PAYMENT_LABEL[order.payment_status]} />}
+              {order.status === 'done' && <StatusBadge status={tr(PAYMENT_LABEL[order.payment_status])} />}
               <Money value={order.amount_due} className="text-money" />
             </span>
           </div>
@@ -157,8 +164,8 @@ export default function PublicOrderPage() {
 
         {order.has_guarantee && (order.guarantee_text || order.guarantee_exclusions) && (
           <section className="card p-4 flex flex-col gap-4">
-            {order.guarantee_text && <TextBlock label="Zəmanət" text={order.guarantee_text} />}
-            {order.guarantee_exclusions && <TextBlock label="Zəmanətə daxil deyil" text={order.guarantee_exclusions} />}
+            {order.guarantee_text && <TextBlock label={tr('Zəmanət')} text={order.guarantee_text} />}
+            {order.guarantee_exclusions && <TextBlock label={tr('Zəmanətə daxil deyil')} text={order.guarantee_exclusions} />}
           </section>
         )}
 
@@ -174,7 +181,7 @@ export default function PublicOrderPage() {
         )}
 
         <footer className="flex flex-col items-center gap-1.5 pt-4 pb-2 text-small text-text-3">
-          <span>Servo ilə hazırlanıb</span>
+          <span>{tr('Servo ilə hazırlanıb')}</span>
           <ServoLogo variant="ink" className="h-3.5" />
         </footer>
       </div>

@@ -1,4 +1,5 @@
 'use client'
+import { t } from '@/i18n'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Play, CheckCircle2 } from 'lucide-react'
@@ -56,21 +57,21 @@ function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: ()
       </div>
 
       <p className="text-body-l text-text-2 line-clamp-2">{order.description}</p>
-      <p className="font-mono text-small text-text-3">{formatDate(order.created_at)} · {order.estimated_days} gün</p>
+      <p className="font-mono text-small text-text-3">{formatDate(order.created_at)} · {t('{n} gün', { n: order.estimated_days })}</p>
 
       {order.status === 'pending' && (
         <Button size="lg" icon={Play} loading={busy} onClick={e => handleAction(e, 'in_progress')} className="w-full">
-          {busy ? 'Yüklənir...' : 'Başla'}
+          {busy ? t('Yüklənir...') : t('Başla')}
         </Button>
       )}
       {order.status === 'in_progress' && (
         <Button size="lg" icon={CheckCircle2} loading={busy} onClick={e => handleAction(e, 'done')} className="w-full">
-          {busy ? 'Yüklənir...' : 'Tamamlandı'}
+          {busy ? t('Yüklənir...') : t('Tamamlandı')}
         </Button>
       )}
       {order.status === 'done' && (
         <span className="text-body font-semibold text-success-strong inline-flex items-center gap-1.5">
-          <CheckCircle2 size={18} strokeWidth={1.75} /> Bitdi
+          <CheckCircle2 size={18} strokeWidth={1.75} /> {t('Bitdi')}
         </span>
       )}
     </div>
@@ -115,10 +116,10 @@ export default function MechanicOrdersClient() {
 
   return (
     <div>
-      <MechanicHeader title="Sifarişlərim" subtitle={`${open} açıq sifariş`} />
+      <MechanicHeader title={t('Sifarişlərim')} subtitle={t('{n} açıq sifariş', { n: open })} />
 
       <div className="p-4 flex flex-col gap-4">
-        <div className="grid grid-cols-4 gap-1 border border-border rounded p-1 bg-surface" role="group" aria-label="Status filtri">
+        <div className="grid grid-cols-4 gap-1 border border-border rounded p-1 bg-surface" role="group" aria-label={t('Status filtri')}>
           {FILTERS.map(f => (
             <button
               key={f.key}
@@ -129,7 +130,7 @@ export default function MechanicOrdersClient() {
                 filter === f.key ? 'bg-ink text-paper' : 'text-text-3 hover:text-ink'
               }`}
             >
-              <span className="truncate max-w-full">{f.label}</span>
+              <span className="truncate max-w-full">{t(f.label)}</span>
               <span className="font-mono text-label">{counts[f.key]}</span>
             </button>
           ))}
@@ -139,8 +140,8 @@ export default function MechanicOrdersClient() {
           <Spinner />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="Sifariş yoxdur"
-            subtitle={filter === 'all' ? 'Sizə hələ sifariş təyin edilməyib.' : 'Bu kateqoriyada sifariş yoxdur.'}
+            title={t('Sifariş yoxdur')}
+            subtitle={filter === 'all' ? t('Sizə hələ sifariş təyin edilməyib.') : t('Bu kateqoriyada sifariş yoxdur.')}
           />
         ) : (
           <div className="flex flex-col gap-3">

@@ -1,6 +1,7 @@
 import { Order, Business } from '@/types'
 import { mediaUrl } from '@/lib/apiUrl'
 import { formatPhone, toLocalISODate } from '@/lib/utils'
+import { docLang, translate } from '@/i18n'
 import {
   pm, toDataUrl, loadBrand, buildHeader, buildFooter, plateBox, tableCells, rowsLayout, sectionTitle, label, money,
   INK, TEXT_2, TEXT_3, BORDER, PAGE_WIDTH, PAGE_MARGINS,
@@ -32,6 +33,8 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   const customerName = [order.customer_name, order.customer_surname].filter(Boolean).join(' ')
   const actDate = order.completed_on ?? order.created_at
   const shopName = business?.name ?? ''
+  const lang = docLang(business)
+  const tr = (key: string) => translate(lang, key)
 
   const [brand, logo, signature] = await Promise.all([
     loadBrand(),
@@ -48,7 +51,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   const content: any[] = []
 
   // ── Header: logo + name + slogan | SERVİS AKTI № / date ──────────────
-  content.push(...buildHeader({ fonts, logo, shopName, slogan: business?.slogan, kind: 'SERVİS AKTI', date: actDate }))
+  content.push(...buildHeader({ fonts, logo, shopName, slogan: business?.slogan, kind: tr('SERVİS AKTI'), lang, date: actDate }))
 
   // ── Info: Müştəri | Avtomobil ────────────────────────────────────────
   const phone = formatPhone(order.customer_phone)
@@ -62,18 +65,18 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     margin: [0, 2, 0, 0],
   })
   const customerStack = [
-    label('MÜŞTƏRİ'),
+    label(tr('MÜŞTƏRİ')),
     customerName ? { text: customerName, fontSize: 12, bold: true, color: INK } : null,
     phone ? { text: phone, ...f(monoFont), fontSize: 9.5, color: TEXT_2, margin: [0, 3, 0, 0] } : null,
-    order.mechanic_name ? { ...kv('Usta', order.mechanic_name), margin: [0, 6, 0, 0] } : null,
+    order.mechanic_name ? { ...kv(tr('Usta'), order.mechanic_name), margin: [0, 6, 0, 0] } : null,
   ].filter(Boolean)
-  const mileage = order.mileage != null ? `${money(order.mileage).slice(0, -3)} ${order.mileage_unit ?? 'km'}` : ''
+  const mileage = order.mileage != null ? `${money(order.mileage).slice(0, -3)} ${tr(order.mileage_unit ?? 'km')}` : ''
   const carStack = [
-    label('AVTOMOBİL'),
+    label(tr('AVTOMOBİL')),
     carName ? { text: carName, fontSize: 12, bold: true, color: INK } : null,
     order.plate_number ? plateBox(order.plate_number, fonts) : null,
     order.vin_code ? kv('VIN', order.vin_code, true) : null,
-    mileage ? kv('Yürüş', mileage, true) : null,
+    mileage ? kv(tr('Yürüş'), mileage, true) : null,
   ].filter(Boolean)
   content.push({ columns: [{ width: '*', stack: customerStack }, { width: '*', stack: carStack }], columnGap: 24 })
 
@@ -82,8 +85,8 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     stack: [label(title), { text, fontSize: 9.5, color: TEXT_2, lineHeight: 1.25 }],
     margin: [0, 14, 0, 0],
   })
-  if (order.description) content.push(para('MÜRACİƏT', order.description))
-  if (order.diagnosis) content.push(para('DİAQNOSTİKA', order.diagnosis))
+  if (order.description) content.push(para(tr('MÜRACİƏT'), order.description))
+  if (order.diagnosis) content.push(para(tr('DİAQNOSTİKA'), order.diagnosis))
 
   // ── Tables ───────────────────────────────────────────────────────────
   const { th, td, num } = tableCells(fonts)
@@ -94,21 +97,21 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   }
   if (services.length) {
     section(
-      'İŞLƏR',
-      [th('№', 'center'), th('AD'), th('MƏBLƏĞ', 'right')],
+      tr('İŞLƏR'),
+      [th('№', 'center'), th(tr('AD')), th(tr('MƏBLƏĞ'), 'right')],
       services.map((s, i) => [index(i), td(s.name), num(money(Number(s.price)))]),
       [26, '*', 80],
     )
   }
   if (products.length) {
     section(
-      'EHTİYAT HİSSƏLƏRİ',
-      [th('№', 'center'), th('AD'), th('MİQDAR', 'right'), th('QİYMƏT', 'right'), th('MƏBLƏĞ', 'right')],
+      tr('EHTİYAT HİSSƏLƏRİ'),
+      [th('№', 'center'), th(tr('AD')), th(tr('MİQDAR'), 'right'), th(tr('QİYMƏT'), 'right'), th(tr('MƏBLƏĞ'), 'right')],
       products.map((p, i) => {
         const own = p.source === 'customer'
         return [
           index(i),
-          td(own ? [p.product_name, { text: '   Müştəri gətirib', fontSize: 8, color: TEXT_3 }] : p.product_name),
+          td(own ? [p.product_name, { text: `   ${tr('Müştəri gətirib')}`, fontSize: 8, color: TEXT_3 }] : p.product_name),
           num(String(p.quantity)),
           num(own ? '—' : money(Number(p.sell_price)), own ? { color: TEXT_3 } : {}),
           num(own ? '—' : money(Number(p.sell_price) * p.quantity), own ? { color: TEXT_3 } : {}),
@@ -124,14 +127,14 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     { text: v, ...f(monoFont), fontSize: o.big ? 13 : 9.5, color: INK, alignment: 'right', margin: [0, o.big ? 4 : 2.5, 0, o.big ? 3 : 2.5] },
   ]
   const sumRows = [
-    ...(services.length && products.length ? [trow('İşlər', `${money(servicesTotal)} AZN`), trow('Ehtiyat hissələri', `${money(productsTotal)} AZN`)] : []),
-    ...(discount > 0 ? [trow('Endirim', `− ${money(discount)} AZN`)] : []),
+    ...(services.length && products.length ? [trow(tr('İşlər'), `${money(servicesTotal)} AZN`), trow(tr('Ehtiyat hissələri'), `${money(productsTotal)} AZN`)] : []),
+    ...(discount > 0 ? [trow(tr('Endirim'), `− ${money(discount)} AZN`)] : []),
   ]
   const totalsBody = [
     ...sumRows,
-    trow('Cəmi', `${money(total)} AZN`, { bold: true }),
-    trow('Ödənilib', `${money(paid)} AZN`),
-    trow('Qalıq', `${money(remaining)} AZN`, { big: true }),
+    trow(tr('Cəmi'), `${money(total)} AZN`, { bold: true }),
+    trow(tr('Ödənilib'), `${money(paid)} AZN`),
+    trow(tr('Qalıq'), `${money(remaining)} AZN`, { big: true }),
   ]
   const totals = {
     stack: [
@@ -148,7 +151,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
           paddingBottom: () => 0,
         },
       },
-      { text: PAYMENT_WORD[order.payment_status] ?? '', fontSize: 9, color: TEXT_2, alignment: 'right', margin: [0, 4, 0, 0] },
+      { text: tr(PAYMENT_WORD[order.payment_status] ?? ''), fontSize: 9, color: TEXT_2, alignment: 'right', margin: [0, 4, 0, 0] },
     ],
   }
   content.push({
@@ -162,12 +165,12 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     const text = business.guarantee_text.trim()
     const exclusions = lines(business.guarantee_exclusions)
     const rows = [
-      [{ text: 'ZƏMANƏT', ...f(headFont), fontSize: 8.5, bold: true, color: INK, characterSpacing: 1.2, margin: [10, 9, 10, 4] }],
+      [{ text: tr('ZƏMANƏT'), ...f(headFont), fontSize: 8.5, bold: true, color: INK, characterSpacing: 1.2, margin: [10, 9, 10, 4] }],
       [{ text, fontSize: 9, color: TEXT_2, lineHeight: 1.25, margin: [10, 0, 10, exclusions.length ? 6 : 9] }],
       ...(exclusions.length
         ? [[{
             stack: [
-              { text: 'Zəmanətə daxil deyil:', fontSize: 8.5, bold: true, color: INK, margin: [0, 0, 0, 2] },
+              { text: tr('Zəmanətə daxil deyil:'), fontSize: 8.5, bold: true, color: INK, margin: [0, 0, 0, 2] },
               { ul: exclusions, fontSize: 8.5, color: TEXT_2, lineHeight: 1.2 },
             ],
             margin: [10, 0, 10, 9],
@@ -195,7 +198,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
   const recommendations = lines(order.recommendations)
   if (recommendations.length) {
     content.push({
-      stack: [label('TÖVSİYƏLƏR'), { ol: recommendations, fontSize: 9.5, color: TEXT_2, lineHeight: 1.25 }],
+      stack: [label(tr('TÖVSİYƏLƏR')), { ol: recommendations, fontSize: 9.5, color: TEXT_2, lineHeight: 1.25 }],
       margin: [0, 16, 0, 0],
     })
   }
@@ -211,7 +214,7 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     ],
   })
   content.push({
-    columns: [signBlock('Servis', true), signBlock('Müştəri', false)],
+    columns: [signBlock(tr('Servis'), true), signBlock(tr('Müştəri'), false)],
     columnGap: 40,
     margin: [0, 28, 0, 0],
     unbreakable: true,
@@ -225,8 +228,8 @@ export async function printOrderPDF(order: Order, business?: Business | null) {
     pageSize: 'A4',
     pageMargins: PAGE_MARGINS,
     defaultStyle: { font: textFont, fontSize: 9.5, color: INK },
-    info: { title: 'Servis aktı' },
+    info: { title: tr('Servis aktı') },
     content,
     footer,
-  }).download(`Servis_akti_${fileDate}_${(order.plate_number ?? '').replace(/\s+/g, '')}.pdf`)
+  }).download(`${lang === 'ru' ? 'Akt' : 'Servis_akti'}_${fileDate}_${(order.plate_number ?? '').replace(/\s+/g, '')}.pdf`)
 }

@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useMemo } from 'react'
 import { useCarBrands } from '@/lib/useCarBrands'
 import ComboboxInput from './ComboboxInput'
@@ -24,8 +25,8 @@ export default function CarBrandModelInputs({ brand, model, onBrandChange, onMod
 
   return (
     <>
-      <ComboboxInput value={brand} onChange={handleBrand} options={brandNames} icons={logos} placeholder="Marka" wordStart />
-      <ComboboxInput value={model} onChange={onModelChange} options={modelOptions} placeholder="Model" wordStart />
+      <ComboboxInput value={brand} onChange={handleBrand} options={brandNames} icons={logos} placeholder={t('Marka')} wordStart />
+      <ComboboxInput value={model} onChange={onModelChange} options={modelOptions} placeholder={t('Model')} wordStart />
     </>
   )
 }

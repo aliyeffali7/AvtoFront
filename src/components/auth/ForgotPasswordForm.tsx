@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react'
 import { requestPasswordReset, confirmPasswordReset } from '@/services/auth.service'
 import { mapApiError } from '@/lib/utils'
+import { t } from '@/i18n'
 
 export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState<'email' | 'code' | 'done'>('email')
@@ -29,7 +30,7 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
     e.preventDefault()
     setError('')
     if (newPassword !== confirmPassword) {
-      setError('Şifrələr uyğun gəlmir.')
+      setError(t('Şifrələr uyğun gəlmir.'))
       return
     }
     setLoading(true)
@@ -57,11 +58,11 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
           </svg>
         </div>
         <div>
-          <p className="text-text-1 font-semibold text-base">Şifrə uğurla dəyişdirildi!</p>
-          <p className="text-text-3 text-sm mt-1">İndi yeni şifrənizlə daxil ola bilərsiniz.</p>
+          <p className="text-text-1 font-semibold text-base">{t('Şifrə uğurla dəyişdirildi!')}</p>
+          <p className="text-text-3 text-sm mt-1">{t('İndi yeni şifrənizlə daxil ola bilərsiniz.')}</p>
         </div>
         <button onClick={onDone} className="btn-primary w-full mt-2">
-          Daxil ol
+          {t('Daxil ol')}
         </button>
       </div>
     )
@@ -71,11 +72,11 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
     return (
       <form onSubmit={handleConfirm} className="flex flex-col gap-5">
         <p className="text-sm text-text-3 -mt-1">
-          <span className="font-medium text-text-1">{email}</span> ünvanına göndərilən kodu və yeni şifrənizi daxil edin.
+          <span className="font-medium text-text-1">{email}</span> {t('ünvanına göndərilən kodu və yeni şifrənizi daxil edin.')}
         </p>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="code" className="label mb-0">Təsdiq kodu</label>
+          <label htmlFor="code" className="label mb-0">{t('Təsdiq kodu')}</label>
           <input
             id="code"
             type="text"
@@ -90,13 +91,13 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="new_password" className="label mb-0">Yeni şifrə</label>
+          <label htmlFor="new_password" className="label mb-0">{t('Yeni şifrə')}</label>
           <input
             id="new_password"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Minimum 8 simvol"
+            placeholder={t('Minimum 8 simvol')}
             minLength={8}
             required
             className="input"
@@ -104,13 +105,13 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="confirm_password" className="label mb-0">Yeni şifrəni təsdiqlə</label>
+          <label htmlFor="confirm_password" className="label mb-0">{t('Yeni şifrəni təsdiqlə')}</label>
           <input
             id="confirm_password"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Şifrəni təkrar daxil edin"
+            placeholder={t('Şifrəni təkrar daxil edin')}
             required
             className="input"
           />
@@ -126,10 +127,10 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
         )}
 
         <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading ? 'Yoxlanılır...' : 'Şifrəni dəyiş'}
+          {loading ? t('Yoxlanılır...') : t('Şifrəni dəyiş')}
         </button>
         <button type="button" onClick={() => setStep('email')} className="text-center text-sm text-text-3 hover:text-text-1">
-          Başqa email daxil et
+          {t('Başqa email daxil et')}
         </button>
       </form>
     )
@@ -138,11 +139,11 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
   return (
     <form onSubmit={handleRequestCode} className="flex flex-col gap-5">
       <p className="text-sm text-text-3 -mt-1">
-        Hesabınıza bağlı emaili daxil edin — sizə təsdiq kodu göndərəcəyik.
+        {t('Hesabınıza bağlı emaili daxil edin — sizə təsdiq kodu göndərəcəyik.')}
       </p>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="reset_email" className="label mb-0">Email ünvanı</label>
+        <label htmlFor="reset_email" className="label mb-0">{t('Email ünvanı')}</label>
         <input
           id="reset_email"
           type="email"
@@ -165,10 +166,10 @@ export default function ForgotPasswordForm({ onDone }: { onDone: () => void }) {
       )}
 
       <button type="submit" disabled={loading} className="btn-primary w-full">
-        {loading ? 'Göndərilir...' : 'Kod göndər'}
+        {loading ? t('Göndərilir...') : t('Kod göndər')}
       </button>
       <button type="button" onClick={onDone} className="text-center text-sm text-text-3 hover:text-text-1">
-        Girişə qayıt
+        {t('Girişə qayıt')}
       </button>
     </form>
   )

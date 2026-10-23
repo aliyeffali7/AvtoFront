@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { Link } from 'react-router-dom'
 import {
   Banknote, CheckCircle2, ClipboardList, CreditCard, PackagePlus, Trash2, Undo2, Wrench, type LucideIcon,
@@ -26,14 +27,14 @@ export default function ActivityRow({ event, when }: { event: ActivityEvent; whe
       <Link
         to={event.link}
         className="flex items-center gap-3 px-5 py-3 hover:bg-surface-2 transition-colors"
-        title={kind.label}
+        title={t(kind.label)}
       >
         <span className="w-9 h-9 shrink-0 rounded border border-border bg-surface-2 inline-flex items-center justify-center text-text-2">
           <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
         </span>
         <span className="flex-1 min-w-0">
           <span className="block text-body text-ink truncate">{event.text}</span>
-          <span className="block text-small text-text-3">{kind.label} · <span className="font-mono">{when}</span></span>
+          <span className="block text-small text-text-3">{t(kind.label)} · <span className="font-mono">{when}</span></span>
         </span>
         {event.amount != null && Number(event.amount) > 0 && (
           <Money value={event.amount} meaning={kind.meaning} className="shrink-0" />

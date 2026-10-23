@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Download, MessageCircle, MoreVertical, Pencil, Phone, Plus, Trash2 } from 'lucide-react'
@@ -144,7 +145,7 @@ export default function CustomerDetailClient() {
 
   const backBtn = (
     <div>
-      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={goBack}>Geri — Müştərilər</Button>
+      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={goBack}>{t('Geri — Müştərilər')}</Button>
     </div>
   )
 
@@ -153,7 +154,7 @@ export default function CustomerDetailClient() {
     return (
       <div className="flex flex-col gap-4">
         {backBtn}
-        <EmptyState title="Müştəri tapılmadı" subtitle="Bu müştəri silinib və ya əlçatan deyil." />
+        <EmptyState title={t('Müştəri tapılmadı')} subtitle={t('Bu müştəri silinib və ya əlçatan deyil.')} />
       </div>
     )
   }
@@ -178,17 +179,17 @@ export default function CustomerDetailClient() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {customer.phone && (
-            <a href={`tel:${customer.phone}`} className="btn-secondary"><Phone size={18} strokeWidth={1.75} />Zəng et</a>
+            <a href={`tel:${customer.phone}`} className="btn-secondary"><Phone size={18} strokeWidth={1.75} />{t('Zəng et')}</a>
           )}
           {hasWhatsAppNumber(customer.phone) && (
             <a href={whatsappLink(customer.phone)} target="_blank" rel="noreferrer" className="btn-secondary"><MessageCircle size={18} strokeWidth={1.75} />WhatsApp</a>
           )}
-          <Button icon={Plus} onClick={() => navigate('/business/orders/new')}>Yeni sifariş</Button>
-          <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>Düzəlt</Button>
+          <Button icon={Plus} onClick={() => navigate('/business/orders/new')}>{t('Yeni sifariş')}</Button>
+          <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>{t('Düzəlt')}</Button>
           <div ref={menuRef} className="relative">
             <button
               type="button"
-              aria-label="Daha çox"
+              aria-label={t('Daha çox')}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen(v => !v)}
@@ -204,7 +205,7 @@ export default function CustomerDetailClient() {
                   onClick={() => { setMenuOpen(false); setDeleteConfirm(true) }}
                   className="w-full h-11 px-3 flex items-center gap-2 rounded text-body text-danger hover:bg-surface-2 text-left"
                 >
-                  <Trash2 size={18} strokeWidth={1.75} />Müştərini sil
+                  <Trash2 size={18} strokeWidth={1.75} />{t('Müştərini sil')}
                 </button>
               </div>
             )}
@@ -214,18 +215,18 @@ export default function CustomerDetailClient() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Sifariş sayı" value={customer.order_count ?? customer.orders.length} note={customer.last_visit ? `Son ziyarət: ${formatDate(customer.last_visit)}` : undefined} />
-        <KpiCard label="Cəmi" value={customer.total_paid + customer.total_debt} money />
-        <KpiCard label="Ödənilib" value={customer.total_paid} money meaning="income" />
-        <KpiCard label="Borc" value={customer.total_debt} money meaning={customer.total_debt > 0 ? 'receivable' : 'neutral'} accent={customer.total_debt > 0} note={customer.total_debt > 0 ? 'Alınacaq' : undefined} />
+        <KpiCard label={t('Sifariş sayı')} value={customer.order_count ?? customer.orders.length} note={customer.last_visit ? `${t('Son ziyarət')}: ${formatDate(customer.last_visit)}` : undefined} />
+        <KpiCard label={t('Cəmi')} value={customer.total_paid + customer.total_debt} money />
+        <KpiCard label={t('Ödənilib')} value={customer.total_paid} money meaning="income" />
+        <KpiCard label={t('Borc')} value={customer.total_debt} money meaning={customer.total_debt > 0 ? 'receivable' : 'neutral'} accent={customer.total_debt > 0} note={customer.total_debt > 0 ? t('Alınacaq') : undefined} />
       </div>
 
       {/* Cars */}
       {cars.length > 0 && (
         <section className="card p-5">
           <div className="flex items-center justify-between gap-3 mb-3 min-h-[20px]">
-            <h2 className="section-label">Avtomobillər ({cars.length})</h2>
-            {carFilter != null && <button type="button" className={LINK_BTN} onClick={() => setCarFilter(null)}>Filtri sıfırla</button>}
+            <h2 className="section-label">{t('Avtomobillər')} ({cars.length})</h2>
+            {carFilter != null && <button type="button" className={LINK_BTN} onClick={() => setCarFilter(null)}>{t('Filtri sıfırla')}</button>}
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
             {cars.map(car => {
@@ -249,8 +250,8 @@ export default function CustomerDetailClient() {
                     {car.plate && <Plate value={car.plate} />}
                   </span>
                   {car.vin && <span className="font-mono text-small text-text-3">VIN: {car.vin}</span>}
-                  {car.mileage != null && <span className="text-small text-text-3">Son yürüş: <span className="font-mono">{car.mileage.toLocaleString()} {car.unit}</span></span>}
-                  {car.lastVisit && <span className="text-small text-text-3">Son ziyarət: <span className="font-mono">{formatDate(car.lastVisit)}</span></span>}
+                  {car.mileage != null && <span className="text-small text-text-3">{t('Son yürüş')}: <span className="font-mono">{car.mileage.toLocaleString()} {car.unit}</span></span>}
+                  {car.lastVisit && <span className="text-small text-text-3">{t('Son ziyarət')}: <span className="font-mono">{formatDate(car.lastVisit)}</span></span>}
                 </button>
               )
             })}
@@ -261,27 +262,27 @@ export default function CustomerDetailClient() {
       {/* Order history */}
       <section className="card overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-5 py-4">
-          <h2 className="section-label">Sifariş tarixçəsi ({orders.length})</h2>
+          <h2 className="section-label">{t('Sifariş tarixçəsi')} ({orders.length})</h2>
           {customer.orders.length > 0 && (
             <button type="button" onClick={() => printCustomerPDF(customer, business)} className={`${LINK_BTN} inline-flex items-center gap-1.5`}>
-              <Download size={16} strokeWidth={1.75} />Hamısını yüklə
+              <Download size={16} strokeWidth={1.75} />{t('Hamısını yüklə')}
             </button>
           )}
         </div>
         {orders.length === 0 ? (
-          <p className="px-5 pb-5 text-body text-text-3">Sifariş yoxdur.</p>
+          <p className="px-5 pb-5 text-body text-text-3">{t('Sifariş yoxdur.')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="ledger-table">
               <thead>
                 <tr>
                   <th className="ledger-th">№</th>
-                  <th className="ledger-th">Tarix</th>
-                  <th className="ledger-th">Avtomobil</th>
-                  <th className="ledger-th">Görülən işlər</th>
-                  <th className="ledger-th">Status</th>
-                  <th className="ledger-th">Ödəniş</th>
-                  <th className="ledger-th text-right">Məbləğ</th>
+                  <th className="ledger-th">{t('Tarix')}</th>
+                  <th className="ledger-th">{t('Avtomobil')}</th>
+                  <th className="ledger-th">{t('Görülən işlər')}</th>
+                  <th className="ledger-th">{t('Status')}</th>
+                  <th className="ledger-th">{t('Ödəniş')}</th>
+                  <th className="ledger-th text-right">{t('Məbləğ')}</th>
                   <th className="ledger-th w-10"><span className="sr-only">PDF</span></th>
                 </tr>
               </thead>
@@ -304,7 +305,7 @@ export default function CustomerDetailClient() {
                       <button
                         type="button"
                         title="PDF"
-                        aria-label="PDF yüklə"
+                        aria-label={t('PDF yüklə')}
                         onClick={e => { e.stopPropagation(); printOrderPDF(o, business) }}
                         className="w-9 h-9 -my-2 rounded flex items-center justify-center text-text-2 hover:bg-surface-2"
                       >
@@ -316,7 +317,7 @@ export default function CustomerDetailClient() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={6}>Cəmi · {orders.length} sifariş</td>
+                  <td className="ledger-td font-semibold" colSpan={6}>{t('Cəmi')} · {t('{n} sifariş', { n: orders.length })}</td>
                   <td className="ledger-td text-right"><Money value={ordersTotal} className="font-bold" /></td>
                   <td className="ledger-td" />
                 </tr>
@@ -330,28 +331,28 @@ export default function CustomerDetailClient() {
         {/* Notes */}
         <section className="card p-5">
           <div className="flex items-center justify-between gap-3 mb-3 min-h-[20px]">
-            <h2 className="section-label">Qeydlər</h2>
-            {!notesEditing && <button type="button" onClick={() => setNotesEditing(true)} className={LINK_BTN}>{notes ? 'Düzəlt' : 'Əlavə et'}</button>}
+            <h2 className="section-label">{t('Qeydlər')}</h2>
+            {!notesEditing && <button type="button" onClick={() => setNotesEditing(true)} className={LINK_BTN}>{notes ? t('Düzəlt') : t('Əlavə et')}</button>}
           </div>
           {notesEditing ? (
             <div className="flex flex-col gap-2">
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} autoFocus placeholder="Müştəri haqqında qeydlər..." className="input resize-none" />
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} autoFocus placeholder={t('Müştəri haqqında qeydlər...')} className="input resize-none" />
               <div className="flex gap-2">
-                <Button size="sm" onClick={saveNotes} loading={notesSaving}>{notesSaving ? 'Saxlanılır...' : 'Saxla'}</Button>
-                <Button size="sm" variant="secondary" onClick={() => { setNotesEditing(false); setNotes(customer.notes ?? '') }}>Ləğv et</Button>
+                <Button size="sm" onClick={saveNotes} loading={notesSaving}>{notesSaving ? t('Saxlanılır...') : t('Saxla')}</Button>
+                <Button size="sm" variant="secondary" onClick={() => { setNotesEditing(false); setNotes(customer.notes ?? '') }}>{t('Ləğv et')}</Button>
               </div>
             </div>
           ) : notes ? (
             <p className="text-body text-ink whitespace-pre-wrap">{notes}</p>
           ) : (
-            <p className="text-body text-text-3 italic">Qeyd yoxdur.</p>
+            <p className="text-body text-text-3 italic">{t('Qeyd yoxdur.')}</p>
           )}
         </section>
 
         {/* Mileage history */}
         {mileageHistory.length > 0 && (
           <section className="card p-5">
-            <h2 className="section-label mb-3">Yürüş tarixçəsi</h2>
+            <h2 className="section-label mb-3">{t('Yürüş tarixçəsi')}</h2>
             <div className="flex flex-col">
               {mileageHistory.map((o, i) => (
                 <Link
@@ -381,9 +382,9 @@ export default function CustomerDetailClient() {
 
       <ConfirmDialog
         open={deleteConfirm}
-        title="Müştərini sil"
-        message={`"${customer.full_name}" müştərisi silinsin? Bu əməliyyat geri qaytarıla bilməz.`}
-        confirmLabel="Sil"
+        title={t('Müştərini sil')}
+        message={t('"{name}" müştərisi silinsin? Bu əməliyyat geri qaytarıla bilməz.', { name: customer.full_name })}
+        confirmLabel={t('Sil')}
         danger
         onConfirm={handleDelete}
         onCancel={() => setDeleteConfirm(false)}

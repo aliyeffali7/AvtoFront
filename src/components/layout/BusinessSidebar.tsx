@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { mediaUrl } from '@/lib/apiUrl'
+import { t } from '@/i18n'
 
 interface NavChild {
   href: string
@@ -111,7 +112,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
           {onClose && (
             <button
               onClick={onClose}
-              aria-label="Bağla"
+              aria-label={t('Bağla')}
               className="lg:hidden w-9 h-9 flex items-center justify-center rounded-md text-text-4 hover:bg-ink-up hover:text-paper transition-colors"
             >
               <X className="w-5 h-5" strokeWidth={1.75} />
@@ -122,7 +123,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
             className="flex items-center gap-1.5 h-9 px-2 -mr-2 rounded-md text-small text-text-4 hover:bg-ink-up hover:text-paper transition-colors duration-[120ms]"
           >
             <LogOut className="w-4 h-4" strokeWidth={1.75} />
-            Çıxış
+            {t('Çıxış')}
           </button>
         </div>
       </div>
@@ -148,7 +149,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
                   }`}
                 >
                   <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
-                  <span className="flex-1 text-left">{item.label}</span>
+                  <span className="flex-1 text-left">{t(item.label)}</span>
                   <ChevronRight
                     className={`w-4 h-4 shrink-0 transition-transform duration-[160ms] ease-servo ${isOpen ? 'rotate-90' : ''}`}
                     strokeWidth={1.75}
@@ -172,7 +173,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
                               : 'text-text-4 font-normal border-transparent'
                           }`}
                         >
-                          {child.label}
+                          {t(child.label)}
                         </Link>
                       )
                     })}
@@ -192,7 +193,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
               }`}
             >
               <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
-              {item.label}
+              {t(item.label)}
             </Link>
           )
         })}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { login } from '@/services/auth.service'
 import { mapApiError } from '@/lib/utils'
 import { dashboardPathFor } from '@/App'
+import { t } from '@/i18n'
 
 export default function LoginForm() {
   const navigate = useNavigate()
@@ -25,7 +26,7 @@ export default function LoginForm() {
         ...(isMechanicLogin ? { business_code: businessCode } : {}),
       })
       const path = dashboardPathFor(user.role)
-      if (path === '/') setError('Naməlum istifadəçi rolu.')
+      if (path === '/') setError(t('Naməlum istifadəçi rolu.'))
       else navigate(path)
     } catch (err) {
       setError(mapApiError(err))
@@ -38,14 +39,14 @@ export default function LoginForm() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="email" className="label mb-0">
-          Email və ya telefon nömrəsi
+          {t('Email və ya telefon nömrəsi')}
         </label>
         <input
           id="email"
           type="text"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="admin@servis.az və ya 0501234567"
+          placeholder={t('admin@servis.az və ya 0501234567')}
           required
           autoFocus
           className="input"
@@ -55,14 +56,14 @@ export default function LoginForm() {
       {isMechanicLogin && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor="business_code" className="label mb-0">
-            Biznes kodu
+            {t('Biznes kodu')}
           </label>
           <input
             id="business_code"
             type="text"
             value={businessCode}
             onChange={(e) => setBusinessCode(e.target.value)}
-            placeholder="Servis sahibindən aldığınız kod"
+            placeholder={t('Servis sahibindən aldığınız kod')}
             required
             className="input"
           />
@@ -71,7 +72,7 @@ export default function LoginForm() {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="password" className="label mb-0">
-          Şifrə
+          {t('Şifrə')}
         </label>
         <input
           id="password"
@@ -100,9 +101,9 @@ export default function LoginForm() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
-            Yüklənir...
+            {t('Yüklənir...')}
           </>
-        ) : 'Daxil ol'}
+        ) : t('Daxil ol')}
       </button>
     </form>
   )

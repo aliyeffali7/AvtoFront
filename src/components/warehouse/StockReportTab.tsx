@@ -10,6 +10,7 @@ import Pagination from '@/components/ui/Pagination'
 import PeriodFilter from '@/components/ui/PeriodFilter'
 import Spinner from '@/components/ui/Spinner'
 import { Period, makePeriod, periodLabel, periodRange } from '@/lib/period'
+import { t } from '@/i18n'
 
 const PAGE_SIZE = 25
 
@@ -54,50 +55,50 @@ export default function StockReportTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Stok · Anbar hesabatı" subtitle={periodLabel(period)} />
+      <PageHeader title={t('Stok · Anbar hesabatı')} subtitle={periodLabel(period)} />
       <PeriodFilter value={period} onChange={setPeriod} />
 
       {loading && !report ? <Spinner /> : !report ? null : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Block label="Dövrün əvvəlinə qalıq" value={formatCurrency(report.totals.opening_value)} />
-            <Block label="Daxil olan" value={`+${formatCurrency(report.totals.in_value)}`} />
-            <Block label="Çıxan (maya ilə)" value={signedOut(Number(report.totals.out_value), formatCurrency)} />
-            <Block label="Dövrün sonuna qalıq" value={formatCurrency(report.totals.closing_value)} />
+            <Block label={t('Dövrün əvvəlinə qalıq')} value={formatCurrency(report.totals.opening_value)} />
+            <Block label={t('Daxil olan')} value={`+${formatCurrency(report.totals.in_value)}`} />
+            <Block label={t('Çıxan (maya ilə)')} value={signedOut(Number(report.totals.out_value), formatCurrency)} />
+            <Block label={t('Dövrün sonuna qalıq')} value={formatCurrency(report.totals.closing_value)} />
           </div>
           <p className="text-small text-text-3">
-            Əvvələ qalıq + daxil olan − çıxan = sona qalıq. Bütün məbləğlər alış (maya) qiyməti ilədir.
-            Hazırda anbarın dəyəri: <span className="font-mono font-semibold text-ink">{formatCurrency(report.stock_value)}</span>
+            {t('Əvvələ qalıq + daxil olan − çıxan = sona qalıq. Bütün məbləğlər alış (maya) qiyməti ilədir.')}
+            {t('Hazırda anbarın dəyəri:')} <span className="font-mono font-semibold text-ink">{formatCurrency(report.stock_value)}</span>
           </p>
 
           <div className="grid lg:grid-cols-3 gap-4">
-            <TopList title="Ən çox satılan" rows={report.top_sold.map(r => ({ id: r.product, name: r.name, value: `${r.quantity} ədəd` }))} />
-            <TopList title="Ən çox qazandıran" rows={report.top_profit.map(r => ({ id: r.product, name: r.name, value: formatCurrency(r.profit) }))} />
-            <TopList title="60 gündür satılmayan (ölü stok)" rows={report.dead_stock.map(r => ({ id: r.product, name: r.name, value: `${r.stock_quantity} stokda` }))} />
+            <TopList title={t('Ən çox satılan')} rows={report.top_sold.map(r => ({ id: r.product, name: r.name, value: t('{qty} ədəd', { qty: r.quantity }) }))} />
+            <TopList title={t('Ən çox qazandıran')} rows={report.top_profit.map(r => ({ id: r.product, name: r.name, value: formatCurrency(r.profit) }))} />
+            <TopList title={t('60 gündür satılmayan (ölü stok)')} rows={report.dead_stock.map(r => ({ id: r.product, name: r.name, value: t('{qty} stokda', { qty: r.stock_quantity }) }))} />
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="section-label">Məhsullar üzrə ({rows.length})</h2>
+            <h2 className="section-label">{t('Məhsullar üzrə')} ({rows.length})</h2>
             <label className="flex items-center gap-2 text-body text-text-2 cursor-pointer">
               <input type="checkbox" checked={onlyMoved} onChange={e => setOnlyMoved(e.target.checked)} className="w-4 h-4 accent-ink" />
-              Yalnız hərəkəti olanlar
+              {t('Yalnız hərəkəti olanlar')}
             </label>
           </div>
 
           {rows.length === 0 ? (
-            <EmptyState title="Hərəkət tapılmadı" subtitle="Seçilmiş dövrdə stok hərəkəti olan məhsul yoxdur." />
+            <EmptyState title={t('Hərəkət tapılmadı')} subtitle={t('Seçilmiş dövrdə stok hərəkəti olan məhsul yoxdur.')} />
           ) : (
             <div className="card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="ledger-table min-w-[820px]">
                   <thead>
                     <tr>
-                      <th className="ledger-th">Məhsul</th>
-                      <th className="ledger-th text-right">Əvvələ</th>
-                      <th className="ledger-th text-right">Daxil</th>
-                      <th className="ledger-th text-right">Çıxış</th>
-                      <th className="ledger-th text-right">Sona</th>
-                      <th className="ledger-th text-right">Sona (₼)</th>
+                      <th className="ledger-th">{t('Məhsul')}</th>
+                      <th className="ledger-th text-right">{t('Əvvələ')}</th>
+                      <th className="ledger-th text-right">{t('Daxil')}</th>
+                      <th className="ledger-th text-right">{t('Çıxış@@stock')}</th>
+                      <th className="ledger-th text-right">{t('Sona')}</th>
+                      <th className="ledger-th text-right">{t('Sona (₼)')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -117,7 +118,7 @@ export default function StockReportTab() {
                   </tbody>
                   <tfoot>
                     <tr className="bg-surface-2">
-                      <td className="ledger-td font-semibold">Cəmi · {rows.length} məhsul</td>
+                      <td className="ledger-td font-semibold">{t('Cəmi')} · {t('{n} məhsul', { n: rows.length })}</td>
                       <td className="ledger-td text-right font-mono font-bold tabular-nums">{totals.opening}</td>
                       <td className="ledger-td text-right font-mono font-bold tabular-nums">{totals.in ? `+${totals.in}` : '—'}</td>
                       <td className="ledger-td text-right font-mono font-bold tabular-nums">{totals.out ? signedOut(totals.out) : '—'}</td>
@@ -131,8 +132,7 @@ export default function StockReportTab() {
             </div>
           )}
           <p className="text-small text-text-3">
-            Daxil = alışlar + ilkin qalıq + sayımda artıq çıxan. Çıxan = satılan mal (sifarişə çıxış − sifarişdən qaytarma) +
-            silinmə/itki + mağazaya qaytarma + sayımda çatışan.
+            {t('Daxil = alışlar + ilkin qalıq + sayımda artıq çıxan. Çıxan = satılan mal (sifarişə çıxış − sifarişdən qaytarma) + silinmə/itki + mağazaya qaytarma + sayımda çatışan.')}
           </p>
         </>
       )}
@@ -159,7 +159,7 @@ function TopList({ title, rows }: { title: string; rows: { id: number; name: str
   return (
     <section className="card p-5">
       <h2 className="section-label mb-3">{title}</h2>
-      {rows.length === 0 ? <p className="text-body text-text-3">Məlumat yoxdur.</p> : (
+      {rows.length === 0 ? <p className="text-body text-text-3">{t('Məlumat yoxdur.')}</p> : (
         <ol className="flex flex-col">
           {rows.slice(0, 8).map((r, i) => (
             <li key={r.id} className={`flex items-center justify-between gap-3 py-2 ${i < Math.min(rows.length, 8) - 1 ? 'border-b border-border' : ''}`}>

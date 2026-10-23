@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Plus, FileDown, CheckCircle2, Printer, Trash2, Pencil } from 'lucide-react'
 import { FinanceRecord, FinanceCategory, OwnerMove } from '@/types'
 import { getFinanceRecords, createFinanceRecord, updateFinanceRecord, deleteFinanceRecord, getDayNote, saveDayNote } from '@/services/finance.service'
+import { t, localeOf } from '@/i18n'
 import { formatCurrency, formatDate, mapApiError, toLocalISODate } from '@/lib/utils'
 import { loadDraft, saveDraft } from '@/lib/formDraft'
 import Badge from '@/components/ui/Badge'
@@ -71,17 +72,18 @@ const CATEGORY_LABELS: Partial<Record<FinanceCategory, string>> = {
 
 function categoryLabel(r: FinanceRecord): string {
   if (!r.category) return '—'
-  if (r.category === 'other') return r.type === 'income' ? 'Digər gəlir' : 'Digər'
-  return CATEGORY_LABELS[r.category] ?? '—'
+  if (r.category === 'other') return r.type === 'income' ? t('Digər gəlir') : t('Digər')
+  const label = CATEGORY_LABELS[r.category]
+  return label ? t(label) : '—'
 }
 
 /** Where a system-created Kassa row came from: the page to open and a short label. */
 function recordSource(r: FinanceRecord): { to: string; label: string; hint: string } | null {
-  if (r.order) return { to: `/business/orders/${r.order}`, label: 'Sifariş', hint: 'Sifarişə keç' }
-  if (r.purchase) return { to: `/business/warehouse/purchases/${r.purchase}`, label: 'Alış', hint: 'Alışa (qaiməyə) keç' }
-  if (r.mechanic) return { to: `/business/mechanics/${r.mechanic}`, label: 'Usta', hint: 'Ustanın səhifəsinə keç' }
-  if (r.source === 'supplier_payment') return { to: '/business/finance/kreditorlar', label: 'Kreditor', hint: 'Kreditorlara keç' }
-  if (r.source === 'debtor_payment') return { to: '/business/finance/debitorlar', label: 'Debitor', hint: 'Debitorlara keç' }
+  if (r.order) return { to: `/business/orders/${r.order}`, label: t('Sifariş'), hint: t('Sifarişə keç') }
+  if (r.purchase) return { to: `/business/warehouse/purchases/${r.purchase}`, label: t('Alış'), hint: t('Alışa (qaiməyə) keç') }
+  if (r.mechanic) return { to: `/business/mechanics/${r.mechanic}`, label: t('Usta'), hint: t('Ustanın səhifəsinə keç') }
+  if (r.source === 'supplier_payment') return { to: '/business/finance/kreditorlar', label: t('Kreditor'), hint: t('Kreditorlara keç') }
+  if (r.source === 'debtor_payment') return { to: '/business/finance/debitorlar', label: t('Debitor'), hint: t('Debitorlara keç') }
   return null
 }
 
@@ -119,49 +121,49 @@ function AddRecordForm({ onClose, onAdded, people, record }: { onClose: () => vo
   return (
     <Modal
       open
-      title={record ? 'Qeydi düzəlt' : 'Yeni qeyd'}
+      title={record ? t('Qeydi düzəlt') : t('Yeni qeyd')}
       onClose={onClose}
       footer={
         <>
-          <Button type="button" variant="secondary" onClick={onClose}>Ləğv et</Button>
-          <Button type="submit" form="kassa-add-form" loading={loading}>Saxla</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>{t('Ləğv et')}</Button>
+          <Button type="submit" form="kassa-add-form" loading={loading}>{t('Saxla')}</Button>
         </>
       }
     >
       <form id="kassa-add-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
         <div>
-          <label className="label">Növ</label>
+          <label className="label">{t('Növ')}</label>
           <Segmented
-            label="Növ"
+            label={t('Növ')}
             value={type}
-            onChange={t => { setType(t); setCategory('other') }}
-            options={[{ key: 'income', label: 'Gəlir' }, { key: 'expense', label: 'Xərc' }]}
+            onChange={v => { setType(v); setCategory('other') }}
+            options={[{ key: 'income', label: t('Gəlir') }, { key: 'expense', label: t('Xərc') }]}
           />
         </div>
         <div>
-          <label className="label">Maddə</label>
+          <label className="label">{t('Maddə')}</label>
           <select value={category} onChange={e => setCategory(e.target.value as FinanceCategory)} className="input">
             {(type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(c => (
-              <option key={c.value} value={c.value}>{c.label}</option>
+              <option key={c.value} value={c.value}>{t(c.label)}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="label">Məbləğ (₼)</label>
+          <label className="label">{t('Məbləğ (₼)')}</label>
           <input value={amount} onChange={e => setAmount(e.target.value)} required type="number" step="0.01" min="0.01" placeholder="0.00" className="input-mono" />
         </div>
         <div>
-          <label className="label">Açıqlama</label>
-          <input value={description} onChange={e => setDescription(e.target.value)} required placeholder="Məs. Ehtiyat hissəsi alışı" className="input" />
+          <label className="label">{t('Açıqlama')}</label>
+          <input value={description} onChange={e => setDescription(e.target.value)} required placeholder={t('Məs. Ehtiyat hissəsi alışı')} className="input" />
         </div>
         {category in OWNER_CATEGORY_LABELS && (
           <div>
-            <label className="label" htmlFor="kassa-person">Kim (istəyə bağlı)</label>
-            <ComboboxInput id="kassa-person" value={person} onChange={setPerson} options={people} placeholder="Məs. Əli" />
+            <label className="label" htmlFor="kassa-person">{t('Kim (istəyə bağlı)')}</label>
+            <ComboboxInput id="kassa-person" value={person} onChange={setPerson} options={people} placeholder={t('Məs. Əli')} />
           </div>
         )}
         {category in OWNER_CATEGORY_LABELS && (
-          <p className="text-small text-info-strong bg-info-subtle rounded px-3 py-2">Kassada görünür, amma Hesabatda mənfəətə təsir etmir — bu, biznesin gəliri və ya xərci deyil.</p>
+          <p className="text-small text-info-strong bg-info-subtle rounded px-3 py-2">{t('Kassada görünür, amma Hesabatda mənfəətə təsir etmir — bu, biznesin gəliri və ya xərci deyil.')}</p>
         )}
         {error && <p className="text-small text-danger-strong bg-danger-subtle rounded px-3 py-2">{error}</p>}
       </form>
@@ -198,7 +200,7 @@ function EndDayModal({ onClose }: { onClose: () => void }) {
     const content = printRef.current?.innerHTML ?? ''
     const win = window.open('', '_blank')
     if (!win) return
-    win.document.write(`<html><head><title>Günlük Hesabat</title>
+    win.document.write(`<html><head><title>${t('Günlük Hesabat')}</title>
       <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
       <style>
       *{box-sizing:border-box}
@@ -218,53 +220,53 @@ function EndDayModal({ onClose }: { onClose: () => void }) {
   }
 
 
-  const dateLabel = new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })
+  const dateLabel = new Date().toLocaleDateString(localeOf(), { day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
     <Modal
       open
-      title="Günün bağlanışı"
+      title={t('Günün bağlanışı')}
       subtitle={dateLabel}
       onClose={handleClose}
       width="max-w-lg"
       footer={
         <>
-          <Button type="button" variant="secondary" icon={Printer} onClick={handlePrint}>Çap et</Button>
-          <Button type="button" variant="primary" onClick={handleClose} loading={saving}>Günü bağla</Button>
+          <Button type="button" variant="secondary" icon={Printer} onClick={handlePrint}>{t('Çap et')}</Button>
+          <Button type="button" variant="primary" onClick={handleClose} loading={saving}>{t('Günü bağla')}</Button>
         </>
       }
     >
       {/* Printable content */}
       <div ref={printRef}>
-        <h2 className="font-display font-semibold text-h3 text-ink">Avtoservis CRM — Günlük Hesabat</h2>
+        <h2 className="font-display font-semibold text-h3 text-ink">{t('Avtoservis CRM — Günlük Hesabat')}</h2>
         <p style={{ color: '#6b7264', marginBottom: '16px' }}>{dateLabel}</p>
 
         {/* Summary */}
         <div className="grid grid-cols-3 gap-3 mb-5">
           <div className="border border-border rounded-md px-4 py-3">
-            <p className="font-sans text-label uppercase text-text-3">Gəlir</p>
+            <p className="font-sans text-label uppercase text-text-3">{t('Gəlir')}</p>
             <p className="text-body-l font-mono font-semibold text-success">+{formatCurrency(income)}</p>
           </div>
           <div className="border border-border rounded-md px-4 py-3">
-            <p className="font-sans text-label uppercase text-text-3">Xərc</p>
+            <p className="font-sans text-label uppercase text-text-3">{t('Xərc')}</p>
             <p className="text-body-l font-mono font-semibold text-danger">−{formatCurrency(expense)}</p>
           </div>
           <div className="border border-border rounded-md px-4 py-3">
-            <p className="font-sans text-label uppercase text-text-3">Xalis</p>
+            <p className="font-sans text-label uppercase text-text-3">{t('Xalis')}</p>
             <p className={`text-body-l font-mono font-semibold ${net >= 0 ? 'text-success' : 'text-danger'}`}>{net > 0 ? '+' : net < 0 ? '−' : ''}{formatCurrency(Math.abs(net))}</p>
           </div>
         </div>
 
         {/* Transactions */}
         {todayRecords.length === 0 ? (
-          <p className="text-body text-text-3 text-center py-8">Bu gün heç bir əməliyyat yoxdur.</p>
+          <p className="text-body text-text-3 text-center py-8">{t('Bu gün heç bir əməliyyat yoxdur.')}</p>
         ) : (
           <table className="ledger-table">
             <thead>
               <tr>
-                <th className="ledger-th">Açıqlama</th>
-                <th className="ledger-th">Növ</th>
-                <th className="ledger-th text-right">Məbləğ</th>
+                <th className="ledger-th">{t('Açıqlama')}</th>
+                <th className="ledger-th">{t('Növ')}</th>
+                <th className="ledger-th text-right">{t('Məbləğ')}</th>
               </tr>
             </thead>
             <tbody>
@@ -272,7 +274,7 @@ function EndDayModal({ onClose }: { onClose: () => void }) {
                 <tr key={r.id}>
                   <td className="ledger-td text-ink !whitespace-normal">{r.description}</td>
                   <td className="ledger-td">
-                    <Badge variant={r.type === 'income' ? 'success' : 'danger'}>{r.type === 'income' ? 'Gəlir' : 'Xərc'}</Badge>
+                    <Badge variant={r.type === 'income' ? 'success' : 'danger'}>{r.type === 'income' ? t('Gəlir') : t('Xərc')}</Badge>
                   </td>
                   <td className="ledger-td text-right">
                     <Money value={r.type === 'income' ? Number(r.amount) : -Number(r.amount)} meaning={r.type === 'income' ? 'income' : 'expense'} />
@@ -286,7 +288,7 @@ function EndDayModal({ onClose }: { onClose: () => void }) {
         {/* Comment — at the end, only rendered if filled, appears in print */}
         {comment.trim() && (
           <div className="note-box" style={{ marginTop: '24px', borderTop: '1px solid #CBD3C7', paddingTop: '14px' }}>
-            <p className="note-label" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6b7264', marginBottom: '4px' }}>Qeyd</p>
+            <p className="note-label" style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6b7264', marginBottom: '4px' }}>{t('Qeyd')}</p>
             <p className="note-text" style={{ fontSize: '13px', color: '#1F2A24', whiteSpace: 'pre-wrap', margin: 0 }}>{comment}</p>
           </div>
         )}
@@ -294,12 +296,12 @@ function EndDayModal({ onClose }: { onClose: () => void }) {
 
       {/* Comment input */}
       <div className="mt-5 pt-4 border-t border-border pb-2">
-        <label className="label">Qeyd</label>
+        <label className="label">{t('Qeyd')}</label>
         <textarea
           value={comment}
           onChange={e => setComment(e.target.value)}
           rows={2}
-          placeholder="Bu gün üçün qeyd əlavə edin..."
+          placeholder={t('Bu gün üçün qeyd əlavə edin...')}
           className="input resize-none"
         />
       </div>
@@ -409,15 +411,15 @@ export default function FinanceClient() {
       <tr>
         <td>${r.date.slice(0, 10)}</td>
         <td>${r.description || '—'}</td>
-        <td><span class="${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? 'Gəlir' : 'Xərc'}</span></td>
+        <td><span class="${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? t('Gəlir') : t('Xərc')}</span></td>
         <td class="amount ${r.type === 'income' ? 'income' : 'expense'}">${r.type === 'income' ? '+' : '−'}${formatCurrency(Math.abs(Number(r.amount)))}</td>
       </tr>`).join('')
 
     const noteHtml = singleDate && pageNote
-      ? `<div class="note-box"><p class="note-label">Gün qeydi</p><p class="note-text">${pageNote.replace(/\n/g, '<br>')}</p></div>`
+      ? `<div class="note-box"><p class="note-label">${t('Gün qeydi')}</p><p class="note-text">${pageNote.replace(/\n/g, '<br>')}</p></div>`
       : ''
 
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Maliyyə Hesabatı — ${periodLabel}</title>
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${t('Maliyyə Hesabatı')} — ${periodLabel}</title>
     <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
@@ -439,16 +441,16 @@ export default function FinanceClient() {
       .note-label{font-family:'IBM Plex Mono','Noto Sans',monospace;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6b7264;margin-bottom:6px}
       .note-text{font-family:'IBM Plex Sans','Noto Sans',sans-serif;font-size:13px;color:#1F2A24;line-height:1.6}
     </style></head><body>
-    <h1>Maliyyə Hesabatı</h1>
-    <p class="sub">${periodLabel} · Gəlir: ${formatCurrency(income)} · Xərc: −${formatCurrency(expense)} · Xalis: ${net >= 0 ? '+' : ''}${formatCurrency(net)}</p>
+    <h1>${t('Maliyyə Hesabatı')}</h1>
+    <p class="sub">${periodLabel} · ${t('Gəlir')}: ${formatCurrency(income)} · ${t('Xərc')}: −${formatCurrency(expense)} · ${t('Xalis')}: ${net >= 0 ? '+' : ''}${formatCurrency(net)}</p>
     <div class="summary">
-      <div class="card"><p class="card-label green">Gəlir</p><p class="card-value green">${formatCurrency(income)}</p></div>
-      <div class="card"><p class="card-label red">Xərc</p><p class="card-value red">${formatCurrency(expense)}</p></div>
-      <div class="card"><p class="card-label ${net >= 0 ? 'green' : 'red'}">Xalis</p><p class="card-value ${net >= 0 ? 'green' : 'red'}">${net >= 0 ? '+' : ''}${formatCurrency(net)}</p></div>
+      <div class="card"><p class="card-label green">${t('Gəlir')}</p><p class="card-value green">${formatCurrency(income)}</p></div>
+      <div class="card"><p class="card-label red">${t('Xərc')}</p><p class="card-value red">${formatCurrency(expense)}</p></div>
+      <div class="card"><p class="card-label ${net >= 0 ? 'green' : 'red'}">${t('Xalis')}</p><p class="card-value ${net >= 0 ? 'green' : 'red'}">${net >= 0 ? '+' : ''}${formatCurrency(net)}</p></div>
     </div>
-    ${all.length === 0 ? '<p style="color:#6b7264;text-align:center;padding:32px 0">Bu dövr üzrə əməliyyat yoxdur.</p>' : `
+    ${all.length === 0 ? `<p style="color:#6b7264;text-align:center;padding:32px 0">${t('Bu dövr üzrə əməliyyat yoxdur.')}</p>` : `
     <table>
-      <thead><tr><th>Tarix</th><th>Açıqlama</th><th>Növ</th><th style="text-align:right">Məbləğ</th></tr></thead>
+      <thead><tr><th>${t('Tarix')}</th><th>${t('Açıqlama')}</th><th>${t('Növ')}</th><th style="text-align:right">${t('Məbləğ')}</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`}
     ${noteHtml}
@@ -461,27 +463,27 @@ export default function FinanceClient() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Maliyyə · Kassa"
-        subtitle={`${periodLabel} · ${count} qeyd`}
+        title={t('Maliyyə · Kassa')}
+        subtitle={`${periodLabel} · ${t('{n} qeyd', { n: count })}`}
         actions={
           <>
             <Button variant="secondary" icon={FileDown} onClick={exportPDF}>
               <span className="hidden sm:inline">PDF</span>
             </Button>
             <Button variant="secondary" icon={CheckCircle2} onClick={() => setEndDayOpen(true)}>
-              <span className="hidden sm:inline">Günü bağla</span>
+              <span className="hidden sm:inline">{t('Günü bağla')}</span>
             </Button>
-            <Button icon={Plus} onClick={() => setAddOpen(true)}>Yeni qeyd</Button>
+            <Button icon={Plus} onClick={() => setAddOpen(true)}>{t('Yeni qeyd')}</Button>
           </>
         }
       />
 
       <InkBand
-        label={`${periodLabel} üzrə`}
+        label={t('{period} üzrə', { period: periodLabel })}
         items={[
-          { label: 'Gəlir', value: `+${formatCurrency(income)}`, note: `${totals.income_count} əməliyyat` },
-          { label: 'Xərc', value: `−${formatCurrency(expense)}`, note: `${totals.expense_count} əməliyyat` },
-          { label: 'Xalis', value: `${net < 0 ? '−' : net > 0 ? '+' : ''}${formatCurrency(Math.abs(net))}`, note: `${operationCount} əməliyyat`, highlight: true },
+          { label: t('Gəlir'), value: `+${formatCurrency(income)}`, note: t('{n} əməliyyat', { n: totals.income_count }) },
+          { label: t('Xərc'), value: `−${formatCurrency(expense)}`, note: t('{n} əməliyyat', { n: totals.expense_count }) },
+          { label: t('Xalis'), value: `${net < 0 ? '−' : net > 0 ? '+' : ''}${formatCurrency(Math.abs(net))}`, note: t('{n} əməliyyat', { n: operationCount }), highlight: true },
         ]}
       />
 
@@ -489,13 +491,13 @@ export default function FinanceClient() {
       <div className="flex flex-wrap items-center gap-3">
         <PeriodFilter value={period} onChange={setPeriod} withAll />
         <Segmented
-          label="Növ"
+          label={t('Növ')}
           value={typeFilter}
           onChange={setTypeFilter}
           options={[
-            { key: 'all', label: 'Hamısı' },
-            { key: 'income', label: 'Gəlir' },
-            { key: 'expense', label: 'Xərc' },
+            { key: 'all', label: t('Hamısı') },
+            { key: 'income', label: t('Gəlir') },
+            { key: 'expense', label: t('Xərc') },
           ]}
         />
       </div>
@@ -504,19 +506,19 @@ export default function FinanceClient() {
       {loading && records.length === 0 ? (
         <Spinner />
       ) : records.length === 0 ? (
-        <EmptyState title="Qeyd tapılmadı" subtitle="Seçilmiş filtr üzrə heç bir əməliyyat yoxdur." />
+        <EmptyState title={t('Qeyd tapılmadı')} subtitle={t('Seçilmiş filtr üzrə heç bir əməliyyat yoxdur.')} />
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="ledger-table min-w-[820px]">
               <thead>
                 <tr>
-                  <th className="ledger-th">Tarix</th>
-                  <th className="ledger-th">Növ</th>
-                  <th className="ledger-th">Maddə</th>
-                  <th className="ledger-th">Açıqlama</th>
-                  <th className="ledger-th">Mənbə</th>
-                  <th className="ledger-th text-right">Məbləğ</th>
+                  <th className="ledger-th">{t('Tarix')}</th>
+                  <th className="ledger-th">{t('Növ')}</th>
+                  <th className="ledger-th">{t('Maddə')}</th>
+                  <th className="ledger-th">{t('Açıqlama')}</th>
+                  <th className="ledger-th">{t('Mənbə')}</th>
+                  <th className="ledger-th text-right">{t('Məbləğ')}</th>
                   <th className="ledger-th" />
                 </tr>
               </thead>
@@ -532,16 +534,16 @@ export default function FinanceClient() {
                   >
                     <td className="ledger-td font-mono text-text-2">{formatDate(r.date)}</td>
                     <td className="ledger-td">
-                      <Badge variant={r.type === 'income' ? 'success' : 'danger'}>{r.type === 'income' ? 'Gəlir' : 'Xərc'}</Badge>
+                      <Badge variant={r.type === 'income' ? 'success' : 'danger'}>{r.type === 'income' ? t('Gəlir') : t('Xərc')}</Badge>
                     </td>
                     <td className="ledger-td">
                       {r.category && OWNER_CATEGORY_LABELS[r.category]
-                        ? <Badge variant="neutral">{OWNER_CATEGORY_LABELS[r.category]}</Badge>
+                        ? <Badge variant="neutral">{t(OWNER_CATEGORY_LABELS[r.category] ?? '')}</Badge>
                         : <span className="text-text-2">{categoryLabel(r)}</span>}
                     </td>
                     <td className="ledger-td !whitespace-normal">
                       {r.description || <span className="text-text-3">—</span>}
-                      {r.person && <span className="block text-small text-text-3">Kim: <span className="text-text-2 font-medium">{r.person}</span></span>}
+                      {r.person && <span className="block text-small text-text-3">{t('Kim')}: <span className="text-text-2 font-medium">{r.person}</span></span>}
                     </td>
                     <td className="ledger-td" onClick={e => e.stopPropagation()}>
                       <span className="flex items-center gap-2">
@@ -549,7 +551,7 @@ export default function FinanceClient() {
                           <Link to={src.to} className="font-mono text-small hover:underline underline-offset-2">{src.label}</Link>
                         )}
                         {r.source && r.source !== 'manual' && (
-                          <span className="text-small text-text-3" title="Sistem qeydidir — onu yaradan sifariş, alış və ya borc üzərindən dəyişdirilir">avtomatik</span>
+                          <span className="text-small text-text-3" title={t('Sistem qeydidir — onu yaradan sifariş, alış və ya borc üzərindən dəyişdirilir')}>{t('avtomatik')}</span>
                         )}
                         {!src && (!r.source || r.source === 'manual') && <span className="text-text-3">—</span>}
                       </span>
@@ -563,8 +565,8 @@ export default function FinanceClient() {
                           type="button"
                           onClick={() => setEditRecord(r)}
                           className="w-9 h-9 inline-flex items-center justify-center rounded text-text-3 hover:text-ink hover:bg-surface-2 transition-colors"
-                          title="Düzəlt"
-                          aria-label="Düzəlt"
+                          title={t('Düzəlt')}
+                          aria-label={t('Düzəlt')}
                         >
                           <Pencil size={18} strokeWidth={1.75} />
                         </button>
@@ -574,8 +576,8 @@ export default function FinanceClient() {
                           type="button"
                           onClick={() => setConfirmDeleteId(r.id)}
                           className="w-9 h-9 inline-flex items-center justify-center rounded text-text-3 hover:text-danger hover:bg-danger-subtle transition-colors"
-                          title="Ləğv et"
-                          aria-label="Ləğv et"
+                          title={t('Ləğv et')}
+                          aria-label={t('Ləğv et')}
                         >
                           <Trash2 size={18} strokeWidth={1.75} />
                         </button>
@@ -587,7 +589,7 @@ export default function FinanceClient() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={5}>Dövr üzrə cəmi · {operationCount} əməliyyat</td>
+                  <td className="ledger-td font-semibold" colSpan={5}>{t('Dövr üzrə cəmi')} · {t('{n} əməliyyat', { n: operationCount })}</td>
                   <td className="ledger-td text-right"><Money value={net} meaning="profit" className="font-bold" /></td>
                   <td className="ledger-td" />
                 </tr>
@@ -597,7 +599,7 @@ export default function FinanceClient() {
           {page < totalPages && (
             <div className="flex justify-center py-3 border-t border-border">
               <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
-                Daha çox göstər ({records.length} / {count})
+                {t('Daha çox göstər')} ({records.length} / {count})
               </Button>
             </div>
           )}
@@ -608,21 +610,21 @@ export default function FinanceClient() {
       {ownerMoves.length > 0 && (
         <section className="card overflow-hidden">
           <div className="px-5 py-4 border-b border-border">
-            <h2 className="card-title">Sahibkar hərəkətləri</h2>
-            <p className="text-small text-text-3 mt-0.5">{periodLabel} · bütün növlər üzrə</p>
+            <h2 className="card-title">{t('Sahibkar hərəkətləri')}</h2>
+            <p className="text-small text-text-3 mt-0.5">{periodLabel} · {t('bütün növlər üzrə')}</p>
           </div>
           <table className="ledger-table">
             <thead>
               <tr>
-                <th className="ledger-th">Kim</th>
-                <th className="ledger-th text-right">Götürdü</th>
-                <th className="ledger-th text-right">Qoydu</th>
+                <th className="ledger-th">{t('Kim')}</th>
+                <th className="ledger-th text-right">{t('Götürdü')}</th>
+                <th className="ledger-th text-right">{t('Qoydu')}</th>
               </tr>
             </thead>
             <tbody>
               {ownerMoves.map(m => (
                 <tr key={m.person || '__none'} className="ledger-row !cursor-default">
-                  <td className="ledger-td">{m.person || <span className="text-text-3">Qeyd edilməyib</span>}</td>
+                  <td className="ledger-td">{m.person || <span className="text-text-3">{t('Qeyd edilməyib')}</span>}</td>
                   <td className="ledger-td text-right">
                     {Number(m.drew) > 0 ? <Money value={-Number(m.drew)} meaning="expense" /> : <span className="text-text-3">—</span>}
                   </td>
@@ -639,7 +641,7 @@ export default function FinanceClient() {
       {/* Saved day note */}
       {singleDate && pageNote && (
         <div className="card px-5 py-4">
-          <p className="font-sans text-label uppercase text-text-3 mb-1">Gün qeydi</p>
+          <p className="font-sans text-label uppercase text-text-3 mb-1">{t('Gün qeydi')}</p>
           <p className="text-body text-ink whitespace-pre-wrap">{pageNote}</p>
         </div>
       )}
@@ -650,10 +652,10 @@ export default function FinanceClient() {
 
       <ConfirmDialog
         open={confirmDeleteId !== null}
-        title="Qeyd silinsin?"
-        message="Bu qeyd kassadan silinəcək. Bu əməliyyat geri qaytarıla bilməz."
-        confirmLabel={deletingId !== null ? '...' : 'Bəli, sil'}
-        cancelLabel="Xeyr"
+        title={t('Qeyd silinsin?')}
+        message={t('Bu qeyd kassadan silinəcək. Bu əməliyyat geri qaytarıla bilməz.')}
+        confirmLabel={deletingId !== null ? '...' : t('Bəli, sil')}
+        cancelLabel={t('Xeyr')}
         danger
         onConfirm={() => confirmDeleteId !== null && handleDeleteRecord(confirmDeleteId)}
         onCancel={() => setConfirmDeleteId(null)}

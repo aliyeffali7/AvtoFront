@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
 import { ServiceTemplate } from '@/types'
 import { formatCurrency } from '@/lib/utils'
+import { t } from '@/i18n'
 
 /** Searchable "Hazır iş" select shown at the top of a service row. Picking
  * one fills the job's name, price and fixed usta payı. Hidden when the
  * business has no templates. */
 export default function ServiceTemplatePicker({ templates, onPick }: {
   templates: ServiceTemplate[]
-  onPick: (t: ServiceTemplate) => void
+  onPick: (tpl: ServiceTemplate) => void
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -24,7 +25,7 @@ export default function ServiceTemplatePicker({ templates, onPick }: {
 
   if (templates.length === 0) return null
   const q = query.trim().toLowerCase()
-  const shown = q ? templates.filter(t => t.name.toLowerCase().includes(q)) : templates
+  const shown = q ? templates.filter(tpl => tpl.name.toLowerCase().includes(q)) : templates
 
   return (
     <div ref={boxRef} className="relative">
@@ -34,25 +35,25 @@ export default function ServiceTemplatePicker({ templates, onPick }: {
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
         onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}
-        placeholder="Hazır iş seç..."
-        aria-label="Hazır iş"
+        placeholder={t('Hazır iş seç...')}
+        aria-label={t('Hazır iş')}
         autoComplete="off"
         className="input !pl-9"
       />
       {open && (
         <ul className="absolute z-20 left-0 right-0 top-full mt-1 bg-surface border border-border rounded shadow-md max-h-52 overflow-y-auto">
           {shown.length === 0 ? (
-            <li className="px-3 py-2.5 text-body text-text-3">Hazır iş tapılmadı</li>
-          ) : shown.map(t => (
-            <li key={t.id}>
+            <li className="px-3 py-2.5 text-body text-text-3">{t('Hazır iş tapılmadı')}</li>
+          ) : shown.map(tpl => (
+            <li key={tpl.id}>
               <button
                 type="button"
                 onMouseDown={e => e.preventDefault()}
-                onClick={() => { onPick(t); setQuery(''); setOpen(false) }}
+                onClick={() => { onPick(tpl); setQuery(''); setOpen(false) }}
                 className="w-full px-3 py-2.5 text-left hover:bg-surface-2 border-b border-border last:border-0 flex items-center justify-between gap-3"
               >
-                <span className="text-body text-text-1 min-w-0 truncate">{t.name}</span>
-                <span className="text-small font-mono text-text-2 shrink-0">{formatCurrency(Number(t.price))}</span>
+                <span className="text-body text-text-1 min-w-0 truncate">{tpl.name}</span>
+                <span className="text-small font-mono text-text-2 shrink-0">{formatCurrency(Number(tpl.price))}</span>
               </button>
             </li>
           ))}

@@ -1,3 +1,4 @@
+import { t, localeOf } from '@/i18n'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ActivityDayPage } from '@/types'
@@ -16,7 +17,7 @@ function shiftDay(iso: string, delta: number): string {
 }
 
 function timeLabel(iso: string): string {
-  return new Date(iso).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return new Date(iso).toLocaleTimeString(localeOf(), { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 /** Hərəkətlər — every event of one day, oldest first (opened from "Son hərəkətlər · Hamısı"). */
@@ -47,17 +48,17 @@ export default function ActivityClient() {
   return (
     <div className="flex flex-col gap-4">
       <button type="button" onClick={goBack} className="btn-ghost !min-h-[36px] !px-2 -ml-2 self-start text-text-2">
-        <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" /> Geri
+        <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" /> {t('Geri')}
       </button>
       <PageHeader
-        title="Hərəkətlər"
-        subtitle={data ? `${data.count} hərəkət` : 'Seçilmiş günün bütün hərəkətləri'}
+        title={t('Hərəkətlər')}
+        subtitle={data ? t('{n} hərəkət', { n: data.count }) : t('Seçilmiş günün bütün hərəkətləri')}
         actions={
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => changeDay(shiftDay(day, -1))}
-              aria-label="Əvvəlki gün"
+              aria-label={t('Əvvəlki gün')}
               className="w-11 h-11 rounded border border-border-strong bg-surface text-text-2 hover:bg-surface-2 inline-flex items-center justify-center"
             >
               <ChevronLeft size={20} strokeWidth={1.75} />
@@ -67,14 +68,14 @@ export default function ActivityClient() {
               value={day}
               max={today}
               onChange={e => changeDay(e.target.value)}
-              aria-label="Tarix"
+              aria-label={t('Tarix')}
               className="input-mono !w-auto"
             />
             <button
               type="button"
               onClick={() => changeDay(shiftDay(day, 1))}
               disabled={day >= today}
-              aria-label="Növbəti gün"
+              aria-label={t('Növbəti gün')}
               className="w-11 h-11 rounded border border-border-strong bg-surface text-text-2 hover:bg-surface-2 disabled:opacity-40 inline-flex items-center justify-center"
             >
               <ChevronRight size={20} strokeWidth={1.75} />
@@ -85,11 +86,11 @@ export default function ActivityClient() {
 
       <section className="card overflow-hidden">
         {failed ? (
-          <p className="text-body text-text-3 px-5 py-8 text-center">Hərəkətlər yüklənmədi. Səhifəni yeniləyin.</p>
+          <p className="text-body text-text-3 px-5 py-8 text-center">{t('Hərəkətlər yüklənmədi. Səhifəni yeniləyin.')}</p>
         ) : loading ? (
           <Spinner />
         ) : data && data.count === 0 ? (
-          <p className="text-body text-text-3 px-5 py-10 text-center">Bu gün üçün hərəkət yoxdur. Başqa gün seçin.</p>
+          <p className="text-body text-text-3 px-5 py-10 text-center">{t('Bu gün üçün hərəkət yoxdur. Başqa gün seçin.')}</p>
         ) : data ? (
           <>
             <ul>

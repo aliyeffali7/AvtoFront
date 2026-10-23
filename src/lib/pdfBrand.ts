@@ -1,6 +1,7 @@
 import { Business } from '@/types'
 import { formatPhone } from '@/lib/utils'
 import { formatPlate } from '@/components/ui/Plate'
+import { Lang, docLang, localeOf, translate } from '@/i18n'
 
 // Shared building blocks of the Servo-branded PDFs (service act, customer
 // history): pdfmake access, brand fonts, colours, money/date formatting and the
@@ -135,8 +136,9 @@ function dateParts(value: string) {
   return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() }
 }
 
-export function longDate(value: string) {
+export function longDate(value: string, lang: Lang = 'az') {
   const { y, m, d } = dateParts(value)
+  if (lang !== 'az') return new Date(y, m - 1, d).toLocaleDateString(localeOf(lang), { day: 'numeric', month: 'long', year: 'numeric' })
   return `${d} ${MONTHS[m - 1]} ${y}`
 }
 
@@ -146,8 +148,16 @@ export function shortDate(value: string) {
   return `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}.${y}`
 }
 
-// "Əli Məmmədov" → "Ali_Memmedov" for file names.
+const CYRILLIC: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+}
+
+// "Əli Məmmədov" → "Ali_Memmedov" for file names (Cyrillic is transliterated).
 export function asciiSlug(text: string) {
+  text = text.replace(/[а-яёА-ЯЁ]/g, ch => {
+    const lower = CYRILLIC[ch.toLowerCase()] ?? ''
+    return ch === ch.toLowerCase() ? lower : lower.charAt(0).toUpperCase() + lower.slice(1)
+  })
   const map: Record<string, string> = { ə: 'e', Ə: 'E', ı: 'i', İ: 'I', ö: 'o', Ö: 'O', ü: 'u', Ü: 'U', ç: 'c', Ç: 'C', ş: 's', Ş: 'S', ğ: 'g', Ğ: 'G' }
   return text
     .replace(/[əƏıİöÖüÜçÇşŞğĞ]/g, ch => map[ch])
@@ -205,7 +215,8 @@ export interface HeaderOptions {
   logo?: string
   shopName: string
   slogan?: string
-  kind: string // "SERVİS AKTI", "MÜŞTƏRİ TARİXÇƏSİ"
+  kind: string // "SERVİS AKTI", "MÜŞTƏRİ TARİXÇƏSİ" (already translated)
+  lang?: Lang
   number?: string // shown as "№ <number>" when given
   date: string
 }
@@ -231,7 +242,7 @@ export function buildHeader(o: HeaderOptions) {
           stack: [
             { text: o.kind, fontSize: 7.5, color: TEXT_3, characterSpacing: 1.6, alignment: 'right' },
             ...(o.number ? [{ text: `№ ${o.number}`, font: fonts.mono, fontSize: 17, bold: true, color: INK, alignment: 'right', margin: [0, 4, 0, 0] }] : []),
-            { text: longDate(o.date), font: fonts.mono, fontSize: 8.5, color: TEXT_2, alignment: 'right', margin: [0, o.number ? 3 : 5, 0, 0] },
+            { text: longDate(o.date, o.lang), font: fonts.mono, fontSize: 8.5, color: TEXT_2, alignment: 'right', margin: [0, o.number ? 3 : 5, 0, 0] },
           ],
         },
       ],
@@ -243,6 +254,7 @@ export function buildHeader(o: HeaderOptions) {
 // Footer: contact line + "1 / 2" + Servo mark and "Servo ilə hazırlanıb".
 export function buildFooter(brand: Brand, business?: Business | null) {
   const { fonts, mark } = brand
+  const lang = docLang(business)
   const instagram = business?.instagram?.trim().replace(/^@/, '') ?? ''
   const contactLine = [business?.phone ? formatPhone(business.phone) : '', business?.address, instagram ? `@${instagram}` : ''].filter(Boolean).join(' · ')
   return (currentPage: number, pageCount: number) => ({
@@ -254,7 +266,7 @@ export function buildFooter(brand: Brand, business?: Business | null) {
           { width: '*', text: contactLine, fontSize: 8, color: TEXT_3, margin: [0, 6, 0, 0] },
           ...(pageCount > 1 ? [{ width: 'auto', text: `${currentPage} / ${pageCount}`, font: fonts.mono, fontSize: 7.5, color: TEXT_3, margin: [0, 6, 14, 0] }] : []),
           ...(mark ? [{ width: 10, svg: mark, margin: [0, 5.5, 0, 0] }] : []),
-          { width: 'auto', text: 'Servo ilə hazırlanıb', fontSize: 7.5, color: TEXT_3, margin: [mark ? 4 : 0, 6.5, 0, 0] },
+          { width: 'auto', text: translate(lang, 'Servo ilə hazırlanıb'), fontSize: 7.5, color: TEXT_3, margin: [mark ? 4 : 0, 6.5, 0, 0] },
         ],
       },
     ],

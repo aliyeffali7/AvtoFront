@@ -1,3 +1,4 @@
+import { t, localeOf } from '@/i18n'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Ban, CalendarClock, CheckCircle2, Clock, Plus, UserX } from 'lucide-react'
@@ -24,20 +25,20 @@ import UiStatusBadge, { StatusTone } from '@/components/ui/StatusBadge'
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function formatDay(iso: string) {
-  return new Date(iso).toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return new Date(iso).toLocaleDateString(localeOf(), { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString(localeOf(), { hour: '2-digit', minute: '2-digit' })
 }
 
 function formatDateGroup(iso: string) {
   const d = new Date(iso)
   const today = new Date()
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
-  if (d.toDateString() === today.toDateString()) return 'Bugün'
-  if (d.toDateString() === tomorrow.toDateString()) return 'Sabah'
-  return d.toLocaleDateString('az-AZ', { weekday: 'long', day: 'numeric', month: 'long' })
+  if (d.toDateString() === today.toDateString()) return t('Bugün')
+  if (d.toDateString() === tomorrow.toDateString()) return t('Sabah')
+  return d.toLocaleDateString(localeOf(), { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -93,7 +94,7 @@ function CreateReservationModal({
     e.preventDefault()
     setError('')
     if (!scheduledDate || !scheduledTime) {
-      setError('Tarix və vaxt daxil edin.')
+      setError(t('Tarix və vaxt daxil edin.'))
       return
     }
     const scheduled_at = `${scheduledDate}T${scheduledTime}:00`
@@ -121,24 +122,24 @@ function CreateReservationModal({
   return (
     <Modal
       open={open}
-      title="Yeni rezervasiya"
+      title={t('Yeni rezervasiya')}
       onClose={handleClose}
       width="max-w-[560px]"
       footer={
         <>
-          <Button type="button" variant="secondary" onClick={handleClose}>Ləğv et</Button>
-          <Button type="submit" form="reservation-form" loading={loading}>{loading ? 'Saxlanılır...' : 'Rezervasiya yarat'}</Button>
+          <Button type="button" variant="secondary" onClick={handleClose}>{t('Ləğv et')}</Button>
+          <Button type="submit" form="reservation-form" loading={loading}>{loading ? t('Saxlanılır...') : t('Rezervasiya yarat')}</Button>
         </>
       }
     >
       <form id="reservation-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="label">Tarix <span className="text-danger">*</span></label>
+            <label className="label">{t('Tarix')} <span className="text-danger">*</span></label>
             <input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} required className="input-mono" />
           </div>
           <div className="flex-1">
-            <label className="label">Vaxt <span className="text-danger">*</span></label>
+            <label className="label">{t('Vaxt')} <span className="text-danger">*</span></label>
             <input type="time" value={scheduledTime} onChange={e => setScheduledTime(e.target.value)} required className="input-mono" />
           </div>
         </div>
@@ -146,30 +147,30 @@ function CreateReservationModal({
         <div className="border-t border-border" />
 
         <div>
-          <label className="label">Müştəri adı</label>
-          <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Hüseyn Məmmədov" className="input" autoFocus />
+          <label className="label">{t('Müştəri adı')}</label>
+          <input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t('Hüseyn Məmmədov')} className="input" autoFocus />
         </div>
         <div>
-          <label className="label">Telefon</label>
+          <label className="label">{t('Telefon')}</label>
           <input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input-mono" />
         </div>
 
         <div className="border-t border-border" />
 
         <div>
-          <label className="label">Marka və model</label>
+          <label className="label">{t('Marka və model')}</label>
           <div className="flex flex-col gap-2.5">
             <CarBrandModelInputs brand={brand} model={model} onBrandChange={setBrand} onModelChange={setModel} />
           </div>
         </div>
         <div>
-          <label className="label">İş təsviri</label>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Məs. Yağ dəyişimi, əyləc yoxlaması" className="input resize-none" />
+          <label className="label">{t('İş təsviri')}</label>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder={t('Məs. Yağ dəyişimi, əyləc yoxlaması')} className="input resize-none" />
         </div>
         <div>
-          <label className="label">Usta</label>
+          <label className="label">{t('Usta')}</label>
           <select value={mechanic} onChange={e => setMechanic(e.target.value)} className="input">
-            <option value="">Seçilməyib</option>
+            <option value="">{t('Seçilməyib')}</option>
             {mechanics.filter(m => m.is_active).map(m => (
               <option key={m.id} value={m.id}>{m.full_name ?? m.phone}</option>
             ))}
@@ -204,14 +205,14 @@ function ReservationTable({
         <table className="ledger-table">
           <thead>
             <tr>
-              {showDate && <th className="ledger-th">Tarix</th>}
-              <th className="ledger-th">Saat</th>
-              <th className="ledger-th">Müştəri</th>
-              <th className="ledger-th">Avtomobil</th>
-              <th className="ledger-th">İş təsviri</th>
-              <th className="ledger-th">Usta</th>
-              <th className="ledger-th">Status</th>
-              <th className="ledger-th text-right">Əməliyyat</th>
+              {showDate && <th className="ledger-th">{t('Tarix')}</th>}
+              <th className="ledger-th">{t('Saat')}</th>
+              <th className="ledger-th">{t('Müştəri')}</th>
+              <th className="ledger-th">{t('Avtomobil')}</th>
+              <th className="ledger-th">{t('İş təsviri')}</th>
+              <th className="ledger-th">{t('Usta')}</th>
+              <th className="ledger-th">{t('Status')}</th>
+              <th className="ledger-th text-right">{t('Əməliyyat')}</th>
             </tr>
           </thead>
           <tbody>
@@ -239,19 +240,19 @@ function ReservationTable({
                     <div className="flex items-center justify-end gap-2">
                       {r.status === 'gozlenilir' && (
                         <>
-                          <Button size="sm" onClick={() => convert(r)} disabled={busy}>Sifarişə çevir</Button>
-                          <Button size="sm" variant="danger" onClick={() => handle(r.id, () => updateReservationStatus(r.id, 'gelmedi'))} disabled={busy}>Gəlmədi</Button>
-                          <Button size="sm" variant="secondary" onClick={() => handle(r.id, () => updateReservationStatus(r.id, 'legv_edildi'))} disabled={busy}>Ləğv et</Button>
+                          <Button size="sm" onClick={() => convert(r)} disabled={busy}>{t('Sifarişə çevir')}</Button>
+                          <Button size="sm" variant="danger" onClick={() => handle(r.id, () => updateReservationStatus(r.id, 'gelmedi'))} disabled={busy}>{t('Gəlmədi')}</Button>
+                          <Button size="sm" variant="secondary" onClick={() => handle(r.id, () => updateReservationStatus(r.id, 'legv_edildi'))} disabled={busy}>{t('Ləğv et')}</Button>
                         </>
                       )}
                       {r.status === 'sifarise_cevrildi' && r.order && (
-                        <Button size="sm" variant="secondary" onClick={() => navigate(`/business/orders/${r.order}`)}>Sifarişə bax →</Button>
+                        <Button size="sm" variant="secondary" onClick={() => navigate(`/business/orders/${r.order}`)}>{t('Sifarişə bax →')}</Button>
                       )}
                       {(r.status === 'legv_edildi' || r.status === 'gelmedi') && (
-                        <Button size="sm" variant="secondary" onClick={() => convert(r)} disabled={busy}>Sifarişə çevir</Button>
+                        <Button size="sm" variant="secondary" onClick={() => convert(r)} disabled={busy}>{t('Sifarişə çevir')}</Button>
                       )}
                       {r.status !== 'gozlenilir' && (
-                        <Button size="sm" variant="ghost" onClick={() => onDelete(r)} disabled={busy} className="!text-danger">Sil</Button>
+                        <Button size="sm" variant="ghost" onClick={() => onDelete(r)} disabled={busy} className="!text-danger">{t('Sil')}</Button>
                       )}
                     </div>
                   </td>
@@ -321,18 +322,18 @@ export default function ReservationsPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Rezervasiyalar"
-        subtitle="Müştəri görüşlərini idarə edin"
-        actions={<Button icon={Plus} onClick={() => setCreateOpen(true)}>Yeni rezervasiya</Button>}
+        title={t('Rezervasiyalar')}
+        subtitle={t('Müştəri görüşlərini idarə edin')}
+        actions={<Button icon={Plus} onClick={() => setCreateOpen(true)}>{t('Yeni rezervasiya')}</Button>}
       />
 
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <KpiCard label="Ümumi" value={stats.total} />
-          <KpiCard label="Gözlənilir" value={stats.pending} />
-          <KpiCard label="Sifarişə çevrildi" value={stats.converted} note={stats.conversion_rate !== null ? `${stats.conversion_rate}%` : undefined} />
-          <KpiCard label="Gəlmədi" value={stats.no_show} />
-          <KpiCard label="Ləğv edildi" value={stats.cancelled} />
+          <KpiCard label={t('Ümumi')} value={stats.total} />
+          <KpiCard label={t('Gözlənilir')} value={stats.pending} />
+          <KpiCard label={t('Sifarişə çevrildi')} value={stats.converted} note={stats.conversion_rate !== null ? `${stats.conversion_rate}%` : undefined} />
+          <KpiCard label={t('Gəlmədi')} value={stats.no_show} />
+          <KpiCard label={t('Ləğv edildi')} value={stats.cancelled} />
         </div>
       )}
 
@@ -346,7 +347,7 @@ export default function ReservationsPage() {
             <div className="flex flex-col gap-2">
               <h2 className="section-label !text-danger-strong flex items-center gap-2">
                 <CalendarClock size={16} strokeWidth={1.75} />
-                Vaxtı çatıb — {due.length} rezervasiya
+                {t('Vaxtı çatıb')} — {t('{n} rezervasiya', { n: due.length })}
               </h2>
               <ReservationTable rows={due} showDate onAction={load} onDelete={setDeleteTarget} />
             </div>
@@ -355,7 +356,7 @@ export default function ReservationsPage() {
           {/* Upcoming */}
           {upcoming.length > 0 ? (
             <div className="flex flex-col gap-4">
-              <h2 className="section-label">Gələcək rezervasiyalar</h2>
+              <h2 className="section-label">{t('Gələcək rezervasiyalar')}</h2>
               {Object.entries(upcomingGroups).map(([dateKey, group]) => (
                 <div key={dateKey} className="flex flex-col gap-2">
                   <p className="font-display font-semibold text-h3 text-ink">
@@ -368,9 +369,9 @@ export default function ReservationsPage() {
             </div>
           ) : due.length === 0 && (
             <EmptyState
-              title="Gözləyən rezervasiya yoxdur"
-              subtitle="Yeni rezervasiya əlavə etmək üçün “Yeni rezervasiya” düyməsini basın."
-              action={<Button icon={Plus} onClick={() => setCreateOpen(true)}>Yeni rezervasiya</Button>}
+              title={t('Gözləyən rezervasiya yoxdur')}
+              subtitle={t('Yeni rezervasiya əlavə etmək üçün “Yeni rezervasiya” düyməsini basın.')}
+              action={<Button icon={Plus} onClick={() => setCreateOpen(true)}>{t('Yeni rezervasiya')}</Button>}
             />
           )}
 
@@ -386,7 +387,7 @@ export default function ReservationsPage() {
                 <svg className={`w-4 h-4 transition-transform duration-[160ms] ${showHistory ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
-                Tarixçə ({history.length})
+                {t('Tarixçə')} ({history.length})
               </button>
               {showHistory && <ReservationTable rows={history} showDate onAction={load} onDelete={setDeleteTarget} />}
             </div>
@@ -399,9 +400,9 @@ export default function ReservationsPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Rezervasiyanı sil"
-        message="Bu rezervasiya silinsin? Bu əməliyyat geri qaytarıla bilməz."
-        confirmLabel="Bəli, sil"
+        title={t('Rezervasiyanı sil')}
+        message={t('Bu rezervasiya silinsin? Bu əməliyyat geri qaytarıla bilməz.')}
+        confirmLabel={t('Bəli, sil')}
         danger
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}

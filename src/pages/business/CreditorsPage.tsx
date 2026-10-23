@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { SupplierDebt, SupplierDebtItem } from '@/types'
 import { getSupplierDebts, createSupplierDebt, paySupplierDebt, paySupplierItems, deleteSupplierDebt } from '@/services/warehouse.service'
+import { t } from '@/i18n'
 import { formatCurrency, formatDate, formatPhone, mapApiError } from '@/lib/utils'
 import ComboboxInput from '@/components/ui/ComboboxInput'
 import Button from '@/components/ui/Button'
@@ -183,7 +184,7 @@ export default function CreditorsPage() {
     setPaying(true); setPayError(''); setPayNotice('')
     try {
       await paySupplierItems(chosen.map(i => ({ item_id: i.id, quantity: selectedItems[i.id] })))
-      setPayNotice(`${chosen.length} məhsul üçün ${formatCurrency(chosenTotal)} ödənildi (kassadan çıxdı).`)
+      setPayNotice(t('{n} məhsul üçün {amount} ödənildi (kassadan çıxdı).', { n: chosen.length, amount: formatCurrency(chosenTotal) }))
       setSelectedItems({})
       await load()
     } catch (err) {
@@ -195,12 +196,12 @@ export default function CreditorsPage() {
 
   async function handlePayAmount(debt: SupplierDebt) {
     const amount = parseFloat(amountInputs[debt.id] ?? String(debt.remaining)) || 0
-    if (amount <= 0) { setPayError('Məbləğ 0-dan böyük olmalıdır.'); return }
+    if (amount <= 0) { setPayError(t('Məbləğ 0-dan böyük olmalıdır.')); return }
     setAmountPayingId(debt.id); setPayError(''); setPayNotice('')
     try {
       await paySupplierDebt(debt.id, amount)
       setAmountInputs(prev => { const n = { ...prev }; delete n[debt.id]; return n })
-      setPayNotice(`${formatCurrency(amount)} ödənildi (kassadan çıxdı).`)
+      setPayNotice(t('{amount} ödənildi (kassadan çıxdı).', { amount: formatCurrency(amount) }))
       await load()
     } catch (err) {
       setPayError(mapApiError(err))
@@ -225,9 +226,9 @@ export default function CreditorsPage() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     setAddError('')
-    if (!newSupplier.trim()) { setAddError('Kreditor adı daxil edin.'); return }
+    if (!newSupplier.trim()) { setAddError(t('Kreditor adı daxil edin.')); return }
     const amount = parseFloat(newAmount)
-    if (!amount || amount <= 0) { setAddError('Düzgün məbləğ daxil edin.'); return }
+    if (!amount || amount <= 0) { setAddError(t('Düzgün məbləğ daxil edin.')); return }
     setAdding(true)
     try {
       const res = await createSupplierDebt({
@@ -248,15 +249,15 @@ export default function CreditorsPage() {
     <div className="px-5 py-5 bg-paper border-b border-border">
       <div className="grid grid-cols-3 gap-3 mb-4 max-w-xl">
         <div className="card px-3 py-2.5">
-          <p className="font-sans text-label uppercase text-text-3 mb-1">Cəmi</p>
+          <p className="font-sans text-label uppercase text-text-3 mb-1">{t('Cəmi')}</p>
           <Money value={selectedGroup.totalAmount} className="!justify-start" />
         </div>
         <div className="card px-3 py-2.5">
-          <p className="font-sans text-label uppercase text-text-3 mb-1">Ödənilib</p>
+          <p className="font-sans text-label uppercase text-text-3 mb-1">{t('Ödənilib')}</p>
           <Money value={selectedGroup.totalPaid} meaning="income" sign="none" className="!justify-start" />
         </div>
         <div className="card px-3 py-2.5">
-          <p className="font-sans text-label uppercase text-text-3 mb-1">Qalıq</p>
+          <p className="font-sans text-label uppercase text-text-3 mb-1">{t('Qalıq')}</p>
           <Money value={selectedGroup.remaining} meaning="payable" showWord={false} className="!justify-start" />
         </div>
       </div>
@@ -267,7 +268,7 @@ export default function CreditorsPage() {
       {selectedGroup.hasUnpaid && allItems.some(i => !i.is_paid) && (
         <label className="flex items-center gap-2 text-body font-semibold text-ink mb-3 cursor-pointer">
           <input type="checkbox" checked={allUnpaidSelected} onChange={e => toggleAll(e.target.checked)} className="w-4 h-4" />
-          Bütün ödənilməmiş məhsulları seç
+          {t('Bütün ödənilməmiş məhsulları seç')}
         </label>
       )}
 
@@ -275,13 +276,13 @@ export default function CreditorsPage() {
         type="search"
         value={itemSearch}
         onChange={e => setItemSearch(e.target.value)}
-        placeholder="Məhsul adı və ya qaimə № ilə axtar"
-        aria-label="Borclarda axtar"
+        placeholder={t('Məhsul adı və ya qaimə № ilə axtar')}
+        aria-label={t('Borclarda axtar')}
         className="input mb-3 max-w-sm"
       />
 
       <div className="flex flex-col gap-3">
-        {shownDebts.length === 0 && <p className="text-body text-text-3">Heç nə tapılmadı.</p>}
+        {shownDebts.length === 0 && <p className="text-body text-text-3">{t('Heç nə tapılmadı.')}</p>}
         {shownDebts.map(debt => (
           <div key={debt.id} className={`bg-surface border border-border rounded-md ${debt.is_paid ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between gap-3 px-4 pt-3 pb-2">
@@ -291,10 +292,10 @@ export default function CreditorsPage() {
                 )}
                 <span className="min-w-0">
                   <span className="block text-body font-semibold text-ink">
-                    {formatDate(debt.date)}{debt.invoice_no ? ` · qaimə № ${debt.invoice_no}` : ''}{debt.description ? ` — ${debt.description}` : ''}
+                    {formatDate(debt.date)}{debt.invoice_no ? ` · ${t('qaimə №')} ${debt.invoice_no}` : ''}{debt.description ? ` — ${debt.description}` : ''}
                   </span>
                   {debt.purchase && (
-                    <Link to={`/business/warehouse/purchases/${debt.purchase}`} className="text-small font-semibold text-ink underline underline-offset-2">Alışa bax →</Link>
+                    <Link to={`/business/warehouse/purchases/${debt.purchase}`} className="text-small font-semibold text-ink underline underline-offset-2">{t('Alışa bax →')}</Link>
                   )}
                 </span>
               </label>
@@ -302,7 +303,7 @@ export default function CreditorsPage() {
                 <Money value={debt.total_amount} />
                 {debt.is_paid
                   ? <StatusBadge status="Ödənilib" className="mt-1" />
-                  : <span className="text-small font-mono text-warning-strong">Qalıb: {formatCurrency(debt.remaining)}</span>}
+                  : <span className="text-small font-mono text-warning-strong">{t('Qalıb')}: {formatCurrency(debt.remaining)}</span>}
               </span>
             </div>
 
@@ -313,22 +314,22 @@ export default function CreditorsPage() {
                   return (
                     <div key={item.id} className={`flex items-center gap-3 px-4 py-2.5 ${item.is_paid ? 'opacity-50' : ''}`}>
                       {item.is_paid ? (
-                        <span className="text-success text-body w-4 text-center shrink-0" title="Ödənilib">✓</span>
+                        <span className="text-success text-body w-4 text-center shrink-0" title={t('Ödənilib')}>✓</span>
                       ) : (
                         <input type="checkbox" checked={checked} onChange={e => toggleItem(item, e.target.checked)} className="w-4 h-4 shrink-0" />
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-body text-ink truncate">{item.product_name}</p>
                         <p className="text-small text-text-3 font-mono">
-                          {item.quantity} {item.unit || 'ədəd'} × {formatCurrency(item.purchase_price)}
-                          {item.paid_quantity > 0 && ` · ${item.paid_quantity} ödənilib`}
-                          {!item.is_paid && ` · ${item.remaining_quantity} qalıb`}
+                          {item.quantity} {item.unit || t('ədəd')} × {formatCurrency(item.purchase_price)}
+                          {item.paid_quantity > 0 && ` · ${t('{n} ödənilib', { n: item.paid_quantity })}`}
+                          {!item.is_paid && ` · ${t('{n} qalıb', { n: item.remaining_quantity })}`}
                         </p>
                       </div>
                       {checked && item.remaining_quantity > 1 && (
                         <input type="number" min={1} max={item.remaining_quantity} value={selectedItems[item.id]}
                           onChange={e => setItemQty(item, e.target.value)}
-                          className="input-mono !w-16 !min-h-[36px] !py-1 !px-1 text-small text-center shrink-0" aria-label="Ödəniləcək say" />
+                          className="input-mono !w-16 !min-h-[36px] !py-1 !px-1 text-small text-center shrink-0" aria-label={t('Ödəniləcək say')} />
                       )}
                       <span className="text-small font-mono tabular-nums text-text-2 shrink-0 w-24 text-right">
                         {item.is_paid ? '' : formatCurrency(checked ? selectedItems[item.id] * Number(item.purchase_price) : item.remaining_amount)}
@@ -341,30 +342,30 @@ export default function CreditorsPage() {
               <div className="border-t border-border px-4 py-3 flex gap-2">
                 <input type="number" min="0.01" step="0.01" value={amountInputs[debt.id] ?? String(debt.remaining)}
                   onChange={e => setAmountInputs(prev => ({ ...prev, [debt.id]: e.target.value }))}
-                  className="input-mono flex-1" aria-label="Ödəniləcək məbləğ" />
-                <Button loading={amountPayingId === debt.id} onClick={() => handlePayAmount(debt)}>Ödə</Button>
+                  className="input-mono flex-1" aria-label={t('Ödəniləcək məbləğ')} />
+                <Button loading={amountPayingId === debt.id} onClick={() => handlePayAmount(debt)}>{t('Ödə')}</Button>
               </div>
             )}
 
             {!debt.purchase && debt.paid_amount === 0 && (
               <div className="border-t border-border px-4 py-2 flex justify-end">
-                <Button variant="ghost" size="sm" icon={Trash2} onClick={() => setConfirmDeleteId(debt.id)}>Borcu sil</Button>
+                <Button variant="ghost" size="sm" icon={Trash2} onClick={() => setConfirmDeleteId(debt.id)}>{t('Borcu sil')}</Button>
               </div>
             )}
           </div>
         ))}
         {!searchTerm && !showAllItems && listedDebts.length > LATEST_COUNT && (
-          <Button variant="secondary" onClick={() => setShowAllItems(true)}>Hamısını göstər ({listedDebts.length})</Button>
+          <Button variant="secondary" onClick={() => setShowAllItems(true)}>{t('Hamısını göstər')} ({listedDebts.length})</Button>
         )}
       </div>
 
       {chosen.length > 0 && (
         <div className="mt-4 px-5 py-4 bg-ink rounded-lg flex items-center gap-4">
           <span className="text-body text-paper flex-1">
-            <span className="font-semibold">{chosen.length} məhsul</span> seçilib
+            <span className="font-semibold">{t('{n} məhsul', { n: chosen.length })}</span> {t('seçilib')}
             <span className="block font-mono font-semibold text-[22px] leading-8 sm:text-[26px] sm:leading-9">{formatCurrency(chosenTotal)}</span>
           </span>
-          <Button variant="secondary" loading={paying} onClick={handlePaySelected}>Ödə</Button>
+          <Button variant="secondary" loading={paying} onClick={handlePaySelected}>{t('Ödə')}</Button>
         </div>
       )}
     </div>
@@ -373,30 +374,30 @@ export default function CreditorsPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Maliyyə · Kreditorlar"
-        subtitle="Nisyə alışlardan yaranan borclar. Ödəniş kassadan çıxır, hesabata təsir etmir."
-        actions={<Button icon={Plus} onClick={() => { setCreating(true); setAddError('') }}>Borc yarat</Button>}
+        title={t('Maliyyə · Kreditorlar')}
+        subtitle={t('Nisyə alışlardan yaranan borclar. Ödəniş kassadan çıxır, hesabata təsir etmir.')}
+        actions={<Button icon={Plus} onClick={() => { setCreating(true); setAddError('') }}>{t('Borc yarat')}</Button>}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <KpiCard
-          label="Ümumi ödənilməmiş borc"
+          label={t('Ümumi ödənilməmiş borc')}
           value={totalUnpaid}
           money
           meaning="payable"
-          note={`${unpaidCount} kreditor · Ödəniləcək`}
+          note={`${t('{n} kreditor', { n: unpaidCount })} · ${t('Ödəniləcək')}`}
         />
       </div>
 
       <Segmented
-        label="Filtr"
+        label={t('Filtr')}
         value={showPaidGroups ? 'all' : 'unpaid'}
         onChange={k => setShowPaidGroups(k === 'all')}
-        options={[{ key: 'unpaid', label: 'Ödənilməmiş' }, { key: 'all', label: 'Bütün kreditorlar' }]}
+        options={[{ key: 'unpaid', label: t('Ödənilməmiş') }, { key: 'all', label: t('Bütün kreditorlar') }]}
       />
 
       {loading && debts.length === 0 ? <Spinner /> : visibleGroups.length === 0 ? (
-        <EmptyState title="Heç bir borc yoxdur" subtitle="Bütün kreditorlara ödənilib." />
+        <EmptyState title={t('Heç bir borc yoxdur')} subtitle={t('Bütün kreditorlara ödənilib.')} />
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
@@ -404,12 +405,12 @@ export default function CreditorsPage() {
               <thead>
                 <tr>
                   <th className="ledger-th w-8" />
-                  <th className="ledger-th">Tədarükçü</th>
-                  <th className="ledger-th">Telefon</th>
-                  <th className="ledger-th">Status</th>
-                  <th className="ledger-th text-right">Cəmi</th>
-                  <th className="ledger-th text-right">Ödənilib</th>
-                  <th className="ledger-th text-right">Qalıq</th>
+                  <th className="ledger-th">{t('Tədarükçü')}</th>
+                  <th className="ledger-th">{t('Telefon')}</th>
+                  <th className="ledger-th">{t('Status')}</th>
+                  <th className="ledger-th text-right">{t('Cəmi')}</th>
+                  <th className="ledger-th text-right">{t('Ödənilib')}</th>
+                  <th className="ledger-th text-right">{t('Qalıq')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -443,7 +444,7 @@ export default function CreditorsPage() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={4}>Cəmi · {visibleGroups.length} kreditor</td>
+                  <td className="ledger-td font-semibold" colSpan={4}>{t('Cəmi')} · {t('{n} kreditor', { n: visibleGroups.length })}</td>
                   <td className="ledger-td text-right"><Money value={visibleGroups.reduce((s, g) => s + g.totalAmount, 0)} className="font-bold" /></td>
                   <td className="ledger-td text-right"><Money value={visibleGroups.reduce((s, g) => s + g.totalPaid, 0)} meaning="income" sign="none" className="font-bold" /></td>
                   <td className="ledger-td text-right"><Money value={visibleGroups.reduce((s, g) => s + g.remaining, 0)} meaning="payable" showWord={false} className="font-bold" /></td>
@@ -456,32 +457,32 @@ export default function CreditorsPage() {
 
       <Modal
         open={creating}
-        title="Borc yarat"
-        subtitle="Mal alışı ilə bağlı olmayan borc"
+        title={t('Borc yarat')}
+        subtitle={t('Mal alışı ilə bağlı olmayan borc')}
         onClose={() => setCreating(false)}
         footer={
           <>
-            <Button type="button" variant="secondary" onClick={() => setCreating(false)}>Ləğv et</Button>
-            <Button type="submit" form="creditor-debt-form" loading={adding}>Əlavə et</Button>
+            <Button type="button" variant="secondary" onClick={() => setCreating(false)}>{t('Ləğv et')}</Button>
+            <Button type="submit" form="creditor-debt-form" loading={adding}>{t('Əlavə et')}</Button>
           </>
         }
       >
         <form id="creditor-debt-form" onSubmit={handleAdd} className="flex flex-col gap-4 pb-2">
-          <p className="text-small text-text-3">Mal alışı ilə bağlı olmayan borc üçün (məs. sistemdən əvvəlki köhnə borc). Mal alanda "Stok → Alışlar"dan nisyə alış edin.</p>
+          <p className="text-small text-text-3">{t('Mal alışı ilə bağlı olmayan borc üçün (məs. sistemdən əvvəlki köhnə borc). Mal alanda "Stok → Alışlar"dan nisyə alış edin.')}</p>
           <div>
-            <label className="label">Kreditor adı <span className="text-danger normal-case">*</span></label>
-            <ComboboxInput value={newSupplier} onChange={setNewSupplier} options={supplierNames} placeholder="Məs. Avtoehtiyat MMC" autoFocus />
+            <label className="label">{t('Kreditor adı')} <span className="text-danger normal-case">*</span></label>
+            <ComboboxInput value={newSupplier} onChange={setNewSupplier} options={supplierNames} placeholder={t('Məs. Avtoehtiyat MMC')} autoFocus />
           </div>
           <div>
-            <label className="label">Telefon <span className="text-text-3 normal-case font-normal">(ixtiyari)</span></label>
+            <label className="label">{t('Telefon')} <span className="text-text-3 normal-case font-normal">({t('ixtiyari')})</span></label>
             <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+994 50 000 00 00" className="input" />
           </div>
           <div>
-            <label className="label">Açıqlama <span className="text-text-3 normal-case font-normal">(ixtiyari)</span></label>
-            <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Məs. Köhnə borc" className="input" />
+            <label className="label">{t('Açıqlama')} <span className="text-text-3 normal-case font-normal">({t('ixtiyari')})</span></label>
+            <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder={t('Məs. Köhnə borc')} className="input" />
           </div>
           <div>
-            <label className="label">Məbləğ <span className="text-danger normal-case">*</span></label>
+            <label className="label">{t('Məbləğ')} <span className="text-danger normal-case">*</span></label>
             <input value={newAmount} onChange={e => setNewAmount(e.target.value)} type="number" min="0.01" step="0.01" placeholder="0.00" className="input-mono" />
           </div>
           {addError && <p className="text-small text-danger-strong bg-danger-subtle rounded px-3 py-2">{addError}</p>}
@@ -490,10 +491,10 @@ export default function CreditorsPage() {
 
       <ConfirmDialog
         open={confirmDeleteId !== null}
-        title="Borc silinsin?"
-        message="Bu borc qeydi silinəcək. Bu əməliyyat geri qaytarıla bilməz."
-        confirmLabel={deletingId !== null ? '...' : 'Bəli, sil'}
-        cancelLabel="Xeyr"
+        title={t('Borc silinsin?')}
+        message={t('Bu borc qeydi silinəcək. Bu əməliyyat geri qaytarıla bilməz.')}
+        confirmLabel={deletingId !== null ? '...' : t('Bəli, sil')}
+        cancelLabel={t('Xeyr')}
         danger
         onConfirm={() => confirmDeleteId !== null && handleDelete(confirmDeleteId)}
         onCancel={() => setConfirmDeleteId(null)}

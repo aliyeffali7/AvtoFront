@@ -1,4 +1,5 @@
 import { toLocalISODate } from '@/lib/utils'
+import { t } from '@/i18n'
 
 // The one date-range filter used on every page: Bu gün · Son 7/30/90 gün ·
 // Tarix seç (a from–to range). List pages (orders, Kassa) also offer "Hamısı".
@@ -48,7 +49,7 @@ export function periodRange(period: Period): { from: string | null; to: string |
 
 /** Human label, e.g. "Son 30 gün" or "01.10.2026 – 07.10.2026". */
 export function periodLabel(period: Period): string {
-  if (period.key !== 'custom') return PERIOD_OPTIONS.find(o => o.key === period.key)?.label ?? ''
+  if (period.key !== 'custom') return t(PERIOD_OPTIONS.find(o => o.key === period.key)?.label ?? '')
   const { from, to } = periodRange(period)
   const fmt = (d: string | null) => (d ? d.split('-').reverse().join('.') : '')
   return from === to ? fmt(from) : `${fmt(from)} – ${fmt(to)}`

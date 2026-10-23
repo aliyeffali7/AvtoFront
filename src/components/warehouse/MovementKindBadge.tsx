@@ -1,4 +1,5 @@
 import { StockMovementKind } from '@/types'
+import { t } from '@/i18n'
 import Badge, { BadgeVariant } from '@/components/ui/Badge'
 
 const VARIANT: Record<StockMovementKind, BadgeVariant> = {
@@ -15,5 +16,5 @@ const VARIANT: Record<StockMovementKind, BadgeVariant> = {
 
 /** Movement kind as a subtle-tone badge (colour never alone: the word is always shown). */
 export default function MovementKindBadge({ kind, label }: { kind: StockMovementKind; label: string }) {
-  return <Badge variant={VARIANT[kind] ?? 'neutral'}>{label}</Badge>
+  return <Badge variant={VARIANT[kind] ?? 'neutral'}>{t(label)}</Badge>
 }

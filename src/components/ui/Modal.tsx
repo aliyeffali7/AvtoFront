@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { ReactNode, useEffect } from 'react'
 import { X } from 'lucide-react'
 
@@ -40,7 +41,7 @@ export default function Modal({
             <h2 className="font-display text-h2 text-ink">{title}</h2>
             {subtitle && <p className="font-mono text-small text-text-3 mt-0.5">{subtitle}</p>}
           </div>
-          <button type="button" onClick={onClose} aria-label="Bağla" className="w-9 h-9 -mr-2 -mt-1 rounded flex items-center justify-center text-text-3 hover:bg-surface-2 shrink-0">
+          <button type="button" onClick={onClose} aria-label={t('Bağla')} className="w-9 h-9 -mr-2 -mt-1 rounded flex items-center justify-center text-text-3 hover:bg-surface-2 shrink-0">
             <X size={20} strokeWidth={1.75} />
           </button>
         </div>

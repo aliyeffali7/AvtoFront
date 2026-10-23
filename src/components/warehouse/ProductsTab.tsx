@@ -14,6 +14,7 @@ import Segmented from '@/components/ui/Segmented'
 import Spinner from '@/components/ui/Spinner'
 import StatusBadge from '@/components/ui/StatusBadge'
 import DuplicatesPanel from './DuplicatesPanel'
+import { t } from '@/i18n'
 
 const TABS: { key: ProductTab; label: string; title: string }[] = [
   { key: 'stock', label: 'Stokda', title: 'Rəfdə olan məhsullar' },
@@ -63,13 +64,13 @@ export default function ProductsTab() {
   }, [])
   useEffect(() => { loadSide() }, [loadSide])
 
-  const load = useCallback(async (q: string, t: ProductTab) => {
+  const load = useCallback(async (q: string, tabKey: ProductTab) => {
     setLoading(true)
     setError('')
     try {
-      setProducts((await getProducts(q || undefined, t)).data)
+      setProducts((await getProducts(q || undefined, tabKey)).data)
     } catch {
-      setError('Məhsullar yüklənmədi. Yenidən cəhd edin.')
+      setError(t('Məhsullar yüklənmədi. Yenidən cəhd edin.'))
     } finally {
       setLoading(false)
     }
@@ -99,25 +100,25 @@ export default function ProductsTab() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Stok · Məhsullar"
-        subtitle={`${activeTab.title} · ${products.length} məhsul`}
+        title={t('Stok · Məhsullar')}
+        subtitle={`${t(activeTab.title)} · ${t('{n} məhsul', { n: products.length })}`}
         actions={
           <>
             {duplicateCount > 0 && (
               <Button variant="secondary" icon={Copy} onClick={() => setShowDuplicates(true)}>
-                Təkrar məhsullar ({duplicateCount})
+                {t('Təkrar məhsullar')} ({duplicateCount})
               </Button>
             )}
-            <Button variant="secondary" icon={FileSpreadsheet} onClick={() => navigate('/business/warehouse/purchases?new=excel')}>Excel idxal</Button>
-            <Button icon={Plus} onClick={() => navigate('/business/warehouse/purchases?new=1')}>Yeni alış</Button>
+            <Button variant="secondary" icon={FileSpreadsheet} onClick={() => navigate('/business/warehouse/purchases?new=excel')}>{t('Excel idxal')}</Button>
+            <Button icon={Plus} onClick={() => navigate('/business/warehouse/purchases?new=1')}>{t('Yeni alış')}</Button>
           </>
         }
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <KpiCard label="Anbarın dəyəri" value={stockValue} money note="Son alış qiyməti ilə" />
-        <KpiCard label="Az qalıb" value={lowCount} note={lowCount ? 'Tezliklə bitəcək məhsullar' : 'Hamısı kifayət qədərdir'} />
-        <KpiCard label="Bitib" value={outCount} note={outCount ? 'Yenidən almaq lazımdır' : undefined} />
+        <KpiCard label={t('Anbarın dəyəri')} value={stockValue} money note={t('Son alış qiyməti ilə')} />
+        <KpiCard label={t('Az qalıb')} value={lowCount} note={lowCount ? t('Tezliklə bitəcək məhsullar') : t('Hamısı kifayət qədərdir')} />
+        <KpiCard label={t('Bitib')} value={outCount} note={outCount ? t('Yenidən almaq lazımdır') : undefined} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -126,12 +127,12 @@ export default function ProductsTab() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Ad və ya kod ilə axtar..."
-            aria-label="Axtar"
+            placeholder={t('Ad və ya kod ilə axtar...')}
+            aria-label={t('Axtar')}
             className="input !pl-10"
           />
         </div>
-        <Segmented label="Bölmə" options={TABS} value={tab} onChange={changeTab} />
+        <Segmented label={t('Bölmə')} options={TABS.map(x => ({ ...x, label: t(x.label), title: t(x.title) }))} value={tab} onChange={changeTab} />
       </div>
 
       {loading && products.length === 0 ? (
@@ -140,8 +141,8 @@ export default function ProductsTab() {
         <p className="text-body text-danger">{error}</p>
       ) : products.length === 0 ? (
         <EmptyState
-          title={search ? 'Heç nə tapılmadı' : 'Bu bölmədə məhsul yoxdur'}
-          subtitle={tab === 'stock' ? 'Məhsul əlavə etmək üçün "Yeni alış" düyməsini basın.' : activeTab.title}
+          title={search ? t('Heç nə tapılmadı') : t('Bu bölmədə məhsul yoxdur')}
+          subtitle={tab === 'stock' ? t('Məhsul əlavə etmək üçün "Yeni alış" düyməsini basın.') : t(activeTab.title)}
         />
       ) : (
         <div className="card overflow-hidden">
@@ -149,11 +150,11 @@ export default function ProductsTab() {
             <table className="ledger-table min-w-[720px]">
               <thead>
                 <tr>
-                  <th className="ledger-th w-28">Kodu</th>
-                  <th className="ledger-th">Adı</th>
-                  <th className="ledger-th">Stok</th>
-                  <th className="ledger-th text-right">Son alış</th>
-                  <th className="ledger-th text-right">Satış</th>
+                  <th className="ledger-th w-28">{t('Kodu')}</th>
+                  <th className="ledger-th">{t('Adı')}</th>
+                  <th className="ledger-th">{t('Stok')}</th>
+                  <th className="ledger-th text-right">{t('Son alış')}</th>
+                  <th className="ledger-th text-right">{t('Satış')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -167,8 +168,8 @@ export default function ProductsTab() {
                         <span className="text-small text-text-3">{p.unit}</span>
                         {isOut(p) && <StatusBadge status="Bitib" />}
                         {isLow(p) && <StatusBadge status="Az qalıb" />}
-                        {p.is_warehouse === false && <Badge variant="neutral">Sifarişlik</Badge>}
-                        {p.is_archived && <Badge variant="danger">Arxivdə</Badge>}
+                        {p.is_warehouse === false && <Badge variant="neutral">{t('Sifarişlik')}</Badge>}
+                        {p.is_archived && <Badge variant="danger">{t('Arxivdə')}</Badge>}
                       </span>
                     </td>
                     <td className="ledger-td text-right"><Money value={p.purchase_price ?? 0} /></td>
@@ -178,13 +179,13 @@ export default function ProductsTab() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={3}>Cəmi · {products.length} məhsul</td>
+                  <td className="ledger-td font-semibold" colSpan={3}>{t('Cəmi')} · {t('{n} məhsul', { n: products.length })}</td>
                   <td className="ledger-td text-right">
-                    <span className="block font-sans text-label uppercase text-text-3">Alış dəyəri</span>
+                    <span className="block font-sans text-label uppercase text-text-3">{t('Alış dəyəri')}</span>
                     <Money value={costTotal} className="font-bold" />
                   </td>
                   <td className="ledger-td text-right">
-                    <span className="block font-sans text-label uppercase text-text-3">Satış dəyəri</span>
+                    <span className="block font-sans text-label uppercase text-text-3">{t('Satış dəyəri')}</span>
                     <Money value={sellTotal} className="font-bold" />
                   </td>
                 </tr>

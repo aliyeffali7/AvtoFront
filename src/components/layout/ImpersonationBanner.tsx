@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Eye } from 'lucide-react'
 import { useCurrentUser } from '@/App'
 import { stopImpersonating } from '@/services/auth.service'
+import { t } from '@/i18n'
 
 export default function ImpersonationBanner() {
   const user = useCurrentUser()
@@ -27,7 +28,7 @@ export default function ImpersonationBanner() {
       <div className="flex items-center gap-2.5">
         <Eye className="w-5 h-5 shrink-0" strokeWidth={1.75} />
         <p className="text-body font-medium">
-          SuperAdmin kimi baxırsınız: <strong>{user.business?.name ?? 'bu biznes'}</strong>
+          {t('SuperAdmin kimi baxırsınız:')} <strong>{user.business?.name ?? t('bu biznes')}</strong>
         </p>
       </div>
       <button
@@ -35,7 +36,7 @@ export default function ImpersonationBanner() {
         disabled={loading}
         className="text-small font-semibold px-3 h-9 rounded-md bg-info-strong text-paper hover:bg-info transition-colors disabled:opacity-40"
       >
-        {loading ? '...' : 'Adminə qayıt'}
+        {loading ? '...' : t('Adminə qayıt')}
       </button>
     </div>
   )

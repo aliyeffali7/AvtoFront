@@ -755,6 +755,7 @@ export interface PublicOrder {
     instagram: string
     slogan: string
     logo: string | null
+    document_language?: 'az' | 'ru'
   }
   number: number
   created_at: string

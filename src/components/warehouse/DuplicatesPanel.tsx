@@ -6,6 +6,7 @@ import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Spinner from '@/components/ui/Spinner'
+import { t } from '@/i18n'
 
 /** Same item entered several times (often one "Anbarda yoxdur" product per
  * order). Merging moves every order, purchase and movement onto the kept
@@ -36,7 +37,7 @@ export default function DuplicatesPanel({ open, onClose, onChanged }: { open: bo
       for (const p of group) {
         if (p.id !== keepId) await mergeProduct(p.id, keepId)
       }
-      setNotice(`"${group.find(p => p.id === keepId)?.name}" altında ${group.length} qeyd birləşdirildi.`)
+      setNotice(t('"{name}" altında {n} qeyd birləşdirildi.', { name: group.find(p => p.id === keepId)?.name ?? '', n: group.length }))
       setKeep({})
       await load()
       onChanged()
@@ -48,19 +49,19 @@ export default function DuplicatesPanel({ open, onClose, onChanged }: { open: bo
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Təkrar məhsullar" width="max-w-[680px]">
+    <Modal open={open} onClose={onClose} title={t('Təkrar məhsullar')} width="max-w-[680px]">
       <p className="text-body text-text-3 mb-4">
-        Eyni adla bir neçə dəfə yaradılmış məhsullar. Birləşdirəndə bütün sifarişlər, alışlar və stok seçdiyiniz məhsula köçürülür — heç nə itmir.
+        {t('Eyni adla bir neçə dəfə yaradılmış məhsullar. Birləşdirəndə bütün sifarişlər, alışlar və stok seçdiyiniz məhsula köçürülür — heç nə itmir.')}
       </p>
       {notice && <p className="text-body text-success-strong bg-success-subtle rounded px-3 py-2 mb-3">{notice}</p>}
       {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-3 py-2 mb-3">{error}</p>}
       {loading && groups.length === 0 ? (
         <Spinner />
       ) : groups.length === 0 ? (
-        <p className="text-body text-text-3 pb-4">Təkrar məhsul yoxdur.</p>
+        <p className="text-body text-text-3 pb-4">{t('Təkrar məhsul yoxdur.')}</p>
       ) : (
         <div className="flex flex-col gap-3 pb-4">
-          <p className="text-small text-text-3">{groups.length} qrup. Hər qrupda saxlanacaq məhsulu seçin (tövsiyə olunan əvvəlcədən seçilib).</p>
+          <p className="text-small text-text-3">{t('{n} qrup. Hər qrupda saxlanacaq məhsulu seçin (tövsiyə olunan əvvəlcədən seçilib).', { n: groups.length })}</p>
           {groups.map((group, i) => (
             <div key={group.map(p => p.id).join('-')} className="border border-border rounded-md overflow-hidden">
               {group.map(p => (
@@ -69,15 +70,15 @@ export default function DuplicatesPanel({ open, onClose, onChanged }: { open: bo
                   <span className="flex-1 min-w-0">
                     <Link to={`/business/warehouse/products/${p.id}`} className="text-body font-semibold text-ink hover:underline">{p.name}</Link>
                     <span className="block text-small text-text-3 font-mono">
-                      stok {p.stock_quantity} · {p.order_count} sifariş · satış {formatCurrency(p.sell_price)}{p.code ? ` · ${p.code}` : ''}
+                      {t('stok')} {p.stock_quantity} · {p.order_count} {t('sifariş')} · {t('satış')} {formatCurrency(p.sell_price)}{p.code ? ` · ${p.code}` : ''}
                     </span>
                   </span>
-                  {p.is_warehouse === false ? <Badge variant="neutral">Sifarişlik</Badge> : <Badge variant="accent">Anbar</Badge>}
+                  {p.is_warehouse === false ? <Badge variant="neutral">{t('Sifarişlik')}</Badge> : <Badge variant="accent">{t('Anbar')}</Badge>}
                 </label>
               ))}
               <div className="px-4 py-3">
                 <Button size="sm" className="w-full" loading={busyGroup === i} disabled={busyGroup !== null} onClick={() => merge(i, group)}>
-                  Birləşdir ({group.length} → 1)
+                  {t('Birləşdir ({count} → 1)', { count: group.length })}
                 </Button>
               </div>
             </div>

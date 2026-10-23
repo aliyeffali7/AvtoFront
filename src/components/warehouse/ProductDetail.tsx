@@ -19,6 +19,7 @@ import Spinner from '@/components/ui/Spinner'
 import StatusBadge from '@/components/ui/StatusBadge'
 import OrderStatusBadge from '@/components/orders/StatusBadge'
 import MovementKindBadge from './MovementKindBadge'
+import { t } from '@/i18n'
 
 type Action = 'none' | 'edit' | 'writeoff' | 'count' | 'merge' | 'return'
 
@@ -31,11 +32,11 @@ const PAYMENT_STATUS: Record<SupplierPaymentStatus, { label: string; variant: 's
 /** Nağd, or Nisyə with the kreditor state (Ödənilib / Qismən / Ödənilməyib). */
 function PaymentCell({ onCredit, status }: { onCredit: boolean | null; status: SupplierPaymentStatus | null }) {
   if (onCredit === null) return <span className="text-text-3">—</span>
-  if (!onCredit) return <Badge variant="success">Nağd</Badge>
+  if (!onCredit) return <Badge variant="success">{t('Nağd')}</Badge>
   return (
     <span className="flex flex-wrap items-center gap-1.5">
-      <Badge variant="warning">Nisyə</Badge>
-      {status && <Badge variant={PAYMENT_STATUS[status].variant}>{PAYMENT_STATUS[status].label}</Badge>}
+      <Badge variant="warning">{t('Nisyə')}</Badge>
+      {status && <Badge variant={PAYMENT_STATUS[status].variant}>{t(PAYMENT_STATUS[status].label)}</Badge>}
     </span>
   )
 }
@@ -124,7 +125,7 @@ export default function ProductDetail() {
 
   const backBtn = (
     <div>
-      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={goBack}>Geri — Məhsullar</Button>
+      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={goBack}>{t('Geri — Məhsullar')}</Button>
     </div>
   )
 
@@ -133,12 +134,12 @@ export default function ProductDetail() {
     return (
       <div className="flex flex-col gap-4">
         {backBtn}
-        <EmptyState title="Məhsul tapılmadı" subtitle="Bu məhsul silinib və ya əlçatan deyil." />
+        <EmptyState title={t('Məhsul tapılmadı')} subtitle={t('Bu məhsul silinib və ya əlçatan deyil.')} />
       </div>
     )
   }
   const p = card.product
-  const t = card.totals
+  const totals = card.totals
   const isWarehouse = p.is_warehouse !== false
   const low = isWarehouse && p.stock_quantity > 0 && p.stock_quantity < (p.low_stock_threshold ?? 3)
   const out = isWarehouse && p.stock_quantity <= 0
@@ -164,33 +165,33 @@ export default function ProductDetail() {
             {out && <StatusBadge status="Bitib" />}
             {low && <StatusBadge status="Az qalıb" />}
             {isWarehouse && !low && !out && <StatusBadge status="Stokda" />}
-            <Badge variant="neutral">{p.unit}</Badge>
-            {isWarehouse ? <Badge variant="accent">Anbar məhsulu</Badge> : <Badge variant="neutral">Sifarişlik</Badge>}
-            {p.is_archived && <Badge variant="danger">Arxivdə</Badge>}
+            <Badge variant="neutral">{t(p.unit)}</Badge>
+            {isWarehouse ? <Badge variant="accent">{t('Anbar məhsulu')}</Badge> : <Badge variant="neutral">{t('Sifarişlik')}</Badge>}
+            {p.is_archived && <Badge variant="danger">{t('Arxivdə')}</Badge>}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" icon={Pencil} onClick={() => openAction('edit')}>Düzəliş</Button>
+          <Button variant="secondary" icon={Pencil} onClick={() => openAction('edit')}>{t('Düzəliş')}</Button>
           {p.stock_quantity > 0 && (
-            <Button variant="secondary" icon={Trash2} onClick={() => openAction('writeoff')}>Silinmə / itki</Button>
+            <Button variant="secondary" icon={Trash2} onClick={() => openAction('writeoff')}>{t('Silinmə / itki')}</Button>
           )}
           {returnable.length > 0 && (
-            <Button variant="secondary" icon={Undo2} onClick={() => openReturn()}>Tədarükçüyə qaytar</Button>
+            <Button variant="secondary" icon={Undo2} onClick={() => openReturn()}>{t('Tədarükçüyə qaytar')}</Button>
           )}
-          <Button variant="secondary" icon={ClipboardCheck} onClick={() => openAction('count')}>Sayım</Button>
-          <Button variant="secondary" icon={GitMerge} onClick={() => openAction('merge')}>Birləşdir</Button>
+          <Button variant="secondary" icon={ClipboardCheck} onClick={() => openAction('count')}>{t('Sayım')}</Button>
+          <Button variant="secondary" icon={GitMerge} onClick={() => openAction('merge')}>{t('Birləşdir')}</Button>
           {p.is_archived ? (
             <Button variant="secondary" icon={ArchiveRestore} disabled={busy}
-              onClick={() => run(() => updateProduct(p.id, { is_archived: false }), 'Məhsul arxivdən çıxarıldı.')}>
-              Arxivdən çıxar
+              onClick={() => run(() => updateProduct(p.id, { is_archived: false }), t('Məhsul arxivdən çıxarıldı.'))}>
+              {t('Arxivdən çıxar')}
             </Button>
           ) : p.stock_quantity === 0 && (
             <Button variant="secondary" icon={Archive} disabled={busy}
               onClick={() => run(async () => {
                 const res = await deleteProduct(p.id)
                 if (res.data.result === 'deleted') navigate('/business/warehouse/products', { replace: true })
-              }, 'Məhsul arxivə göndərildi. Tarixçəsi saxlanılır.')}>
-              Arxivə göndər
+              }, t('Məhsul arxivə göndərildi. Tarixçəsi saxlanılır.'))}>
+              {t('Arxivə göndər')}
             </Button>
           )}
         </div>
@@ -201,10 +202,10 @@ export default function ProductDetail() {
 
       <InkBand
         items={[
-          { label: 'Stok', value: `${p.stock_quantity} ${p.unit}` },
-          { label: 'Anbar dəyəri (FIFO)', value: formatCurrency(t.stock_value) },
-          { label: 'Satış qiyməti', value: formatCurrency(p.sell_price) },
-          { label: 'Qazanc (satılanlardan)', value: `${t.profit > 0 ? '+' : t.profit < 0 ? '−' : ''}${formatCurrency(Math.abs(t.profit))}` },
+          { label: t('Stok'), value: `${p.stock_quantity} ${t(p.unit)}` },
+          { label: t('Anbar dəyəri (FIFO)'), value: formatCurrency(totals.stock_value) },
+          { label: t('Satış qiyməti'), value: formatCurrency(p.sell_price) },
+          { label: t('Qazanc (satılanlardan)'), value: `${totals.profit > 0 ? '+' : totals.profit < 0 ? '−' : ''}${formatCurrency(Math.abs(totals.profit))}` },
         ]}
       />
 
@@ -212,19 +213,19 @@ export default function ProductDetail() {
       {card.batches.length > 0 && (
         <section className="card overflow-hidden">
           <div className="px-5 py-4">
-            <h2 className="section-label">Qalan partiyalar (FIFO — əvvəl köhnə satılır)</h2>
+            <h2 className="section-label">{t('Qalan partiyalar (FIFO — əvvəl köhnə satılır)')}</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="ledger-table">
               <thead>
                 <tr>
-                  <th className="ledger-th">Tarix</th>
-                  <th className="ledger-th">Tədarükçü</th>
-                  <th className="ledger-th">Alış (qaimə)</th>
-                  <th className="ledger-th">Ödəniş</th>
-                  <th className="ledger-th text-right">Qalıb</th>
-                  <th className="ledger-th text-right">Alış qiyməti</th>
-                  <th className="ledger-th text-right">Dəyəri</th>
+                  <th className="ledger-th">{t('Tarix')}</th>
+                  <th className="ledger-th">{t('Tədarükçü')}</th>
+                  <th className="ledger-th">{t('Alış (qaimə)')}</th>
+                  <th className="ledger-th">{t('Ödəniş')}</th>
+                  <th className="ledger-th text-right">{t('Qalıb')}</th>
+                  <th className="ledger-th text-right">{t('Alış qiyməti')}</th>
+                  <th className="ledger-th text-right">{t('Dəyəri')}</th>
                   <th className="ledger-th" />
                 </tr>
               </thead>
@@ -240,9 +241,9 @@ export default function ProductDetail() {
                     <td className="ledger-td">
                       {b.purchase ? (
                         <Link to={`/business/warehouse/purchases/${b.purchase}`} className="font-mono text-small font-semibold hover:underline underline-offset-2">
-                          {b.invoice_no ? `№${b.invoice_no}` : `Alış #${b.purchase}`}
+                          {b.invoice_no ? `№${b.invoice_no}` : `${t('Alış')} #${b.purchase}`}
                         </Link>
-                      ) : <span className="text-text-3">İlkin qalıq</span>}
+                      ) : <span className="text-text-3">{t('İlkin qalıq')}</span>}
                     </td>
                     <td className="ledger-td"><PaymentCell onCredit={b.on_credit} status={b.payment_status} /></td>
                     <td className="ledger-td text-right font-mono tabular-nums">{b.remaining_quantity} / {b.quantity}</td>
@@ -250,7 +251,7 @@ export default function ProductDetail() {
                     <td className="ledger-td text-right"><Money value={b.remaining_quantity * Number(b.purchase_price)} /></td>
                     <td className="ledger-td text-right">
                       {b.purchase_line && returnable.some(pl => pl.line_id === b.purchase_line) && (
-                        <Button variant="secondary" size="sm" icon={Undo2} onClick={() => openReturn(b.purchase_line)}>Qaytar</Button>
+                        <Button variant="secondary" size="sm" icon={Undo2} onClick={() => openReturn(b.purchase_line)}>{t('Qaytar')}</Button>
                       )}
                     </td>
                   </tr>
@@ -258,7 +259,7 @@ export default function ProductDetail() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={4}>Cəmi · {card.batches.length} partiya</td>
+                  <td className="ledger-td font-semibold" colSpan={4}>{t('Cəmi')} · {t('{n} partiya', { n: card.batches.length })}</td>
                   <td className="ledger-td text-right font-mono font-bold tabular-nums">{card.batches.reduce((s, b) => s + b.remaining_quantity, 0)}</td>
                   <td className="ledger-td" />
                   <td className="ledger-td text-right"><Money value={card.batches.reduce((s, b) => s + b.remaining_quantity * Number(b.purchase_price), 0)} className="font-bold" /></td>
@@ -274,20 +275,20 @@ export default function ProductDetail() {
         {/* Purchases */}
         <section className="card overflow-hidden">
           <div className="px-5 py-4">
-            <h2 className="section-label">Kimdən alınıb ({card.purchases.length})</h2>
+            <h2 className="section-label">{t('Kimdən alınıb')} ({card.purchases.length})</h2>
           </div>
           {card.purchases.length === 0 ? (
-            <p className="px-5 pb-5 text-body text-text-3">Alış qeydi yoxdur.</p>
+            <p className="px-5 pb-5 text-body text-text-3">{t('Alış qeydi yoxdur.')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="ledger-table">
                 <thead>
                   <tr>
-                    <th className="ledger-th">Tarix</th>
-                    <th className="ledger-th">Tədarükçü</th>
-                    <th className="ledger-th">Ödəniş</th>
-                    <th className="ledger-th text-right">Say</th>
-                    <th className="ledger-th text-right">Alış</th>
+                    <th className="ledger-th">{t('Tarix')}</th>
+                    <th className="ledger-th">{t('Tədarükçü')}</th>
+                    <th className="ledger-th">{t('Ödəniş')}</th>
+                    <th className="ledger-th text-right">{t('Say')}</th>
+                    <th className="ledger-th text-right">{t('Alış')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -309,20 +310,20 @@ export default function ProductDetail() {
         {/* Sales */}
         <section className="card overflow-hidden">
           <div className="px-5 py-4">
-            <h2 className="section-label">Kimə satılıb ({card.sales.length})</h2>
+            <h2 className="section-label">{t('Kimə satılıb')} ({card.sales.length})</h2>
           </div>
           {card.sales.length === 0 ? (
-            <p className="px-5 pb-5 text-body text-text-3">Heç bir sifarişdə istifadə olunmayıb.</p>
+            <p className="px-5 pb-5 text-body text-text-3">{t('Heç bir sifarişdə istifadə olunmayıb.')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="ledger-table">
                 <thead>
                   <tr>
-                    <th className="ledger-th">Sifariş</th>
-                    <th className="ledger-th">Müştəri</th>
-                    <th className="ledger-th">Status</th>
-                    <th className="ledger-th text-right">Say × Qiymət</th>
-                    <th className="ledger-th text-right">Qazanc</th>
+                    <th className="ledger-th">{t('Sifariş')}</th>
+                    <th className="ledger-th">{t('Müştəri')}</th>
+                    <th className="ledger-th">{t('Status')}</th>
+                    <th className="ledger-th text-right">{t('Say × Qiymət')}</th>
+                    <th className="ledger-th text-right">{t('Qazanc@@product')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -345,20 +346,20 @@ export default function ProductDetail() {
       {/* Movements */}
       <section className="card overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-5 py-4">
-          <h2 className="section-label">Son hərəkətlər</h2>
-          <Link to={`/business/warehouse/movements?product=${p.id}`} className="text-small font-semibold text-ink hover:underline underline-offset-2">Bütün hərəkətlər →</Link>
+          <h2 className="section-label">{t('Son hərəkətlər')}</h2>
+          <Link to={`/business/warehouse/movements?product=${p.id}`} className="text-small font-semibold text-ink hover:underline underline-offset-2">{t('Bütün hərəkətlər →')}</Link>
         </div>
         {card.movements.length === 0 ? (
-          <p className="px-5 pb-5 text-body text-text-3">Hərəkət yoxdur.</p>
+          <p className="px-5 pb-5 text-body text-text-3">{t('Hərəkət yoxdur.')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="ledger-table">
               <thead>
                 <tr>
-                  <th className="ledger-th">Tarix</th>
-                  <th className="ledger-th">Növ</th>
-                  <th className="ledger-th text-right">Say</th>
-                  <th className="ledger-th">Qeyd</th>
+                  <th className="ledger-th">{t('Tarix')}</th>
+                  <th className="ledger-th">{t('Növ')}</th>
+                  <th className="ledger-th text-right">{t('Say')}</th>
+                  <th className="ledger-th">{t('Qeyd')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -380,11 +381,11 @@ export default function ProductDetail() {
       <Modal
         open={action === 'edit'}
         onClose={closeModal}
-        title="Məhsulu düzəlt"
+        title={t('Məhsulu düzəlt')}
         footer={
           <>
-            <Button variant="secondary" onClick={closeModal}>Ləğv et</Button>
-            <Button type="submit" form="product-edit-form" loading={busy}>Saxla</Button>
+            <Button variant="secondary" onClick={closeModal}>{t('Ləğv et')}</Button>
+            <Button type="submit" form="product-edit-form" loading={busy}>{t('Saxla')}</Button>
           </>
         }
       >
@@ -396,15 +397,15 @@ export default function ProductDetail() {
             run(() => updateProduct(p.id, {
               name: name.trim(), code: code.trim(), sell_price: parseFloat(sellPrice) || 0,
               low_stock_threshold: parseInt(threshold) || 0,
-            }), 'Dəyişikliklər saxlanıldı.')
+            }), t('Dəyişikliklər saxlanıldı.'))
           }}
         >
-          <Field label="Adı"><input className="input" value={name} onChange={e => setName(e.target.value)} required /></Field>
-          <Field label="Kodu"><input className="input-mono" value={code} onChange={e => setCode(e.target.value)} /></Field>
-          <Field label="Satış qiyməti (₼)" hint="Yeni sifarişlərə tətbiq olunur. Açıq sifarişlərdəki qiymət dəyişmir.">
+          <Field label={t('Adı')}><input className="input" value={name} onChange={e => setName(e.target.value)} required /></Field>
+          <Field label={t('Kodu')}><input className="input-mono" value={code} onChange={e => setCode(e.target.value)} /></Field>
+          <Field label={t('Satış qiyməti (₼)')} hint={t('Yeni sifarişlərə tətbiq olunur. Açıq sifarişlərdəki qiymət dəyişmir.')}>
             <input className="input-mono" type="number" step="0.01" min="0" value={sellPrice} onChange={e => setSellPrice(e.target.value)} required />
           </Field>
-          <Field label={'"Az qalıb" həddi'} hint="Stok bu saydan az olanda xəbərdarlıq göstərilir.">
+          <Field label={t('"Az qalıb" həddi')} hint={t('Stok bu saydan az olanda xəbərdarlıq göstərilir.')}>
             <input className="input-mono" type="number" min="0" value={threshold} onChange={e => setThreshold(e.target.value)} />
           </Field>
           {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-3 py-2">{error}</p>}
@@ -415,23 +416,23 @@ export default function ProductDetail() {
       <Modal
         open={action === 'writeoff'}
         onClose={closeModal}
-        title="Silinmə / itki"
+        title={t('Silinmə / itki')}
         subtitle={p.name}
         footer={
           <>
-            <Button variant="secondary" onClick={closeModal}>Ləğv et</Button>
-            <Button type="submit" form="product-writeoff-form" variant="danger" loading={busy}>Sil</Button>
+            <Button variant="secondary" onClick={closeModal}>{t('Ləğv et')}</Button>
+            <Button type="submit" form="product-writeoff-form" variant="danger" loading={busy}>{t('Sil')}</Button>
           </>
         }
       >
         <form
           id="product-writeoff-form"
           className="flex flex-col gap-4 pb-2"
-          onSubmit={e => { e.preventDefault(); run(() => writeOffProduct(p.id, parseInt(qty) || 0, note), 'Silinmə qeydə alındı.') }}
+          onSubmit={e => { e.preventDefault(); run(() => writeOffProduct(p.id, parseInt(qty) || 0, note), t('Silinmə qeydə alındı.')) }}
         >
-          <p className="text-body text-text-2">Xarab olan, itən və ya servisin öz ehtiyacına işlədilən mal. Maya dəyəri hesabata "Anbar itkisi" kimi düşür.</p>
-          <Field label="Miqdar"><input className="input-mono" type="number" min="1" max={p.stock_quantity} value={qty} onChange={e => setQty(e.target.value)} required autoFocus /></Field>
-          <Field label="Səbəb"><input className="input" value={note} onChange={e => setNote(e.target.value)} placeholder="Məs. Qutusu sınıb" /></Field>
+          <p className="text-body text-text-2">{t('Xarab olan, itən və ya servisin öz ehtiyacına işlədilən mal. Maya dəyəri hesabata "Anbar itkisi" kimi düşür.')}</p>
+          <Field label={t('Miqdar')}><input className="input-mono" type="number" min="1" max={p.stock_quantity} value={qty} onChange={e => setQty(e.target.value)} required autoFocus /></Field>
+          <Field label={t('Səbəb')}><input className="input" value={note} onChange={e => setNote(e.target.value)} placeholder={t('Məs. Qutusu sınıb')} /></Field>
           {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-3 py-2">{error}</p>}
         </form>
       </Modal>
@@ -440,25 +441,25 @@ export default function ProductDetail() {
       <Modal
         open={action === 'count'}
         onClose={closeModal}
-        title="Sayım"
+        title={t('Sayım')}
         subtitle={p.name}
         footer={
           <>
-            <Button variant="secondary" onClick={closeModal}>Ləğv et</Button>
-            <Button type="submit" form="product-count-form" loading={busy}>Təsdiqlə</Button>
+            <Button variant="secondary" onClick={closeModal}>{t('Ləğv et')}</Button>
+            <Button type="submit" form="product-count-form" loading={busy}>{t('Təsdiqlə')}</Button>
           </>
         }
       >
         <form
           id="product-count-form"
           className="flex flex-col gap-4 pb-2"
-          onSubmit={e => { e.preventDefault(); run(() => countProduct(p.id, parseInt(qty), note), 'Sayım nəticəsi qeydə alındı.') }}
+          onSubmit={e => { e.preventDefault(); run(() => countProduct(p.id, parseInt(qty), note), t('Sayım nəticəsi qeydə alındı.')) }}
         >
-          <p className="text-body text-text-2">Rəfdə real saydığınız miqdarı yazın. Fərq avtomatik "Sayım düzəlişi" kimi qeydə alınır.</p>
-          <Field label={`Rəfdəki real say (sistemdə: ${p.stock_quantity})`}>
+          <p className="text-body text-text-2">{t('Rəfdə real saydığınız miqdarı yazın. Fərq avtomatik "Sayım düzəlişi" kimi qeydə alınır.')}</p>
+          <Field label={t('Rəfdəki real say (sistemdə: {qty})', { qty: p.stock_quantity })}>
             <input className="input-mono" type="number" min="0" value={qty} onChange={e => setQty(e.target.value)} required autoFocus />
           </Field>
-          <Field label="Qeyd"><input className="input" value={note} onChange={e => setNote(e.target.value)} placeholder="Məs. Aylıq sayım" /></Field>
+          <Field label={t('Qeyd')}><input className="input" value={note} onChange={e => setNote(e.target.value)} placeholder={t('Məs. Aylıq sayım')} /></Field>
           {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-3 py-2">{error}</p>}
         </form>
       </Modal>
@@ -467,47 +468,47 @@ export default function ProductDetail() {
       <Modal
         open={action === 'return'}
         onClose={closeModal}
-        title="Tədarükçüyə qaytar"
+        title={t('Tədarükçüyə qaytar')}
         subtitle={p.name}
         footer={
           <>
-            <Button variant="secondary" onClick={closeModal}>Ləğv et</Button>
+            <Button variant="secondary" onClick={closeModal}>{t('Ləğv et')}</Button>
             <Button
               variant="danger"
               loading={busy}
               disabled={!returnLine || returnQtyNum < 1 || returnQtyNum > (returnLine?.remaining_quantity ?? 0)}
               onClick={() => returnLine && run(
                 () => returnPurchaseLine(returnLine.line_id, returnQtyNum),
-                returnLine.on_credit ? 'Qaytarıldı — borc azaldıldı.' : 'Qaytarıldı — pul kassaya qayıtdı.',
+                returnLine.on_credit ? t('Qaytarıldı — borc azaldıldı.') : t('Qaytarıldı — pul kassaya qayıtdı.'),
               )}
             >
-              Tədarükçüyə qaytar
+              {t('Tədarükçüyə qaytar')}
             </Button>
           </>
         }
       >
         <div className="flex flex-col gap-4 pb-2">
-          <Field label="Hansı alışdan?">
+          <Field label={t('Hansı alışdan?')}>
             <select className="input" value={returnLineId} onChange={e => { setReturnLineId(e.target.value); setQty('1') }}>
               {returnable.map(pl => (
                 <option key={pl.line_id} value={pl.line_id}>
-                  {formatDate(pl.date)} · {pl.store_name}{pl.invoice_no ? ` · №${pl.invoice_no}` : ''} · qalıb {pl.remaining_quantity} · {pl.on_credit ? 'Nisyə' : 'Nağd'}
+                  {formatDate(pl.date)} · {pl.store_name}{pl.invoice_no ? ` · №${pl.invoice_no}` : ''} · {t('qalıb')} {pl.remaining_quantity} · {pl.on_credit ? t('Nisyə') : t('Nağd')}
                 </option>
               ))}
             </select>
           </Field>
           {returnLine && (
             <>
-              <Field label={`Miqdar (maks. ${returnLine.remaining_quantity})`}>
+              <Field label={t('Miqdar (maks. {max})', { max: returnLine.remaining_quantity })}>
                 <input className="input-mono" type="number" min={1} max={returnLine.remaining_quantity} value={qty} onChange={e => setQty(e.target.value)} autoFocus />
               </Field>
               <div className="rounded bg-surface-2 px-4 py-3 text-body text-text-2 flex flex-col gap-1.5">
-                <p className="font-semibold text-ink">Nə olacaq?</p>
-                <p>Stokdan {returnQtyNum > 0 ? returnQtyNum : '—'} {p.unit} çıxır{returnQtyNum > 0 ? ` (təxminən ${formatCurrency(returnQtyNum * Number(returnLine.unit_cost))})` : ''}.</p>
+                <p className="font-semibold text-ink">{t('Nə olacaq?')}</p>
+                <p>{t('Stokdan {qty} {unit} çıxır', { qty: returnQtyNum > 0 ? returnQtyNum : '—', unit: t(p.unit) })}{returnQtyNum > 0 ? ` (${t('təxminən')} ${formatCurrency(returnQtyNum * Number(returnLine.unit_cost))})` : ''}.</p>
                 {returnLine.on_credit
-                  ? <p>Qaytarılan məbləğ əvvəlcə {returnLine.store_name} qarşısındakı borcdan çıxılır (borc azalır). Borc qalmayıbsa, artıq ödənmiş hissə kassaya geri qayıdır.</p>
-                  : <p>Alış nağd olub — qaytarılan malın pulu kassaya geri qayıdır.</p>}
-                <p className="text-small text-text-3">Hesabata (mənfəətə) təsir etmir.</p>
+                  ? <p>{t('Qaytarılan məbləğ əvvəlcə {store} qarşısındakı borcdan çıxılır (borc azalır). Borc qalmayıbsa, artıq ödənmiş hissə kassaya geri qayıdır.', { store: returnLine.store_name })}</p>
+                  : <p>{t('Alış nağd olub — qaytarılan malın pulu kassaya geri qayıdır.')}</p>}
+                <p className="text-small text-text-3">{t('Hesabata (mənfəətə) təsir etmir.')}</p>
               </div>
             </>
           )}
@@ -519,12 +520,12 @@ export default function ProductDetail() {
       <Modal
         open={action === 'merge'}
         onClose={closeModal}
-        title="Məhsulu birləşdir"
+        title={t('Məhsulu birləşdir')}
         subtitle={p.name}
         footer={
           <>
-            <Button variant="secondary" onClick={closeModal}>Ləğv et</Button>
-            <Button type="submit" form="product-merge-form" loading={busy} disabled={!mergeTarget}>Birləşdir</Button>
+            <Button variant="secondary" onClick={closeModal}>{t('Ləğv et')}</Button>
+            <Button type="submit" form="product-merge-form" loading={busy} disabled={!mergeTarget}>{t('Birləşdir')}</Button>
           </>
         }
       >
@@ -533,19 +534,19 @@ export default function ProductDetail() {
           className="flex flex-col gap-4 pb-2"
           onSubmit={e => {
             e.preventDefault()
-            if (!mergeTarget) { setError('Siyahıdan məhsul seçin.'); return }
+            if (!mergeTarget) { setError(t('Siyahıdan məhsul seçin.')); return }
             run(async () => {
               await mergeProduct(p.id, mergeTarget.id)
               navigate(`/business/warehouse/products/${mergeTarget.id}`, { replace: true })
-            }, 'Məhsullar birləşdirildi.')
+            }, t('Məhsullar birləşdirildi.'))
           }}
         >
           <p className="text-body text-text-2">
-            Bu məhsul eyni hissənin təkrarıdırsa, onu əsas məhsula birləşdirin: bütün sifarişlər, alışlar və stok ({p.stock_quantity}) ora köçürülür, bu qeyd silinir.
+            {t('Bu məhsul eyni hissənin təkrarıdırsa, onu əsas məhsula birləşdirin: bütün sifarişlər, alışlar və stok ({qty}) ora köçürülür, bu qeyd silinir.', { qty: p.stock_quantity })}
           </p>
-          <Field label="Hansı məhsula birləşdirilsin?">
-            <ComboboxInput value={mergeName} onChange={setMergeName} options={catalog.map(x => x.name)} placeholder="Məhsulun adını yazın" />
-            {mergeTarget && <p className="text-small text-text-3 mt-1.5">Stok: {mergeTarget.stock_quantity} {mergeTarget.unit} · satış {formatCurrency(mergeTarget.sell_price)}{mergeTarget.code ? ` · ${mergeTarget.code}` : ''}</p>}
+          <Field label={t('Hansı məhsula birləşdirilsin?')}>
+            <ComboboxInput value={mergeName} onChange={setMergeName} options={catalog.map(x => x.name)} placeholder={t('Məhsulun adını yazın')} />
+            {mergeTarget && <p className="text-small text-text-3 mt-1.5">{t('Stok')}: {mergeTarget.stock_quantity} {t(mergeTarget.unit)} · {t('satış')} {formatCurrency(mergeTarget.sell_price)}{mergeTarget.code ? ` · ${mergeTarget.code}` : ''}</p>}
           </Field>
           {error && <p className="text-body text-danger-strong bg-danger-subtle rounded px-3 py-2">{error}</p>}
         </form>

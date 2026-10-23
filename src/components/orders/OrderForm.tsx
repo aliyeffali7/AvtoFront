@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { Order, OrderImage, Mechanic, OrderService, Product, Customer, Store, ServiceTemplate } from '@/types'
 import { createOrder, updateOrder, uploadOrderImage, deleteOrderImage, purchaseProductForOrder, getServiceTemplates } from '@/services/orders.service'
@@ -211,7 +212,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
     const combined = [...imageFiles, ...picked].slice(0, Math.max(0, 3 - existingImages.length))
     const valid = combined.filter(f => f.size <= MAX)
     const tooLarge = combined.filter(f => f.size > MAX)
-    setError(tooLarge.length ? `${tooLarge.length} fayl 5 MB limitini aşır və əlavə edilmədi.` : '')
+    setError(tooLarge.length ? t('{n} fayl 5 MB limitini aşır və əlavə edilmədi.', { n: tooLarge.length }) : '')
     setImageFiles(valid)
     setImagePreviews(valid.map(f => URL.createObjectURL(f)))
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -338,7 +339,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
     const toBuy = newProducts.filter(p => p.name.trim())
     const noStore = toBuy.find(p => !p.supplierName.trim())
     if (noStore) {
-      setError(`"${noStore.name.trim()}" hansı mağazadan alınıb? Mağazanı yazın.`)
+      setError(t('"{name}" hansı mağazadan alınıb? Mağazanı yazın.', { name: noStore.name.trim() }))
       setLoading(false)
       return
     }
@@ -428,26 +429,26 @@ export default function OrderForm({ order, onDone, onCancel }: {
 
   return (
     <form onSubmit={handleFormSubmit} className="flex flex-col gap-4 max-w-3xl w-full mx-auto">
-      <h1 className="page-title">{isEdit ? 'Sifarişi düzəlt' : 'Yeni sifariş'}</h1>
+      <h1 className="page-title">{isEdit ? t('Sifarişi düzəlt') : t('Yeni sifariş')}</h1>
 
       {draftRestored && (
         <div className="flex items-center justify-between gap-2 bg-surface-2 border border-border rounded-lg px-4 py-3 text-small">
-          <span className="text-text-3">Yarımçıq qalmış qaralama bərpa edildi.</span>
-          <button type="button" onClick={discardDraft} className="font-semibold text-danger hover:underline shrink-0">Təmizlə</button>
+          <span className="text-text-3">{t('Yarımçıq qalmış qaralama bərpa edildi.')}</span>
+          <button type="button" onClick={discardDraft} className="font-semibold text-danger hover:underline shrink-0">{t('Təmizlə')}</button>
         </div>
       )}
 
       {/* Customer */}
       <section className="card p-5">
-        <h2 className="section-label mb-3">Müştəri</h2>
+        <h2 className="section-label mb-3">{t('Müştəri')}</h2>
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1 relative">
-            <label className="label" htmlFor="order-customer-search">Axtar</label>
+            <label className="label" htmlFor="order-customer-search">{t('Axtar')}</label>
             <input
               id="order-customer-search"
               value={customerSearch}
               onChange={e => { setCustomerSearch(autoFormatSearch(e.target.value)); setSelectedCustomerId(null) }}
-              placeholder="Ad, telefon və ya nişan ilə axtar..."
+              placeholder={t('Ad, telefon və ya nişan ilə axtar...')}
               className="input"
               autoComplete="off"
             />
@@ -464,21 +465,21 @@ export default function OrderForm({ order, onDone, onCancel }: {
                 ))}
               </div>
             )}
-            {customerSearchLoading && <p className="text-small text-text-3">Axtarılır...</p>}
+            {customerSearchLoading && <p className="text-small text-text-3">{t('Axtarılır...')}</p>}
             {selectedCustomerId && (
-              <p className="text-small text-success-strong">✓ Müştəri seçildi — məlumatlar dolduruldu</p>
+              <p className="text-small text-success-strong">{t('✓ Müştəri seçildi — məlumatlar dolduruldu')}</p>
             )}
           </div>
           {selectedCustomerId && (
-            <button type="button" onClick={clearCustomer} className="self-start text-small text-text-3 hover:text-ink underline">Seçimi ləğv et</button>
+            <button type="button" onClick={clearCustomer} className="self-start text-small text-text-3 hover:text-ink underline">{t('Seçimi ləğv et')}</button>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="label" htmlFor="order-customer-name">Ad Soyad</label>
-              <input id="order-customer-name" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Ad Soyad" className="input" />
+              <label className="label" htmlFor="order-customer-name">{t('Ad Soyad')}</label>
+              <input id="order-customer-name" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={t('Ad Soyad')} className="input" />
             </div>
             <div>
-              <label className="label" htmlFor="order-customer-phone">Telefon</label>
+              <label className="label" htmlFor="order-customer-phone">{t('Telefon')}</label>
               <input id="order-customer-phone" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} type="tel" placeholder="+994 50 000 00 00" className="input" />
             </div>
           </div>
@@ -487,44 +488,44 @@ export default function OrderForm({ order, onDone, onCancel }: {
 
       {/* Car */}
       <section className="card p-5">
-        <h2 className="section-label mb-3">Avtomobil</h2>
+        <h2 className="section-label mb-3">{t('Avtomobil')}</h2>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="label">Nişan</label>
+            <label className="label">{t('Nişan')}</label>
             <PlateInput value={plate} onChange={setPlate} className="input-mono tracking-wider" />
           </div>
           <CarBrandModelInputs brand={brand} model={model} onBrandChange={setBrand} onModelChange={setModel} />
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="label" htmlFor="order-year">İl</label>
-              <input id="order-year" value={carYear} onChange={e => setCarYear(e.target.value)} placeholder="İl" maxLength={4} className="input" />
+              <label className="label" htmlFor="order-year">{t('İl')}</label>
+              <input id="order-year" value={carYear} onChange={e => setCarYear(e.target.value)} placeholder={t('İl')} maxLength={4} className="input" />
             </div>
             <div className="col-span-2">
-              <label className="label" htmlFor="order-vin">VIN kod</label>
-              <input id="order-vin" value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder="VIN kod" maxLength={17} className="input-mono" />
+              <label className="label" htmlFor="order-vin">{t('VIN kod')}</label>
+              <input id="order-vin" value={vinCode} onChange={e => setVinCode(e.target.value)} placeholder={t('VIN kod')} maxLength={17} className="input-mono" />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="label" htmlFor="order-mileage">Yürüş</label>
+              <label className="label" htmlFor="order-mileage">{t('Yürüş')}</label>
               <div className="flex">
-                <input id="order-mileage" value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder="Yürüş" className="input !rounded-r-none flex-1 min-w-0" />
+                <input id="order-mileage" value={mileage} onChange={e => setMileage(e.target.value)} type="number" min="0" placeholder={t('Yürüş')} className="input !rounded-r-none flex-1 min-w-0" />
                 <div className="flex border border-l-0 border-border-strong rounded-r overflow-hidden shrink-0">
-                  <button type="button" onClick={() => setMileageUnit('km')} className={`px-3 text-small font-semibold ${mileageUnit === 'km' ? 'bg-ink text-paper' : 'bg-surface text-text-3'}`}>km</button>
-                  <button type="button" onClick={() => setMileageUnit('mil')} className={`px-3 text-small font-semibold border-l border-border-strong ${mileageUnit === 'mil' ? 'bg-ink text-paper' : 'bg-surface text-text-3'}`}>mil</button>
+                  <button type="button" onClick={() => setMileageUnit('km')} className={`px-3 text-small font-semibold ${mileageUnit === 'km' ? 'bg-ink text-paper' : 'bg-surface text-text-3'}`}>{t('km')}</button>
+                  <button type="button" onClick={() => setMileageUnit('mil')} className={`px-3 text-small font-semibold border-l border-border-strong ${mileageUnit === 'mil' ? 'bg-ink text-paper' : 'bg-surface text-text-3'}`}>{t('mil')}</button>
                 </div>
               </div>
             </div>
             <div>
-              <label className="label" htmlFor="order-fuel">Yanacaq növü</label>
+              <label className="label" htmlFor="order-fuel">{t('Yanacaq növü')}</label>
               <select id="order-fuel" value={fuelType} onChange={e => setFuelType(e.target.value)} className="input">
-                <option value="">Yanacaq növü — seçilməyib</option>
-                <option value="benzin">Benzin</option>
-                <option value="dizel">Dizel</option>
-                <option value="hybrid">Hibrid</option>
-                <option value="plug_in_hybrid">Plug-in Hibrid</option>
+                <option value="">{t('Yanacaq növü — seçilməyib')}</option>
+                <option value="benzin">{t('Benzin')}</option>
+                <option value="dizel">{t('Dizel')}</option>
+                <option value="hybrid">{t('Hibrid')}</option>
+                <option value="plug_in_hybrid">{t('Plug-in Hibrid')}</option>
                 <option value="lpg">LPG</option>
-                <option value="electric">Tam elektrik</option>
+                <option value="electric">{t('Tam elektrik')}</option>
               </select>
             </div>
           </div>
@@ -535,12 +536,12 @@ export default function OrderForm({ order, onDone, onCancel }: {
       <section className="card p-5">
         <div className="flex flex-col gap-3">
           <div>
-            <label className="label" htmlFor="order-description">Müştərinin müraciəti</label>
-            <textarea id="order-description" value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Müştərinin müraciəti — nədən şikayətlənir" className="input resize-none" />
+            <label className="label" htmlFor="order-description">{t('Müştərinin müraciəti')}</label>
+            <textarea id="order-description" value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder={t('Müştərinin müraciəti — nədən şikayətlənir')} className="input resize-none" />
           </div>
           <div>
-            <label className="label" htmlFor="order-diagnosis">Diaqnostika nəticəsi</label>
-            <textarea id="order-diagnosis" value={diagnosis} onChange={e => setDiagnosis(e.target.value)} rows={2} placeholder="Diaqnostika nəticəsi — nə aşkarlandı (könüllü)" className="input resize-none" />
+            <label className="label" htmlFor="order-diagnosis">{t('Diaqnostika nəticəsi')}</label>
+            <textarea id="order-diagnosis" value={diagnosis} onChange={e => setDiagnosis(e.target.value)} rows={2} placeholder={t('Diaqnostika nəticəsi — nə aşkarlandı (könüllü)')} className="input resize-none" />
           </div>
         </div>
       </section>
@@ -548,29 +549,29 @@ export default function OrderForm({ order, onDone, onCancel }: {
       {/* Services */}
       <section className="card p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="section-label">Xidmətlər</h2>
-          <button type="button" onClick={addServiceRow} className="text-small font-semibold text-ink hover:underline underline-offset-2">+ Xidmət əlavə et</button>
+          <h2 className="section-label">{t('Xidmətlər')}</h2>
+          <button type="button" onClick={addServiceRow} className="text-small font-semibold text-ink hover:underline underline-offset-2">{t('+ Xidmət əlavə et')}</button>
         </div>
         <div className="flex flex-col gap-3">
           {services.map((svc, i) => (
             <div key={i} className="flex flex-col gap-2 border border-border rounded-lg p-3 bg-paper">
               <ServiceTemplatePicker templates={templates} onPick={tpl => pickTemplate(i, tpl)} />
               <div className="flex gap-2">
-                <input value={svc.name} onChange={e => updateServiceRow(i, 'name', e.target.value)} placeholder="İş adı" aria-label="İş adı" className="input flex-1" />
-                <button type="button" onClick={() => removeServiceRow(i)} aria-label="Sil" className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
+                <input value={svc.name} onChange={e => updateServiceRow(i, 'name', e.target.value)} placeholder={t('İş adı')} aria-label={t('İş adı')} className="input flex-1" />
+                <button type="button" onClick={() => removeServiceRow(i)} aria-label={t('Sil')} className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
               </div>
               <div className="flex gap-2 flex-wrap">
-                <input value={svc.price} onChange={e => updateServiceRow(i, 'price', e.target.value)} type="number" min="0" step="0.01" placeholder="Qiymət ₼" aria-label="Qiymət" className="input-mono flex-1 min-w-[120px]" />
-                <select value={svc.mechanicId} onChange={e => updateServiceRow(i, 'mechanicId', e.target.value)} aria-label="Usta" className="input flex-1 min-w-[160px]">
-                  <option value="">— Usta yoxdur</option>
+                <input value={svc.price} onChange={e => updateServiceRow(i, 'price', e.target.value)} type="number" min="0" step="0.01" placeholder={t('Qiymət ₼')} aria-label={t('Qiymət')} className="input-mono flex-1 min-w-[120px]" />
+                <select value={svc.mechanicId} onChange={e => updateServiceRow(i, 'mechanicId', e.target.value)} aria-label={t('Usta')} className="input flex-1 min-w-[160px]">
+                  <option value="">{t('— Usta yoxdur')}</option>
                   {mechanics.map(m => <option key={m.id} value={m.id}>{m.full_name || m.id} ({m.work_percent}%)</option>)}
                 </select>
               </div>
               {(svc.mechanicId || svc.templateId) && (
                 <div className="flex items-center gap-2">
-                  <span className="label !mb-0 shrink-0">Usta payı</span>
+                  <span className="label !mb-0 shrink-0">{t('Usta payı')}</span>
                   <input value={svc.mechanicAmount} onChange={e => updateServiceRow(i, 'mechanicAmount', e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="input-mono" />
-                  {svc.templateId && <span className="text-small text-text-3">Hazır iş — sabit pay</span>}
+                  {svc.templateId && <span className="text-small text-text-3">{t('Hazır iş — sabit pay')}</span>}
                 </div>
               )}
             </div>
@@ -578,7 +579,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
         </div>
         {services.some(t => t.name && t.price) && (
           <p className="text-right text-body font-mono font-semibold text-text-1 mt-3">
-            Cəmi: {formatCurrency(servicesSum)}
+            {t('Cəmi:')} {formatCurrency(servicesSum)}
           </p>
         )}
       </section>
@@ -586,11 +587,11 @@ export default function OrderForm({ order, onDone, onCancel }: {
       {/* Products */}
       <section className="card p-5">
         <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-          <h2 className="section-label">Məhsullar</h2>
+          <h2 className="section-label">{t('Məhsullar')}</h2>
           <div className="flex gap-4 flex-wrap">
-            <button type="button" onClick={addProductRow} className="text-small font-semibold text-ink hover:underline underline-offset-2">+ Anbarda var</button>
-            <button type="button" onClick={addNewProductRow} className="text-small font-semibold text-warning-strong hover:underline underline-offset-2">+ Anbarda yoxdur</button>
-            <button type="button" onClick={addCustomerProductRow} className="text-small font-semibold text-text-3 hover:text-ink hover:underline underline-offset-2">+ Müştəri gətirib</button>
+            <button type="button" onClick={addProductRow} className="text-small font-semibold text-ink hover:underline underline-offset-2">{t('+ Anbarda var')}</button>
+            <button type="button" onClick={addNewProductRow} className="text-small font-semibold text-warning-strong hover:underline underline-offset-2">{t('+ Anbarda yoxdur')}</button>
+            <button type="button" onClick={addCustomerProductRow} className="text-small font-semibold text-text-3 hover:text-ink hover:underline underline-offset-2">{t('+ Müştəri gətirib')}</button>
           </div>
         </div>
 
@@ -599,19 +600,19 @@ export default function OrderForm({ order, onDone, onCancel }: {
             {newProducts.map((p, i) => (
               <div key={i} className="flex flex-col gap-2 bg-warning-subtle border border-warning/30 rounded-lg p-3">
                 <div className="flex gap-2">
-                  <input value={p.name} onChange={e => updateNewProductRow(i, 'name', e.target.value)} placeholder="Məhsul adı" aria-label="Məhsul adı" className="input flex-1" />
-                  <button type="button" onClick={() => removeNewProductRow(i)} aria-label="Sil" className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
+                  <input value={p.name} onChange={e => updateNewProductRow(i, 'name', e.target.value)} placeholder={t('Məhsul adı')} aria-label={t('Məhsul adı')} className="input flex-1" />
+                  <button type="button" onClick={() => removeNewProductRow(i)} aria-label={t('Sil')} className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
                 </div>
                 <div className="flex gap-2">
-                  <input value={p.purchasePrice} onChange={e => updateNewProductRow(i, 'purchasePrice', e.target.value)} type="number" min="0" step="0.01" placeholder="Alış ₼" aria-label="Alış" className="input-mono flex-1 min-w-0" />
-                  <input value={p.sellPrice} onChange={e => updateNewProductRow(i, 'sellPrice', e.target.value)} type="number" min="0" step="0.01" placeholder="Satış ₼" aria-label="Satış" className="input-mono flex-1 min-w-0" />
-                  <input value={p.qty} onChange={e => updateNewProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="Ədəd" aria-label="Ədəd" className="input-mono w-20 shrink-0" />
+                  <input value={p.purchasePrice} onChange={e => updateNewProductRow(i, 'purchasePrice', e.target.value)} type="number" min="0" step="0.01" placeholder={t('Alış ₼')} aria-label={t('Alış')} className="input-mono flex-1 min-w-0" />
+                  <input value={p.sellPrice} onChange={e => updateNewProductRow(i, 'sellPrice', e.target.value)} type="number" min="0" step="0.01" placeholder={t('Satış ₼')} aria-label={t('Satış')} className="input-mono flex-1 min-w-0" />
+                  <input value={p.qty} onChange={e => updateNewProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder={t('Ədəd')} aria-label={t('Ədəd')} className="input-mono w-20 shrink-0" />
                 </div>
-                <ComboboxInput value={p.supplierName} onChange={v => updateNewProductRow(i, 'supplierName', v)} options={stores.map(st => st.name)} placeholder="Mağaza (məcburi)" />
+                <ComboboxInput value={p.supplierName} onChange={v => updateNewProductRow(i, 'supplierName', v)} options={stores.map(st => st.name)} placeholder={t('Mağaza (məcburi)')} />
                 <label className="flex items-center gap-2 text-body text-text-1 cursor-pointer">
                   <input type="checkbox" checked={!!p.onCredit} onChange={e => updateNewProductRow(i, 'onCredit', e.target.checked)} className="w-4 h-4 accent-ink" />
-                  Nisyə alınıb
-                  <span className="text-small text-text-3">{p.onCredit ? '— kreditor borcu yaranacaq' : '— kassadan çıxacaq'}</span>
+                  {t('Nisyə alınıb')}
+                  <span className="text-small text-text-3">{p.onCredit ? t('— kreditor borcu yaranacaq') : t('— kassadan çıxacaq')}</span>
                 </label>
               </div>
             ))}
@@ -620,38 +621,38 @@ export default function OrderForm({ order, onDone, onCancel }: {
 
         {customerProducts.length > 0 && (
           <div className="flex flex-col gap-2 mb-3">
-            <p className="text-small text-text-3">Müştərinin özü gətirdiyi hissələr: qiyməti yoxdur, anbardan çıxmır, aktda "Müştəri" kimi göstərilir.</p>
+            <p className="text-small text-text-3">{t('Müştərinin özü gətirdiyi hissələr: qiyməti yoxdur, anbardan çıxmır, aktda "Müştəri" kimi göstərilir.')}</p>
             {customerProducts.map((p, i) => (
               <div key={i} className="flex gap-2">
-                <input value={p.name} onChange={e => updateCustomerProductRow(i, 'name', e.target.value)} placeholder="Hissənin adı" aria-label="Hissənin adı" className="input flex-1" />
-                <input value={p.qty} onChange={e => updateCustomerProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" aria-label="Ədəd" className="input-mono w-20 shrink-0" />
-                <button type="button" onClick={() => removeCustomerProductRow(i)} aria-label="Sil" className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
+                <input value={p.name} onChange={e => updateCustomerProductRow(i, 'name', e.target.value)} placeholder={t('Hissənin adı')} aria-label={t('Hissənin adı')} className="input flex-1" />
+                <input value={p.qty} onChange={e => updateCustomerProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" aria-label={t('Ədəd')} className="input-mono w-20 shrink-0" />
+                <button type="button" onClick={() => removeCustomerProductRow(i)} aria-label={t('Sil')} className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
               </div>
             ))}
           </div>
         )}
 
         {orderProducts.length === 0 && newProducts.length === 0 && customerProducts.length === 0 ? (
-          <p className="text-body text-text-3">Məhsul seçilməyib</p>
+          <p className="text-body text-text-3">{t('Məhsul seçilməyib')}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {orderProducts.map((p, i) => (
               <div key={i} className="flex gap-2">
                 {p.lineId != null ? (
                   <div className="input flex-1 min-w-0 flex flex-col justify-center !h-auto min-h-[44px] bg-surface-2">
-                    <span className="truncate text-text-1">{p.name || '(silinib)'}</span>
-                    <span className="text-small text-text-3 font-mono">{formatCurrency(p.sellPrice ?? 0)} / ədəd</span>
+                    <span className="truncate text-text-1">{p.name || t('(silinib)')}</span>
+                    <span className="text-small text-text-3 font-mono">{formatCurrency(p.sellPrice ?? 0)} / {t('ədəd')}</span>
                   </div>
                 ) : (
-                <select value={p.productId} onChange={e => updateProductRow(i, 'productId', e.target.value)} aria-label="Məhsul" className="input flex-1 min-w-0">
-                  <option value="">Seçin...</option>
+                <select value={p.productId} onChange={e => updateProductRow(i, 'productId', e.target.value)} aria-label={t('Məhsul')} className="input flex-1 min-w-0">
+                  <option value="">{t('Seçin...')}</option>
                   {warehouseItems.map(w => (
-                    <option key={w.id} value={w.id} disabled={w.stock_quantity === 0}>{w.name} ({w.stock_quantity} ədəd){w.stock_quantity === 0 ? ' — stok yoxdur' : ''}</option>
+                    <option key={w.id} value={w.id} disabled={w.stock_quantity === 0}>{w.name} ({t('{n} ədəd', { n: w.stock_quantity })}){w.stock_quantity === 0 ? t(' — stok yoxdur') : ''}</option>
                   ))}
                 </select>
                 )}
-                <input value={p.qty} onChange={e => updateProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" aria-label="Ədəd" className="input-mono w-20 shrink-0" />
-                <button type="button" onClick={() => removeProductRow(i)} aria-label="Sil" className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
+                <input value={p.qty} onChange={e => updateProductRow(i, 'qty', e.target.value)} type="number" min="1" placeholder="1" aria-label={t('Ədəd')} className="input-mono w-20 shrink-0" />
+                <button type="button" onClick={() => removeProductRow(i)} aria-label={t('Sil')} className="w-11 h-11 flex items-center justify-center text-text-3 hover:text-danger shrink-0">{CLOSE_ICON}</button>
               </div>
             ))}
           </div>
@@ -661,15 +662,15 @@ export default function OrderForm({ order, onDone, onCancel }: {
       {/* Images */}
       <section className="card p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="section-label">Şəkillər</h2>
+          <h2 className="section-label">{t('Şəkillər')}</h2>
           <span className="text-small text-text-3 font-mono">{existingImages.length + imageFiles.length}/3</span>
         </div>
         {existingImages.length > 0 && (
           <div className="flex gap-3 mb-3 flex-wrap">
             {existingImages.map(img => (
               <div key={img.id} className="relative w-24 h-24 rounded-lg overflow-hidden border border-border shrink-0">
-                <img src={mediaUrl(img.image)} alt="Şəkil" className="w-full h-full object-cover" />
-                <button type="button" onClick={() => removeExistingImage(img)} aria-label="Şəkli sil" className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink/80 text-paper flex items-center justify-center">
+                <img src={mediaUrl(img.image)} alt={t('Şəkil')} className="w-full h-full object-cover" />
+                <button type="button" onClick={() => removeExistingImage(img)} aria-label={t('Şəkli sil')} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink/80 text-paper flex items-center justify-center">
                   <X size={14} strokeWidth={2} />
                 </button>
               </div>
@@ -681,7 +682,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
             {imagePreviews.map((src, i) => (
               <div key={i} className="relative w-24 h-24 rounded-lg overflow-hidden border border-border shrink-0">
                 <img src={src} alt="" className="w-full h-full object-cover" />
-                <button type="button" onClick={() => removeImagePreview(i)} aria-label="Sil" className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink/80 text-paper flex items-center justify-center">
+                <button type="button" onClick={() => removeImagePreview(i)} aria-label={t('Sil')} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink/80 text-paper flex items-center justify-center">
                   <X size={14} strokeWidth={2} />
                 </button>
               </div>
@@ -692,7 +693,7 @@ export default function OrderForm({ order, onDone, onCancel }: {
           <>
             <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImagePick} />
             <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full border border-dashed border-border-strong rounded-lg py-3 text-body text-text-3 hover:border-ink hover:text-ink transition-colors">
-              + Şəkil seç (maks. 3, hər biri 5 MB)
+              {t('+ Şəkil seç (maks. 3, hər biri 5 MB)')}
             </button>
           </>
         )}
@@ -701,16 +702,16 @@ export default function OrderForm({ order, onDone, onCancel }: {
       {/* Notes */}
       <section className="card p-5 flex flex-col gap-3">
         <div>
-          <label className="label" htmlFor="order-notes">Əlavə qeydlər</label>
-          <textarea id="order-notes" value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Məs. maşına çirkli paltarla oturulmasın..." className="input resize-none" />
+          <label className="label" htmlFor="order-notes">{t('Əlavə qeydlər')}</label>
+          <textarea id="order-notes" value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder={t('Məs. maşına çirkli paltarla oturulmasın...')} className="input resize-none" />
         </div>
         <div>
-          <label className="label" htmlFor="order-recommendations">Tövsiyə olunan işlər</label>
-          <textarea id="order-recommendations" value={recommendations} onChange={e => setRecommendations(e.target.value)} rows={2} placeholder={'Hər sətir ayrıca bənd. Məs:\nNövbəti 5 000 km-də yağ səviyyəsini yoxlamaq'} className="input resize-none" />
+          <label className="label" htmlFor="order-recommendations">{t('Tövsiyə olunan işlər')}</label>
+          <textarea id="order-recommendations" value={recommendations} onChange={e => setRecommendations(e.target.value)} rows={2} placeholder={t('Hər sətir ayrıca bənd. Məs:\nNövbəti 5 000 km-də yağ səviyyəsini yoxlamaq')} className="input resize-none" />
         </div>
         <label className="flex items-center gap-2.5 cursor-pointer select-none">
           <input type="checkbox" checked={hasGuarantee} onChange={e => setHasGuarantee(e.target.checked)} className="w-4 h-4 accent-ink" />
-          <span className="text-body text-text-1">Bu sifarişə zəmanət verilib</span>
+          <span className="text-body text-text-1">{t('Bu sifarişə zəmanət verilib')}</span>
         </label>
       </section>
 
@@ -719,12 +720,12 @@ export default function OrderForm({ order, onDone, onCancel }: {
       {/* Sticky footer */}
       <div className="sticky bottom-0 -mx-4 lg:-mx-8 px-4 lg:px-8 py-3 bg-paper/95 backdrop-blur border-t border-border flex items-center justify-between gap-3 flex-wrap z-10">
         <div className="flex items-baseline gap-3">
-          <span className="section-label">Cəmi</span>
+          <span className="section-label">{t('Cəmi')}</span>
           <span className="font-mono font-semibold tabular-nums text-h3 text-text-1">{formatCurrency(formTotal)}</span>
         </div>
         <div className="flex gap-2">
-          <button type="button" onClick={handleCancel} className="btn-secondary">Ləğv et</button>
-          <button type="submit" disabled={loading} className="btn-primary">{loading ? 'Saxlanılır...' : isEdit ? 'Saxla' : 'Sifarişi yarat'}</button>
+          <button type="button" onClick={handleCancel} className="btn-secondary">{t('Ləğv et')}</button>
+          <button type="submit" disabled={loading} className="btn-primary">{loading ? t('Saxlanılır...') : isEdit ? t('Saxla') : t('Sifarişi yarat')}</button>
         </div>
       </div>
       <BoughtNowRemoveModal

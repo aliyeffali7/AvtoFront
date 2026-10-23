@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Search, Zap } from 'lucide-react'
@@ -74,11 +75,11 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
     setShowProductDropdown(false)
   }
 
-  function selectTemplate(t: ServiceTemplate) {
-    setName(t.name)
-    setPrice(String(t.price))
-    setMechanicAmount(String(t.mechanic_amount))
-    setTemplateId(t.id)
+  function selectTemplate(tpl: ServiceTemplate) {
+    setName(tpl.name)
+    setPrice(String(tpl.price))
+    setMechanicAmount(String(tpl.mechanic_amount))
+    setTemplateId(tpl.id)
     setProductSearch('')
     setShowProductDropdown(false)
   }
@@ -126,12 +127,12 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
   return (
     <Modal
       open={open}
-      title="Sürətli sifariş"
+      title={t('Sürətli sifariş')}
       onClose={handleClose}
       footer={
         <>
-          <Button type="button" variant="secondary" onClick={handleClose}>Ləğv et</Button>
-          <Button type="submit" form="quick-order-form" loading={loading}>{loading ? 'Saxlanılır...' : 'Saxla'}</Button>
+          <Button type="button" variant="secondary" onClick={handleClose}>{t('Ləğv et')}</Button>
+          <Button type="submit" form="quick-order-form" loading={loading}>{loading ? t('Saxlanılır...') : t('Saxla')}</Button>
         </>
       }
     >
@@ -142,7 +143,7 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
             value={productSearch}
             onChange={e => { setProductSearch(e.target.value); setShowProductDropdown(true) }}
             onFocus={() => setShowProductDropdown(true)}
-            placeholder="Anbarda axtar..."
+            placeholder={t('Anbarda axtar...')}
             className="input"
             autoComplete="off"
             autoFocus
@@ -150,12 +151,12 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
           {showProductDropdown && productSearch.trim() && (
             <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-surface border border-border rounded shadow-md max-h-48 overflow-y-auto">
               {filteredProducts.length === 0 ? (
-                <p className="px-3 py-2.5 text-body text-text-3">Məhsul tapılmadı</p>
+                <p className="px-3 py-2.5 text-body text-text-3">{t('Məhsul tapılmadı')}</p>
               ) : filteredProducts.map(p => (
                 <button key={p.id} type="button" onClick={() => selectProduct(p)} className="w-full px-3 py-2.5 text-left hover:bg-surface-2 border-b border-border last:border-0 flex items-center justify-between gap-2">
                   <div>
                     <p className="text-body font-medium text-text-1">{p.name}</p>
-                    <p className="text-small text-text-3">Stok: {p.stock_quantity}</p>
+                    <p className="text-small text-text-3">{t('Stok: {n}', { n: p.stock_quantity })}</p>
                   </div>
                   <span className="text-body font-mono font-semibold text-text-1 shrink-0">{formatCurrency(p.sell_price)}</span>
                 </button>
@@ -163,16 +164,16 @@ function QuickOrderModal({ open, onClose, onCreated }: { open: boolean; onClose:
             </div>
           )}
         </div>
-        <input value={name} onChange={e => setName(e.target.value)} required placeholder="Məhsul / Xidmət adı" className="input" />
-        <input value={price} onChange={e => setPrice(e.target.value)} required type="number" min="0.01" step="0.01" placeholder="Qiymət ₼" className="input-mono" />
+        <input value={name} onChange={e => setName(e.target.value)} required placeholder={t('Məhsul / Xidmət adı')} className="input" />
+        <input value={price} onChange={e => setPrice(e.target.value)} required type="number" min="0.01" step="0.01" placeholder={t('Qiymət ₼')} className="input-mono" />
         <select value={selectedMechanicId} onChange={e => setSelectedMechanicId(e.target.value)} className="input">
-          <option value="">— Usta yoxdur —</option>
+          <option value="">{t('— Usta yoxdur —')}</option>
           {mechanics.filter(m => m.is_active).map(m => (
             <option key={m.id} value={m.id}>{m.full_name || '—'}{m.work_percent > 0 ? ` (${m.work_percent}%)` : ''}</option>
           ))}
         </select>
         {(selectedMechanicId || templateId !== null) && (
-          <input value={mechanicAmount} onChange={e => setMechanicAmount(e.target.value)} type="number" min="0" step="0.01" placeholder="Usta payı ₼" className="input-mono" />
+          <input value={mechanicAmount} onChange={e => setMechanicAmount(e.target.value)} type="number" min="0" step="0.01" placeholder={t('Usta payı ₼')} className="input-mono" />
         )}
         {error && <p className="text-body text-danger bg-danger-subtle rounded px-3 py-2">{error}</p>}
       </form>
@@ -216,8 +217,8 @@ export default function OrdersClient() {
   }, [page, statusFilter, period, debouncedSearch])
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(timer)
   }, [search])
   useEffect(() => { setPage(1) }, [statusFilter, period, debouncedSearch])
   useEffect(() => { loadList(page) }, [page, statusFilter, period, debouncedSearch]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -228,12 +229,12 @@ export default function OrdersClient() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Sifarişlər"
-        subtitle={`${totalCount} sifariş${filtered ? ' (filtrlə)' : ''}`}
+        title={t('Sifarişlər')}
+        subtitle={filtered ? t('{n} sifariş (filtrlə)', { n: totalCount }) : t('{n} sifariş', { n: totalCount })}
         actions={
           <>
-            <Button variant="secondary" icon={Zap} onClick={() => setQuickOpen(true)}>Sürətli sifariş</Button>
-            <Button icon={Plus} onClick={() => navigate('/business/orders/new')}>Yeni sifariş</Button>
+            <Button variant="secondary" icon={Zap} onClick={() => setQuickOpen(true)}>{t('Sürətli sifariş')}</Button>
+            <Button icon={Plus} onClick={() => navigate('/business/orders/new')}>{t('Yeni sifariş')}</Button>
           </>
         }
       />
@@ -246,12 +247,12 @@ export default function OrdersClient() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Nişan, müştəri, marka..."
-              aria-label="Axtar"
+              placeholder={t('Nişan, müştəri, marka...')}
+              aria-label={t('Axtar')}
               className="input !pl-10"
             />
           </div>
-          <div className="flex flex-wrap gap-1 border border-border rounded p-1 bg-surface-2" role="group" aria-label="Vəziyyət">
+          <div className="flex flex-wrap gap-1 border border-border rounded p-1 bg-surface-2" role="group" aria-label={t('Vəziyyət')}>
             {([
               { key: 'all', label: 'Hamısı' },
               { key: 'pending', label: 'Gözləyir' },
@@ -267,7 +268,7 @@ export default function OrdersClient() {
                   statusFilter === f.key ? 'bg-surface text-ink border border-border' : 'text-text-3 hover:text-ink border border-transparent'
                 }`}
               >
-                {f.label}
+                {t(f.label)}
               </button>
             ))}
           </div>
@@ -277,9 +278,9 @@ export default function OrdersClient() {
 
       {loading && orders.length === 0 ? <Spinner /> : orders.length === 0 ? (
         <EmptyState
-          title="Hələ sifariş yoxdur"
-          subtitle="Yeni sifariş yaratmaq üçün “Yeni sifariş” düyməsini basın."
-          action={<Button icon={Plus} onClick={() => navigate('/business/orders/new')}>Yeni sifariş</Button>}
+          title={t('Hələ sifariş yoxdur')}
+          subtitle={t('Yeni sifariş yaratmaq üçün “Yeni sifariş” düyməsini basın.')}
+          action={<Button icon={Plus} onClick={() => navigate('/business/orders/new')}>{t('Yeni sifariş')}</Button>}
         />
       ) : (
         <div className="card overflow-hidden">
@@ -288,14 +289,14 @@ export default function OrdersClient() {
               <thead>
                 <tr>
                   <th className="ledger-th">№</th>
-                  <th className="ledger-th">Tarix</th>
-                  <th className="ledger-th">Müştəri</th>
-                  <th className="ledger-th">Avtomobil</th>
-                  <th className="ledger-th">Nişan</th>
-                  <th className="ledger-th">Usta</th>
-                  <th className="ledger-th">Vəziyyət</th>
-                  <th className="ledger-th">Ödəniş</th>
-                  <th className="ledger-th text-right">Məbləğ</th>
+                  <th className="ledger-th">{t('Tarix')}</th>
+                  <th className="ledger-th">{t('Müştəri')}</th>
+                  <th className="ledger-th">{t('Avtomobil')}</th>
+                  <th className="ledger-th">{t('Nişan')}</th>
+                  <th className="ledger-th">{t('Usta')}</th>
+                  <th className="ledger-th">{t('Vəziyyət')}</th>
+                  <th className="ledger-th">{t('Ödəniş')}</th>
+                  <th className="ledger-th text-right">{t('Məbləğ')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -339,7 +340,7 @@ export default function OrdersClient() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={8}>Bu səhifədə cəmi · {orders.length} sifariş</td>
+                  <td className="ledger-td font-semibold" colSpan={8}>{t('Bu səhifədə cəmi · {n} sifariş', { n: orders.length })}</td>
                   <td className="ledger-td text-right"><Money value={pageTotal} className="font-bold" /></td>
                 </tr>
               </tfoot>

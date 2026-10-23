@@ -1,5 +1,6 @@
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
+import { t } from '@/i18n'
 
 export type BoughtNowAction = 'cancel_purchase' | 'keep'
 
@@ -36,38 +37,38 @@ export default function BoughtNowRemoveModal({
   onClose: () => void
 }) {
   const keepText = mode === 'order'
-    ? 'Hissələr həqiqətən alınıb: sifariş ləğv olunur, hissələr anbara qayıdır. Alış və borc olduğu kimi qalır.'
+    ? t('Hissələr həqiqətən alınıb: sifariş ləğv olunur, hissələr anbara qayıdır. Alış və borc olduğu kimi qalır.')
     : mode === 'reduce'
-      ? 'Hissə həqiqətən alınıb: çıxarılan miqdar anbara qayıdır. Alış və borc olduğu kimi qalır.'
-      : 'Hissə həqiqətən alınıb: sifarişdən çıxır, anbara qayıdır. Alış və borc olduğu kimi qalır.'
+      ? t('Hissə həqiqətən alınıb: çıxarılan miqdar anbara qayıdır. Alış və borc olduğu kimi qalır.')
+      : t('Hissə həqiqətən alınıb: sifarişdən çıxır, anbara qayıdır. Alış və borc olduğu kimi qalır.')
   const cancelText = mode === 'order'
-    ? 'Sifariş ləğv olunur və bu hissələrin alışı da ləğv olunur: stok dəyişmir, kreditor borcu silinir, nağd ödənilibsə pul kassaya qayıdır.'
-    : 'Hissə sifarişdən çıxır və alış da ləğv olunur: stok dəyişmir, kreditor borcu silinir, nağd ödənilibsə pul kassaya qayıdır.'
+    ? t('Sifariş ləğv olunur və bu hissələrin alışı da ləğv olunur: stok dəyişmir, kreditor borcu silinir, nağd ödənilibsə pul kassaya qayıdır.')
+    : t('Hissə sifarişdən çıxır və alış da ləğv olunur: stok dəyişmir, kreditor borcu silinir, nağd ödənilibsə pul kassaya qayıdır.')
   return (
     <Modal
       open={open}
-      title={TITLES[mode]}
+      title={t(TITLES[mode])}
       onClose={onClose}
-      footer={<Button type="button" variant="ghost" onClick={onClose} disabled={busy}>Ləğv</Button>}
+      footer={<Button type="button" variant="ghost" onClick={onClose} disabled={busy}>{t('Ləğv')}</Button>}
     >
       <div className="flex flex-col gap-3 pb-2">
         <ul className="flex flex-col gap-1 text-body text-text-1">
           {parts.map((p, i) => (
             <li key={i} className="flex justify-between gap-3">
               <span className="min-w-0 truncate">{p.name}{p.supplier ? <span className="text-text-3"> · {p.supplier}</span> : null}</span>
-              <span className="font-mono tabular-nums shrink-0">{p.quantity} ədəd</span>
+              <span className="font-mono tabular-nums shrink-0">{t('{n} ədəd', { n: p.quantity })}</span>
             </li>
           ))}
         </ul>
         <div>
           <Button type="button" autoFocus loading={busy} onClick={() => onChoose('cancel_purchase')} className="w-full">
-            Alışı ləğv et (səhv yazılıb)
+            {t('Alışı ləğv et (səhv yazılıb)')}
           </Button>
           <p className="text-small text-text-3 mt-1.5">{cancelText}</p>
         </div>
         <div>
           <Button type="button" variant="secondary" disabled={busy} onClick={() => onChoose('keep')} className="w-full">
-            Anbarda saxla
+            {t('Anbarda saxla')}
           </Button>
           <p className="text-small text-text-3 mt-1.5">{keepText}</p>
         </div>

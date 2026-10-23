@@ -24,7 +24,7 @@ src/
 Business navigation (dark sidebar, accordion groups): Ana səhifə, Sifarişlər, Rezervasiyalar, Müştərilər, Ustalar, **Stok** (Məhsullar, Alışlar, Hərəkətlər, Tədarükçülər, Anbar hesabatı), **Maliyyə** (Kassa, Kreditorlar, Debitorlar, Hesabat), Tənzimləmələr. "Mağazalar" was merged into Tədarükçülər (same `stores.Store` data); `/business/shops` redirects.
 
 ## Rules
-- **All UI text in Azerbaijani**; API errors go through `mapApiError` (Azerbaijani, human-readable).
+- **UI text: Azerbaijani + Russian.** Every visible string goes through `t('<Azerbaijani text>')` from `@/i18n`. The Azerbaijani text is the key, and Russian lives in `src/i18n/ru/<area>.ts`. Same word with a different meaning: `t('Ləğv et@@action')`. Plurals use `{ one, few, many }` with `{n}`. Never call `t()` at module top level. Customer documents (PDFs, WhatsApp text, `/s/` page) use `translate(docLang(business), …)`, i.e. the business's `document_language` setting, not the interface language. The admin panel stays Azerbaijani. API errors go through `mapApiError`, which translates exact-match backend messages (`ru/backend.ts`).
 - Status = color + text (Badge), never color alone.
 - Main records (order, customer, mechanic, product, purchase, supplier) open as their own full page with a "← Geri" link — not side panels. Short actions use `ui/Modal`; quick add/edit forms use a Modal or right drawer.
 - Loading and error states on every fetch; empty states explain what to do next.

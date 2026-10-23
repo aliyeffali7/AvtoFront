@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ClipboardList, LogOut, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -25,11 +26,11 @@ export default function MechanicBottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border flex items-stretch h-[68px] z-40">
-      <Tab to="/mechanic/orders" icon={ClipboardList} label="Sifarişlər" active={pathname.startsWith('/mechanic/orders')} />
-      <Tab to="/mechanic/earnings" icon={Wallet} label="Qazancım" active={pathname.startsWith('/mechanic/earnings')} />
+      <Tab to="/mechanic/orders" icon={ClipboardList} label={t('Sifarişlər')} active={pathname.startsWith('/mechanic/orders')} />
+      <Tab to="/mechanic/earnings" icon={Wallet} label={t('Qazancım')} active={pathname.startsWith('/mechanic/earnings')} />
       <button type="button" onClick={handleLogout} className={`${TAB_BASE} text-text-3 hover:text-ink`}>
         <LogOut size={24} strokeWidth={1.75} />
-        Çıxış
+        {t('Çıxış')}
       </button>
     </nav>
   )

@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { register } from '@/services/auth.service'
 import { mapApiError } from '@/lib/utils'
+import { t } from '@/i18n'
 
 export default function RegisterForm() {
   const navigate = useNavigate()
@@ -18,7 +19,7 @@ export default function RegisterForm() {
     setError('')
 
     if (password !== confirmPassword) {
-      setError('Şifrələr uyğun gəlmir.')
+      setError(t('Şifrələr uyğun gəlmir.'))
       return
     }
 
@@ -43,9 +44,9 @@ export default function RegisterForm() {
           </svg>
         </div>
         <div>
-          <p className="text-text-1 font-semibold text-base">Hesab uğurla yaradıldı!</p>
+          <p className="text-text-1 font-semibold text-base">{t('Hesab uğurla yaradıldı!')}</p>
           <p className="text-text-3 text-sm mt-1">{successMessage}</p>
-          <p className="text-text-3 text-xs mt-2">Panelinizə yönləndirilirsiniz...</p>
+          <p className="text-text-3 text-xs mt-2">{t('Panelinizə yönləndirilirsiniz...')}</p>
         </div>
         <div className="w-6 h-6 border-2 border-success/30 border-t-success rounded-full animate-spin mt-1" />
       </div>
@@ -55,19 +56,19 @@ export default function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <label className="label mb-0">Servisin adı</label>
+        <label className="label mb-0">{t('Servisin adı')}</label>
         <input
           value={businessName}
           onChange={e => setBusinessName(e.target.value)}
           required
           autoFocus
-          placeholder="Məs. Əlinin Avtoservisi"
+          placeholder={t('Məs. Əlinin Avtoservisi')}
           className="input"
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="label mb-0">Email ünvanı</label>
+        <label className="label mb-0">{t('Email ünvanı')}</label>
         <input
           value={email}
           onChange={e => setEmail(e.target.value)}
@@ -79,30 +80,30 @@ export default function RegisterForm() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="label mb-0">Şifrə</label>
+        <label className="label mb-0">{t('Şifrə')}</label>
         <input
           value={password}
           onChange={e => setPassword(e.target.value)}
           required
           type="password"
-          placeholder="Minimum 8 simvol"
+          placeholder={t('Minimum 8 simvol')}
           minLength={8}
           className="input"
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="label mb-0">Şifrəni təsdiqlə</label>
+        <label className="label mb-0">{t('Şifrəni təsdiqlə')}</label>
         <input
           value={confirmPassword}
           onChange={e => setConfirmPassword(e.target.value)}
           required
           type="password"
-          placeholder="Şifrəni təkrar daxil edin"
+          placeholder={t('Şifrəni təkrar daxil edin')}
           className={`input ${confirmPassword && confirmPassword !== password ? 'border-danger focus:ring-danger focus:border-danger' : ''}`}
         />
         {confirmPassword && confirmPassword !== password && (
-          <p className="text-xs text-danger">Şifrələr uyğun gəlmir</p>
+          <p className="text-xs text-danger">{t('Şifrələr uyğun gəlmir')}</p>
         )}
       </div>
 
@@ -126,13 +127,13 @@ export default function RegisterForm() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
-            Qeydiyyat...
+            {t('Qeydiyyat...')}
           </>
-        ) : 'Pulsuz başla →'}
+        ) : t('Pulsuz başla →')}
       </button>
 
       <p className="text-center text-xs text-text-3">
-        Qeydiyyatdan keçməklə istifadə şərtlərini qəbul edirsiniz.
+        {t('Qeydiyyatdan keçməklə istifadə şərtlərini qəbul edirsiniz.')}
       </p>
     </form>
   )

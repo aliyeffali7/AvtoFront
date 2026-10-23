@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { ReactNode, useEffect } from 'react'
 
 /**
@@ -31,7 +32,7 @@ export default function MasterDetailShell({ list, detail, onClose }: { list: Rea
             <div className="sticky top-0 z-10 flex justify-end p-2 pointer-events-none">
               <button
                 onClick={onClose}
-                title="Bağla (Esc)"
+                title={t('Bağla (Esc)')}
                 className="pointer-events-auto w-8 h-8 rounded border border-rule bg-surface text-ink-muted hover:text-ink hover:border-ink flex items-center justify-center shrink-0"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>

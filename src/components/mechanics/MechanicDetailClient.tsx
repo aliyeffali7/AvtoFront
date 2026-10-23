@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useEffect, useCallback } from 'react'
 import Pagination from '@/components/ui/Pagination'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -85,7 +86,7 @@ export default function MechanicDetailClient() {
 
   const backBtn = (
     <div>
-      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={goBack}>Geri — Ustalar</Button>
+      <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={goBack}>{t('Geri — Ustalar')}</Button>
     </div>
   )
 
@@ -94,7 +95,7 @@ export default function MechanicDetailClient() {
     return (
       <div className="flex flex-col gap-4">
         {backBtn}
-        <EmptyState title="Usta tapılmadı" subtitle="Bu usta silinib və ya əlçatan deyil." />
+        <EmptyState title={t('Usta tapılmadı')} subtitle={t('Bu usta silinib və ya əlçatan deyil.')} />
       </div>
     )
   }
@@ -104,18 +105,18 @@ export default function MechanicDetailClient() {
 
   const earningsCard = (
     <section className="card p-5">
-      <h2 className="section-label mb-3">Dövr üzrə qazanc</h2>
+      <h2 className="section-label mb-3">{t('Dövr üzrə qazanc')}</h2>
       <PeriodFilter value={earningsPeriod} onChange={setEarningsPeriod} className="mb-4" />
       {earningsLoading || !earnings ? (
         <Spinner />
       ) : (
         <>
           <div className="mb-3">
-            <p className="section-label mb-1">Seçilmiş dövrdə qazanc</p>
+            <p className="section-label mb-1">{t('Seçilmiş dövrdə qazanc')}</p>
             <Money value={earnings.total} className="!justify-start text-[22px] leading-8 sm:text-[26px] sm:leading-9" />
           </div>
           {earnings.daily.length === 0 ? (
-            <p className="text-body text-text-3">Bu dövrdə qazanc qeydi yoxdur.</p>
+            <p className="text-body text-text-3">{t('Bu dövrdə qazanc qeydi yoxdur.')}</p>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={earnings.daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -123,7 +124,7 @@ export default function MechanicDetailClient() {
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6B6B6B' }} tickLine={false} axisLine={{ stroke: '#E0E0E0' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#6B6B6B' }} tickLine={false} axisLine={false} width={56} />
                 <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} contentStyle={{ background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: 10, fontSize: 12 }} />
-                <Bar dataKey="amount" name="Qazanc" fill={CHART_SEQUENTIAL} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="amount" name={t('Qazanc')} fill={CHART_SEQUENTIAL} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -146,13 +147,13 @@ export default function MechanicDetailClient() {
         <UiStatusBadge status={mechanic.is_active ? 'Aktiv' : 'Deaktiv'} tone={mechanic.is_active ? 'success' : 'danger'} icon={mechanic.is_active ? UserCheck : UserX} />
         <div className="flex flex-wrap items-center gap-2">
           {mechanic.phone && (
-            <a href={`tel:${mechanic.phone}`} className="btn-secondary"><Phone size={18} strokeWidth={1.75} />Zəng et</a>
+            <a href={`tel:${mechanic.phone}`} className="btn-secondary"><Phone size={18} strokeWidth={1.75} />{t('Zəng et')}</a>
           )}
-          <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>Düzəlt</Button>
+          <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>{t('Düzəlt')}</Button>
           {mechanic.is_active ? (
-            <Button variant="secondary" icon={UserX} loading={toggling} onClick={() => setConfirmToggle(true)}>Deaktiv et</Button>
+            <Button variant="secondary" icon={UserX} loading={toggling} onClick={() => setConfirmToggle(true)}>{t('Deaktiv et')}</Button>
           ) : (
-            <Button variant="secondary" icon={UserCheck} loading={toggling} onClick={() => setConfirmToggle(true)}>Aktiv et</Button>
+            <Button variant="secondary" icon={UserCheck} loading={toggling} onClick={() => setConfirmToggle(true)}>{t('Aktiv et')}</Button>
           )}
         </div>
       </div>
@@ -161,23 +162,23 @@ export default function MechanicDetailClient() {
 
       {/* Orders */}
       <section className="card overflow-hidden">
-        <h2 className="section-label px-5 pt-5 pb-3">Təyin edilmiş sifarişlər ({orders.length})</h2>
+        <h2 className="section-label px-5 pt-5 pb-3">{t('Təyin edilmiş sifarişlər')} ({orders.length})</h2>
         {ordersLoading ? (
           <div className="pb-5"><Spinner /></div>
         ) : orders.length === 0 ? (
-          <p className="px-5 pb-5 text-body text-text-3">Bu ustaya hələ sifariş təyin edilməyib.</p>
+          <p className="px-5 pb-5 text-body text-text-3">{t('Bu ustaya hələ sifariş təyin edilməyib.')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="ledger-table">
               <thead>
                 <tr>
                   <th className="ledger-th">№</th>
-                  <th className="ledger-th">Tarix</th>
-                  <th className="ledger-th">Avtomobil</th>
-                  <th className="ledger-th">Nişan</th>
-                  <th className="ledger-th">Status</th>
-                  <th className="ledger-th">Ödəniş</th>
-                  <th className="ledger-th text-right">Məbləğ</th>
+                  <th className="ledger-th">{t('Tarix')}</th>
+                  <th className="ledger-th">{t('Avtomobil')}</th>
+                  <th className="ledger-th">{t('Nişan')}</th>
+                  <th className="ledger-th">{t('Status')}</th>
+                  <th className="ledger-th">{t('Ödəniş')}</th>
+                  <th className="ledger-th text-right">{t('Məbləğ')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -200,7 +201,7 @@ export default function MechanicDetailClient() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={6}>Cəmi · {orders.length} sifariş</td>
+                  <td className="ledger-td font-semibold" colSpan={6}>{t('Cəmi')} · {t('{n} sifariş', { n: orders.length })}</td>
                   <td className="ledger-td text-right"><Money value={ordersTotal} className="font-bold" /></td>
                 </tr>
               </tfoot>
@@ -224,11 +225,11 @@ export default function MechanicDetailClient() {
 
       <ConfirmDialog
         open={confirmToggle}
-        title={mechanic.is_active ? 'Ustanı deaktiv et' : 'Ustanı aktiv et'}
+        title={mechanic.is_active ? t('Ustanı deaktiv et') : t('Ustanı aktiv et')}
         message={mechanic.is_active
-          ? `${mechanic.full_name ?? 'Bu usta'} deaktiv edilsin? Ona yeni sifariş təyin edilə bilməyəcək.`
-          : `${mechanic.full_name ?? 'Bu usta'} yenidən aktiv edilsin?`}
-        confirmLabel={mechanic.is_active ? 'Deaktiv et' : 'Aktiv et'}
+          ? t('{name} deaktiv edilsin? Ona yeni sifariş təyin edilə bilməyəcək.', { name: mechanic.full_name ?? t('Bu usta') })
+          : t('{name} yenidən aktiv edilsin?', { name: mechanic.full_name ?? t('Bu usta') })}
+        confirmLabel={mechanic.is_active ? t('Deaktiv et') : t('Aktiv et')}
         onConfirm={toggleActive}
         onCancel={() => setConfirmToggle(false)}
       />

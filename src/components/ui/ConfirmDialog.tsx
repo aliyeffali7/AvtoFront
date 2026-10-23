@@ -1,9 +1,10 @@
+import { t } from '@/i18n'
 export default function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = 'Bəli',
-  cancelLabel = 'Ləğv et',
+  confirmLabel,
+  cancelLabel,
   danger = false,
   onConfirm,
   onCancel,
@@ -39,10 +40,10 @@ export default function ConfirmDialog({
         </div>
         <div className="px-6 pb-6 flex gap-3">
           <button onClick={onCancel} className="flex-1 btn-secondary">
-            {cancelLabel}
+            {cancelLabel ?? t('Ləğv et')}
           </button>
           <button onClick={onConfirm} className={`flex-1 ${danger ? 'btn-danger' : 'btn-primary'}`}>
-            {confirmLabel}
+            {confirmLabel ?? t('Bəli')}
           </button>
         </div>
       </div>

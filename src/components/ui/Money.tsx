@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { formatCurrency } from '@/lib/utils'
 
 export type MoneyMeaning = 'neutral' | 'income' | 'expense' | 'receivable' | 'payable' | 'profit'
@@ -37,7 +38,7 @@ export default function Money({
   const label = word ?? m.word
   return (
     <span className={`inline-flex items-baseline justify-end gap-2 ${className}`}>
-      {label && showWord && <span className="font-sans text-label uppercase text-text-3">{label}</span>}
+      {label && showWord && <span className="font-sans text-label uppercase text-text-3">{t(label)}</span>}
       <span className={`font-mono font-semibold tabular-nums whitespace-nowrap ${color}`}>
         {prefix}
         {formatCurrency(Math.abs(n))}

@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { AlertCircle, AlertTriangle, CheckCircle2, Circle, CircleDot, Clock, PackageCheck, PackageX, Wrench } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -39,7 +40,7 @@ export default function StatusBadge({
   return (
     <span className={`badge ${TONE_CLASS[tone ?? def?.tone ?? 'info']} ${className}`}>
       <Icon size={16} strokeWidth={1.75} className="shrink-0" />
-      {status}
+      {t(status)}
     </span>
   )
 }

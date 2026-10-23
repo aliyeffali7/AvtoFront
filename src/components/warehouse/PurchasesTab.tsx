@@ -15,6 +15,7 @@ import Segmented from '@/components/ui/Segmented'
 import Spinner from '@/components/ui/Spinner'
 import { Period, makePeriod, periodLabel as describePeriod, periodRange } from '@/lib/period'
 import PurchaseForm from './PurchaseForm'
+import { t } from '@/i18n'
 
 export const SOURCE_LABEL: Record<Purchase['source'], string> = {
   manual: 'Əl ilə',
@@ -71,9 +72,9 @@ export default function PurchasesTab() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Stok · Alışlar"
-        subtitle={`${totalCount} alış`}
-        actions={<Button icon={Plus} onClick={startCreate}>Yeni alış</Button>}
+        title={t('Stok · Alışlar')}
+        subtitle={t('{n} alış', { n: totalCount })}
+        actions={<Button icon={Plus} onClick={startCreate}>{t('Yeni alış')}</Button>}
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -82,31 +83,31 @@ export default function PurchasesTab() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Mağaza, məhsul və ya qaimə № ..."
-            aria-label="Axtar"
+            placeholder={t('Mağaza, məhsul və ya qaimə № ...')}
+            aria-label={t('Axtar')}
             className="input !pl-10"
           />
         </div>
         <PeriodFilter value={period} onChange={setPeriod} withAll />
         <Segmented
-          label="Ödəniş"
+          label={t('Ödəniş')}
           value={credit}
           onChange={setCredit}
           options={[
-            { key: 'all', label: 'Hamısı' },
-            { key: 'true', label: 'Nisyə' },
-            { key: 'false', label: 'Nağd' },
+            { key: 'all', label: t('Hamısı') },
+            { key: 'true', label: t('Nisyə') },
+            { key: 'false', label: t('Nağd') },
           ]}
         />
       </div>
 
       {loading && purchases.length === 0 ? <Spinner /> : purchases.length === 0 ? (
         <EmptyState
-          title="Alış yoxdur"
+          title={t('Alış yoxdur')}
           subtitle={period.key === 'all' && !search && credit === 'all'
-            ? 'Mağazadan mal gələndə "Yeni alış" düyməsini basın.'
-            : 'Seçilmiş filtr üzrə alış tapılmadı. Dövrü və ya filtri dəyişin.'}
-          action={<Button icon={Plus} onClick={startCreate}>Yeni alış</Button>}
+            ? t('Mağazadan mal gələndə "Yeni alış" düyməsini basın.')
+            : t('Seçilmiş filtr üzrə alış tapılmadı. Dövrü və ya filtri dəyişin.')}
+          action={<Button icon={Plus} onClick={startCreate}>{t('Yeni alış')}</Button>}
         />
       ) : (
         <div className="card overflow-hidden">
@@ -114,13 +115,13 @@ export default function PurchasesTab() {
             <table className="ledger-table min-w-[820px]">
               <thead>
                 <tr>
-                  <th className="ledger-th">Qaimə №</th>
-                  <th className="ledger-th">Tarix</th>
-                  <th className="ledger-th">Tədarükçü</th>
-                  <th className="ledger-th">Ödəniş</th>
-                  <th className="ledger-th">Mənbə</th>
-                  <th className="ledger-th text-right">Məhsul</th>
-                  <th className="ledger-th text-right">Məbləğ</th>
+                  <th className="ledger-th">{t('Qaimə №')}</th>
+                  <th className="ledger-th">{t('Tarix')}</th>
+                  <th className="ledger-th">{t('Tədarükçü')}</th>
+                  <th className="ledger-th">{t('Ödəniş')}</th>
+                  <th className="ledger-th">{t('Mənbə')}</th>
+                  <th className="ledger-th text-right">{t('Məhsul')}</th>
+                  <th className="ledger-th text-right">{t('Məbləğ')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -130,16 +131,16 @@ export default function PurchasesTab() {
                     onClick={() => navigate(`/business/warehouse/purchases/${p.id}`)}
                     className={`ledger-row ${p.is_cancelled ? 'opacity-60' : ''}`}
                   >
-                    <td className="ledger-td font-mono font-semibold">{p.invoice_no || <span className="text-text-3 font-normal" title="Qaimə nömrəsi daxil edilməyib">Alış #{p.id}</span>}</td>
+                    <td className="ledger-td font-mono font-semibold">{p.invoice_no || <span className="text-text-3 font-normal" title={t('Qaimə nömrəsi daxil edilməyib')}>{t('Alış')} #{p.id}</span>}</td>
                     <td className="ledger-td font-mono text-text-2">{formatDate(p.date)}</td>
                     <td className="ledger-td whitespace-normal font-semibold">{p.store_name}</td>
                     <td className="ledger-td">
                       {p.is_cancelled
-                        ? <Badge variant="danger">Ləğv edilib</Badge>
-                        : <Badge variant={p.on_credit ? 'warning' : 'success'}>{p.on_credit ? 'Nisyə' : 'Nağd'}</Badge>}
+                        ? <Badge variant="danger">{t('Ləğv edilib')}</Badge>
+                        : <Badge variant={p.on_credit ? 'warning' : 'success'}>{p.on_credit ? t('Nisyə') : t('Nağd')}</Badge>}
                     </td>
                     <td className="ledger-td">
-                      <Badge variant="neutral">{SOURCE_LABEL[p.source]}</Badge>
+                      <Badge variant="neutral">{t(SOURCE_LABEL[p.source])}</Badge>
                       {p.order_number ? <span className="ml-2 font-mono text-small text-text-3">#{p.order_number}</span> : null}
                     </td>
                     <td className="ledger-td text-right font-mono tabular-nums">{p.line_count ?? 0}</td>
@@ -149,7 +150,7 @@ export default function PurchasesTab() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={6}>{period.key === 'all' ? 'Cəmi' : `${periodText} üzrə cəmi`} · {totalCount} alış</td>
+                  <td className="ledger-td font-semibold" colSpan={6}>{period.key === 'all' ? t('Cəmi') : t('{period} üzrə cəmi', { period: periodText })} · {t('{n} alış', { n: totalCount })}</td>
                   <td className="ledger-td text-right"><Money value={totalAmount} className="font-bold" /></td>
                 </tr>
               </tfoot>

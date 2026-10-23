@@ -12,6 +12,8 @@ import { Fragment, ReactNode, createContext, useCallback, useContext, useState }
  *   not follow a language switch.
  * - Variables: `t('{n} sifariş', { n: 3 })`. In Russian the entry may be a
  *   plural object `{ one, few, many }`, picked by `n`.
+ * - Same Azerbaijani word, different Russian: add a context after `@@`,
+ *   e.g. `t('Ləğv et@@action')`. The part after `@@` is never shown.
  * - Customer documents (PDF, WhatsApp text, public order page) use the
  *   business's document language: `translate(lang, key, vars)`.
  */
@@ -57,9 +59,10 @@ function fill(text: string, vars?: Vars): string {
 
 /** Translate into an explicit language (customer documents). */
 export function translate(lang: Lang, key: string, vars?: Vars): string {
-  if (lang === 'az') return fill(key, vars)
-  const entry = RU[key]
-  if (entry === undefined) return fill(key, vars)
+  const shown = key.split('@@')[0]
+  if (lang === 'az') return fill(shown, vars)
+  const entry = RU[key] ?? RU[shown]
+  if (entry === undefined) return fill(shown, vars)
   if (typeof entry === 'string') return fill(entry, vars)
   return fill(ruPlural(Number(vars?.n ?? 0), entry), vars)
 }

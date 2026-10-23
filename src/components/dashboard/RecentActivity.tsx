@@ -1,3 +1,4 @@
+import { t, localeOf } from '@/i18n'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ActivityEvent } from '@/types'
@@ -8,7 +9,7 @@ import Spinner from '@/components/ui/Spinner'
 
 /** "14:32" for today, "12.10 14:32" for other business dates. */
 function whenLabel(e: ActivityEvent): string {
-  const time = new Date(e.at).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const time = new Date(e.at).toLocaleTimeString(localeOf(), { hour: '2-digit', minute: '2-digit', hour12: false })
   if (e.date === toLocalISODate()) return time
   const [, month, day] = e.date.split('-')
   return `${day}.${month} ${time}`
@@ -30,15 +31,15 @@ export default function RecentActivity() {
   return (
     <section className="card overflow-hidden">
       <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
-        <h2 className="card-title">Son hərəkətlər</h2>
-        <Link to="/business/activity" className="text-small font-semibold text-ink hover:underline underline-offset-2">Hamısı</Link>
+        <h2 className="card-title">{t('Son hərəkətlər')}</h2>
+        <Link to="/business/activity" className="text-small font-semibold text-ink hover:underline underline-offset-2">{t('Hamısı')}</Link>
       </div>
       {failed ? (
-        <p className="text-body text-text-3 px-5 py-8 text-center">Hərəkətlər yüklənmədi. Səhifəni yeniləyin.</p>
+        <p className="text-body text-text-3 px-5 py-8 text-center">{t('Hərəkətlər yüklənmədi. Səhifəni yeniləyin.')}</p>
       ) : events === null ? (
         <Spinner />
       ) : events.length === 0 ? (
-        <p className="text-body text-text-3 px-5 py-8 text-center">Hələ hərəkət yoxdur. Sifariş və ya alış əlavə etdikdə burada görünəcək.</p>
+        <p className="text-body text-text-3 px-5 py-8 text-center">{t('Hələ hərəkət yoxdur. Sifariş və ya alış əlavə etdikdə burada görünəcək.')}</p>
       ) : (
         <ul>
           {events.map(e => <ActivityRow key={e.id} event={e} when={whenLabel(e)} />)}

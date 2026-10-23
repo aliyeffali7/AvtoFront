@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { requestPasswordReset, confirmPasswordReset, logout } from '@/services/auth.service'
 import { mapApiError } from '@/lib/utils'
+import { t } from '@/i18n'
 
 // Reuses the exact same email-OTP rule as the logged-out "Şifrəni unutmusunuz?"
 // flow (ForgotPasswordForm) — the backend endpoints don't care whether the
@@ -34,7 +35,7 @@ export default function ChangePasswordSection({ email }: { email: string }) {
     e.preventDefault()
     setError('')
     if (newPassword !== confirmPassword) {
-      setError('Şifrələr uyğun gəlmir.')
+      setError(t('Şifrələr uyğun gəlmir.'))
       return
     }
     setLoading(true)
@@ -67,11 +68,11 @@ export default function ChangePasswordSection({ email }: { email: string }) {
           </svg>
         </div>
         <div>
-          <p className="text-ink font-display font-semibold text-h3">Şifrə uğurla dəyişdirildi!</p>
-          <p className="text-text-3 text-body mt-1">Təhlükəsizlik üçün bütün sessiyalar bağlandı — yenidən daxil olun.</p>
+          <p className="text-ink font-display font-semibold text-h3">{t('Şifrə uğurla dəyişdirildi!')}</p>
+          <p className="text-text-3 text-body mt-1">{t('Təhlükəsizlik üçün bütün sessiyalar bağlandı — yenidən daxil olun.')}</p>
         </div>
         <button onClick={handleFinish} className="btn-primary w-full min-h-[52px]">
-          Daxil ol
+          {t('Daxil ol')}
         </button>
       </div>
     )
@@ -81,14 +82,14 @@ export default function ChangePasswordSection({ email }: { email: string }) {
     return (
       <form onSubmit={handleConfirm} className="card p-6 flex flex-col gap-5">
         <div>
-          <h2 className="font-display font-semibold text-h3 text-ink">Şifrəni dəyiş</h2>
+          <h2 className="font-display font-semibold text-h3 text-ink">{t('Şifrəni dəyiş')}</h2>
           <p className="text-body text-text-3 mt-1">
-            <span className="font-semibold text-ink">{email}</span> ünvanına göndərilən kodu və yeni şifrənizi daxil edin.
+            <span className="font-semibold text-ink">{email}</span> {t('ünvanına göndərilən kodu və yeni şifrənizi daxil edin.')}
           </p>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="cp_code" className="label mb-0">Təsdiq kodu</label>
+          <label htmlFor="cp_code" className="label mb-0">{t('Təsdiq kodu')}</label>
           <input
             id="cp_code"
             type="text"
@@ -103,13 +104,13 @@ export default function ChangePasswordSection({ email }: { email: string }) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="cp_new" className="label mb-0">Yeni şifrə</label>
+          <label htmlFor="cp_new" className="label mb-0">{t('Yeni şifrə')}</label>
           <input
             id="cp_new"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Minimum 8 simvol"
+            placeholder={t('Minimum 8 simvol')}
             minLength={8}
             required
             className="input"
@@ -117,13 +118,13 @@ export default function ChangePasswordSection({ email }: { email: string }) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="cp_confirm" className="label mb-0">Yeni şifrəni təsdiqlə</label>
+          <label htmlFor="cp_confirm" className="label mb-0">{t('Yeni şifrəni təsdiqlə')}</label>
           <input
             id="cp_confirm"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Şifrəni təkrar daxil edin"
+            placeholder={t('Şifrəni təkrar daxil edin')}
             required
             className="input"
           />
@@ -133,10 +134,10 @@ export default function ChangePasswordSection({ email }: { email: string }) {
 
         <div className="flex gap-3">
           <button type="submit" disabled={loading} className="btn-primary flex-1">
-            {loading ? 'Yoxlanılır...' : 'Şifrəni dəyiş'}
+            {loading ? t('Yoxlanılır...') : t('Şifrəni dəyiş')}
           </button>
           <button type="button" onClick={() => setStep('idle')} className="text-body text-text-3 hover:text-ink px-3">
-            Ləğv et
+            {t('Ləğv et')}
           </button>
         </div>
       </form>
@@ -146,9 +147,9 @@ export default function ChangePasswordSection({ email }: { email: string }) {
   return (
     <div className="card p-6 flex flex-col gap-3">
       <div>
-        <h2 className="font-display font-semibold text-h3 text-ink">Şifrəni dəyiş</h2>
+        <h2 className="font-display font-semibold text-h3 text-ink">{t('Şifrəni dəyiş')}</h2>
         <p className="text-body text-text-3 mt-1">
-          <span className="font-semibold text-ink">{email}</span> ünvanına təsdiq kodu göndəriləcək.
+          <span className="font-semibold text-ink">{email}</span> {t('ünvanına təsdiq kodu göndəriləcək.')}
         </p>
       </div>
       {error && <p className="text-small text-danger-strong bg-danger-subtle rounded px-4 py-3">{error}</p>}
@@ -157,7 +158,7 @@ export default function ChangePasswordSection({ email }: { email: string }) {
         disabled={loading}
         className="btn-secondary w-fit"
       >
-        {loading ? 'Göndərilir...' : 'Kod göndər'}
+        {loading ? t('Göndərilir...') : t('Kod göndər')}
       </button>
     </div>
   )

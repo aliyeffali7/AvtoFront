@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
@@ -97,49 +98,49 @@ export default function DashboardPage() {
   const todayStats = stats.today ?? { net: 0 }
   const weekly = shownWeek
   const isCurrentWeek = weekly.days.some(d => d.is_today)
-  const weekChart = weekly.days.map((d, i) => ({ ...d, label: WEEKDAYS[i] }))
+  const weekChart = weekly.days.map((d, i) => ({ ...d, label: t(WEEKDAYS[i]) }))
 
   const now = new Date()
   const todayLabel = formatDate(toLocalISODate(now))
-  const subtitle = `${MONTHS[now.getMonth()]} ${now.getFullYear()}${business?.name ? ` · ${business.name}` : ''}`
+  const subtitle = `${t(MONTHS[now.getMonth()])} ${now.getFullYear()}${business?.name ? ` · ${business.name}` : ''}`
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Ana səhifə"
+        title={t('Ana səhifə')}
         subtitle={subtitle}
-        actions={<Button icon={Plus} onClick={() => navigate('/business/orders/new')}>Yeni sifariş</Button>}
+        actions={<Button icon={Plus} onClick={() => navigate('/business/orders/new')}>{t('Yeni sifariş')}</Button>}
       />
 
       <InkBand
-        label={`Bu gün · ${todayLabel}`}
+        label={`${t('Bu gün')} · ${todayLabel}`}
         items={[
           {
-            label: 'Bugünkü xalis',
+            label: t('Bugünkü xalis'),
             // Sign carries the meaning (no colour): "− 75.00 ₼" with a real minus.
             value: Number(todayStats.net) < 0
               ? `\u2212 ${formatCurrency(Math.abs(Number(todayStats.net)))}`
               : formatCurrency(todayStats.net),
           },
-          { label: 'Gəlir', value: formatCurrency(todayStats.income ?? 0) },
-          { label: 'Xərc', value: formatCurrency(todayStats.expense ?? 0) },
-          { label: 'Bugünkü sifarişlər', value: String(todayOrdersCount) },
+          { label: t('Gəlir'), value: formatCurrency(todayStats.income ?? 0) },
+          { label: t('Xərc'), value: formatCurrency(todayStats.expense ?? 0) },
+          { label: t('Bugünkü sifarişlər'), value: String(todayOrdersCount) },
         ]}
       />
 
       {/* KPI row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link to="/business/orders" className="block min-w-0">
-          <KpiCard label="Aktiv sifarişlər" value={stats.active_orders_count} note="Sifarişlərə keç" className="h-full hover:bg-surface-2 transition-colors" />
+          <KpiCard label={t('Aktiv sifarişlər')} value={stats.active_orders_count} note={t('Sifarişlərə keç')} className="h-full hover:bg-surface-2 transition-colors" />
         </Link>
         <Link to="/business/finance/debitorlar" className="block min-w-0">
-          <KpiCard label="Borclu müştərilər" value={stats.debtor_customers_count} note={<>Alınacaq: <Money value={stats.debtors_remaining} showWord={false} className="text-small" /></>} className="h-full hover:bg-surface-2 transition-colors" />
+          <KpiCard label={t('Borclu müştərilər')} value={stats.debtor_customers_count} note={<>{t('Alınacaq')}: <Money value={stats.debtors_remaining} showWord={false} className="text-small" /></>} className="h-full hover:bg-surface-2 transition-colors" />
         </Link>
         <Link to="/business/warehouse" className="block min-w-0">
-          <KpiCard label="Stokdakı məhsullar" value={stats.in_stock_count} note={`${stats.low_stock_count} az qalıb · ${stats.out_of_stock_count} bitib`} className="h-full hover:bg-surface-2 transition-colors" />
+          <KpiCard label={t('Stokdakı məhsullar')} value={stats.in_stock_count} note={t('{low} az qalıb · {out} bitib', { low: stats.low_stock_count, out: stats.out_of_stock_count })} className="h-full hover:bg-surface-2 transition-colors" />
         </Link>
         <Link to="/business/finance/kassa" className="block min-w-0">
-          <KpiCard label="Kassa — son 14 gün xalis" value={kassa.net} money meaning="profit" note={`Gəlir ${formatCurrency(kassa.income)} · Xərc ${formatCurrency(kassa.expense)} · Mal alışı ${formatCurrency(kassa.goods)}`} className="h-full hover:bg-surface-2 transition-colors" />
+          <KpiCard label={t('Kassa — son 14 gün xalis')} value={kassa.net} money meaning="profit" note={t('Gəlir {income} · Xərc {expense} · Mal alışı {goods}', { income: formatCurrency(kassa.income), expense: formatCurrency(kassa.expense), goods: formatCurrency(kassa.goods) })} className="h-full hover:bg-surface-2 transition-colors" />
         </Link>
       </div>
 
@@ -149,7 +150,7 @@ export default function DashboardPage() {
             to="/business/warehouse/products?tab=out"
             className="flex-1 min-w-0 px-5 py-3 text-body font-semibold hover:opacity-90 transition-opacity"
           >
-            {stats.out_of_stock_count} məhsul stokda bitib — Bitənlərə bax →
+            {t('{n} məhsul stokda bitib — Bitənlərə bax →', { n: stats.out_of_stock_count })}
           </Link>
           <button
             type="button"
@@ -161,8 +162,8 @@ export default function DashboardPage() {
                 /* storage unavailable — dismissal lasts until reload */
               }
             }}
-            aria-label="Xəbərdarlığı bağla"
-            title="Bu gün üçün bağla"
+            aria-label={t('Xəbərdarlığı bağla')}
+            title={t('Bu gün üçün bağla')}
             className="w-10 h-10 mr-1 shrink-0 inline-flex items-center justify-center rounded hover:bg-danger/10 transition-colors"
           >
             <X size={18} strokeWidth={1.75} />
@@ -173,21 +174,21 @@ export default function DashboardPage() {
       {/* Son sifarişlər */}
       <section className="card overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="card-title">Son sifarişlər</h2>
-          <Link to="/business/orders" className="text-small font-semibold text-ink hover:underline underline-offset-2">Hamısına bax →</Link>
+          <h2 className="card-title">{t('Son sifarişlər')}</h2>
+          <Link to="/business/orders" className="text-small font-semibold text-ink hover:underline underline-offset-2">{t('Hamısına bax →')}</Link>
         </div>
         {recentOrders.length === 0 ? (
-          <p className="text-body text-text-3 px-5 py-8 text-center">Hələ sifariş yoxdur.</p>
+          <p className="text-body text-text-3 px-5 py-8 text-center">{t('Hələ sifariş yoxdur.')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="ledger-table">
               <thead>
                 <tr>
                   <th className="ledger-th">№</th>
-                  <th className="ledger-th">Müştəri</th>
-                  <th className="ledger-th">Nişan</th>
-                  <th className="ledger-th">Vəziyyət</th>
-                  <th className="ledger-th text-right">Məbləğ</th>
+                  <th className="ledger-th">{t('Müştəri')}</th>
+                  <th className="ledger-th">{t('Nişan')}</th>
+                  <th className="ledger-th">{t('Vəziyyət')}</th>
+                  <th className="ledger-th text-right">{t('Məbləğ')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -212,13 +213,13 @@ export default function DashboardPage() {
         {/* Həftəlik gəlir — 7 days, Monday to Sunday */}
         <section className="card p-5">
           <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-            <h2 className="card-title">Həftəlik gəlir</h2>
+            <h2 className="card-title">{t('Həftəlik gəlir')}</h2>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => shiftWeek(-1)}
                 disabled={weekLoading}
-                aria-label="Əvvəlki həftə"
+                aria-label={t('Əvvəlki həftə')}
                 className="w-9 h-9 rounded flex items-center justify-center border border-border-strong text-text-2 hover:bg-surface-2 disabled:opacity-40 transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -230,7 +231,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={() => shiftWeek(1)}
                 disabled={weekLoading || isCurrentWeek}
-                aria-label="Növbəti həftə"
+                aria-label={t('Növbəti həftə')}
                 className="w-9 h-9 rounded flex items-center justify-center border border-border-strong text-text-2 hover:bg-surface-2 disabled:opacity-40 transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -252,7 +253,7 @@ export default function DashboardPage() {
                     {weekly.change_percent >= 0 ? '+' : ''}{weekly.change_percent}%
                   </span>
                 )}
-                <span className="text-text-3">əvvəlki həftəyə görə</span>
+                <span className="text-text-3">{t('əvvəlki həftəyə görə')}</span>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={170}>
@@ -260,7 +261,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="label" tick={AXIS_TICK} tickLine={false} axisLine={false} />
                 <Tooltip
                   cursor={{ fill: 'transparent' }}
-                  formatter={(v: unknown) => [formatCurrency(Number(v)), 'Gəlir']}
+                  formatter={(v: unknown) => [formatCurrency(Number(v)), t('Gəlir')]}
                   labelFormatter={(l: unknown) => {
                     const day = weekChart.find(d => d.label === l)
                     return day ? formatDate(day.date) : String(l)
@@ -279,9 +280,9 @@ export default function DashboardPage() {
 
         {/* Kassa: last 14 days */}
         <section className="card p-5">
-          <h2 className="card-title mb-4">Kassa — son 14 gün</h2>
+          <h2 className="card-title mb-4">{t('Kassa — son 14 gün')}</h2>
           {!hasKassa ? (
-            <p className="text-body text-text-3">Bu dövrdə qeyd yoxdur.</p>
+            <p className="text-body text-text-3">{t('Bu dövrdə qeyd yoxdur.')}</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={dailyRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -290,9 +291,9 @@ export default function DashboardPage() {
                 <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={56} />
                 <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} contentStyle={TOOLTIP_STYLE} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="income" name="Gəlir" fill={CHART_INCOME} radius={[3, 3, 0, 0]} />
-                <Bar dataKey="expense" name="Xərc" fill={CHART_EXPENSE} radius={[3, 3, 0, 0]} />
-                <Bar dataKey="goods" name="Anbar alışı (mal)" fill={CHART_GOODS} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="income" name={t('Gəlir')} fill={CHART_INCOME} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="expense" name={t('Xərc')} fill={CHART_EXPENSE} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="goods" name={t('Anbar alışı (mal)')} fill={CHART_GOODS} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

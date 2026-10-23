@@ -7,6 +7,7 @@ import { debtReminderMessage, hasWhatsAppNumber, whatsappLink } from '@/lib/what
 import { DebtorStatus, getDebtors } from '@/services/finance.service'
 import { getManualDebts, createManualDebt, payManualDebt, deleteManualDebt } from '@/services/finance.service'
 import { recordPayment } from '@/services/orders.service'
+import { t } from '@/i18n'
 import { formatDate, formatCurrency, formatPhone } from '@/lib/utils'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
@@ -82,11 +83,11 @@ export default function DebitorlarTab() {
   async function handleOrderPay(orderId: number, debt: number) {
     const amount = parseFloat(orderPayInputs[orderId] ?? debt.toFixed(2)) || 0
     if (amount <= 0) {
-      setOrderPayErrors(prev => ({ ...prev, [orderId]: 'Məbləğ 0-dan böyük olmalıdır.' }))
+      setOrderPayErrors(prev => ({ ...prev, [orderId]: t('Məbləğ 0-dan böyük olmalıdır.') }))
       return
     }
     if (Math.round(amount * 100) > Math.round(debt * 100)) {
-      setOrderPayErrors(prev => ({ ...prev, [orderId]: `Məbləğ qalan borcu (${formatCurrency(debt)}) aşa bilməz.` }))
+      setOrderPayErrors(prev => ({ ...prev, [orderId]: t('Məbləğ qalan borcu ({amount}) aşa bilməz.', { amount: formatCurrency(debt) }) }))
       return
     }
     setOrderPayErrors(prev => ({ ...prev, [orderId]: '' }))
@@ -96,7 +97,7 @@ export default function DebitorlarTab() {
       setOrderPayInputs(prev => { const n = { ...prev }; delete n[orderId]; return n })
       load()
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Xəta baş verdi.'
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? t('Xəta baş verdi.')
       setOrderPayErrors(prev => ({ ...prev, [orderId]: msg }))
     } finally {
       setPayingOrderId(null)
@@ -106,11 +107,11 @@ export default function DebitorlarTab() {
   async function handleDebtPay(debt: ManualDebt) {
     const amount = parseFloat(debtPayInputs[debt.id] ?? debt.remaining.toFixed(2)) || 0
     if (amount <= 0) {
-      setDebtPayErrors(prev => ({ ...prev, [debt.id]: 'Məbləğ 0-dan böyük olmalıdır.' }))
+      setDebtPayErrors(prev => ({ ...prev, [debt.id]: t('Məbləğ 0-dan böyük olmalıdır.') }))
       return
     }
     if (amount > debt.remaining + 0.001) {
-      setDebtPayErrors(prev => ({ ...prev, [debt.id]: `Məbləğ qalan borcu (${formatCurrency(debt.remaining)}) aşa bilməz.` }))
+      setDebtPayErrors(prev => ({ ...prev, [debt.id]: t('Məbləğ qalan borcu ({amount}) aşa bilməz.', { amount: formatCurrency(debt.remaining) }) }))
       return
     }
     setDebtPayErrors(prev => ({ ...prev, [debt.id]: '' }))
@@ -120,7 +121,7 @@ export default function DebitorlarTab() {
       setDebtPayInputs(prev => { const n = { ...prev }; delete n[debt.id]; return n })
       load()
     } catch {
-      setDebtPayErrors(prev => ({ ...prev, [debt.id]: 'Xəta baş verdi.' }))
+      setDebtPayErrors(prev => ({ ...prev, [debt.id]: t('Xəta baş verdi.') }))
     } finally {
       setPayingDebtId(null)
     }
@@ -140,9 +141,9 @@ export default function DebitorlarTab() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     setAddError('')
-    if (!newName.trim()) { setAddError('Ad daxil edin.'); return }
+    if (!newName.trim()) { setAddError(t('Ad daxil edin.')); return }
     const amount = parseFloat(newAmount)
-    if (!amount || amount <= 0) { setAddError('Düzgün məbləğ daxil edin.'); return }
+    if (!amount || amount <= 0) { setAddError(t('Düzgün məbləğ daxil edin.')); return }
     setAdding(true)
     try {
       await createManualDebt({ name: newName.trim(), amount })
@@ -150,7 +151,7 @@ export default function DebitorlarTab() {
       setAddOpen(false)
       load()
     } catch {
-      setAddError('Xəta baş verdi.')
+      setAddError(t('Xəta baş verdi.'))
     } finally {
       setAdding(false)
     }
@@ -159,7 +160,7 @@ export default function DebitorlarTab() {
   function renderDetail(g: DebtorGroup) {
     return (
       <div className="px-5 py-5 bg-paper border-b border-border">
-        <p className="font-sans text-label uppercase text-text-3 mb-2">Sifarişlər ({g.orders.length})</p>
+        <p className="font-sans text-label uppercase text-text-3 mb-2">{t('Sifarişlər')} ({g.orders.length})</p>
         <div className="flex flex-col gap-3">
           {g.orders.map(order => (
             <div key={order.id} className={`bg-surface border border-border rounded-md px-4 py-3 ${order.remaining <= 0 ? 'opacity-60' : ''}`}>
@@ -173,7 +174,7 @@ export default function DebitorlarTab() {
                 <div className="text-right shrink-0 flex flex-col items-end">
                   <Money value={order.total} />
                   {order.paid_amount > 0 && (
-                    <span className="text-small font-mono text-success-strong">Ödənilib: {formatCurrency(order.paid_amount)}</span>
+                    <span className="text-small font-mono text-success-strong">{t('Ödənilib')}: {formatCurrency(order.paid_amount)}</span>
                   )}
                   {order.remaining > 0 && (
                     <Money value={order.remaining} meaning="receivable" className="mt-0.5" />
@@ -190,13 +191,13 @@ export default function DebitorlarTab() {
                         setOrderPayInputs(prev => ({ ...prev, [order.id]: e.target.value }))
                         setOrderPayErrors(prev => ({ ...prev, [order.id]: '' }))
                       }}
-                      aria-label="Ödəniş məbləği"
+                      aria-label={t('Ödəniş məbləği')}
                       className={`input-mono pr-8 ${orderPayErrors[order.id] ? '!border-danger' : ''}`}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-3">₼</span>
                   </div>
-                  <Button variant="secondary" onClick={() => setOrderPayInputs(prev => ({ ...prev, [order.id]: order.remaining.toFixed(2) }))}>Tam</Button>
-                  <Button loading={payingOrderId === order.id} onClick={() => handleOrderPay(order.id, order.remaining)}>Ödə</Button>
+                  <Button variant="secondary" onClick={() => setOrderPayInputs(prev => ({ ...prev, [order.id]: order.remaining.toFixed(2) }))}>{t('Tam')}</Button>
+                  <Button loading={payingOrderId === order.id} onClick={() => handleOrderPay(order.id, order.remaining)}>{t('Ödə')}</Button>
                 </div>
               )}
               {orderPayErrors[order.id] && <p className="text-small text-danger-strong mt-1.5">{orderPayErrors[order.id]}</p>}
@@ -210,41 +211,41 @@ export default function DebitorlarTab() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Maliyyə · Debitorlar"
-        subtitle="Müştərilərin ödəməli olduğu sifariş borcları və digər borclar."
+        title={t('Maliyyə · Debitorlar')}
+        subtitle={t('Müştərilərin ödəməli olduğu sifariş borcları və digər borclar.')}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <KpiCard
-          label="Ümumi debitor borcu"
+          label={t('Ümumi debitor borcu')}
           value={totalUnpaid}
           money
           meaning="receivable"
-          note={`${unpaidCount} müştəri · Alınacaq`}
+          note={`${t('{n} müştəri', { n: unpaidCount })} · ${t('Alınacaq')}`}
         />
       </div>
 
       <Segmented
-        label="Filtr"
+        label={t('Filtr')}
         value={statusFilter}
         onChange={setStatusFilter}
         options={[
-          { key: 'open', label: 'Ödənilməyib' },
-          { key: 'paid', label: 'Ödənilib', title: 'Son 90 gündə tam ödənilmiş sifarişlər' },
-          { key: 'all', label: 'Hamısı' },
+          { key: 'open', label: t('Ödənilməyib') },
+          { key: 'paid', label: t('Ödənilib'), title: t('Son 90 gündə tam ödənilmiş sifarişlər') },
+          { key: 'all', label: t('Hamısı') },
         ]}
       />
       {statusFilter !== 'open' && (
-        <p className="text-small text-text-3 -mt-2">Ödənilmiş sifarişlər üçün yalnız son 90 gün göstərilir.</p>
+        <p className="text-small text-text-3 -mt-2">{t('Ödənilmiş sifarişlər üçün yalnız son 90 gün göstərilir.')}</p>
       )}
 
       {loading && debtors.length === 0 ? (
         <Spinner />
       ) : visible.length === 0 ? (
         statusFilter === 'paid' ? (
-          <EmptyState title="Son 90 gündə ödənilmiş sifariş yoxdur" subtitle="Tam ödənilmiş tamamlanmış sifarişlər burada görünəcək." />
+          <EmptyState title={t('Son 90 gündə ödənilmiş sifariş yoxdur')} subtitle={t('Tam ödənilmiş tamamlanmış sifarişlər burada görünəcək.')} />
         ) : (
-          <EmptyState title="Heç bir debitor borcu yoxdur" subtitle="Bütün sifarişlər ödənilib." />
+          <EmptyState title={t('Heç bir debitor borcu yoxdur')} subtitle={t('Bütün sifarişlər ödənilib.')} />
         )
       ) : (
         <div className="card overflow-hidden">
@@ -253,12 +254,12 @@ export default function DebitorlarTab() {
               <thead>
                 <tr>
                   <th className="ledger-th w-8" />
-                  <th className="ledger-th">Müştəri</th>
-                  <th className="ledger-th">Telefon</th>
-                  <th className="ledger-th">Status</th>
-                  <th className="ledger-th text-right">Cəmi</th>
-                  <th className="ledger-th text-right">Ödənilib</th>
-                  <th className="ledger-th text-right">Qalıq</th>
+                  <th className="ledger-th">{t('Müştəri')}</th>
+                  <th className="ledger-th">{t('Telefon')}</th>
+                  <th className="ledger-th">{t('Status')}</th>
+                  <th className="ledger-th text-right">{t('Cəmi')}</th>
+                  <th className="ledger-th text-right">{t('Ödənilib')}</th>
+                  <th className="ledger-th text-right">{t('Qalıq')}</th>
                   <th className="ledger-th" />
                 </tr>
               </thead>
@@ -294,14 +295,14 @@ export default function DebitorlarTab() {
                                 target="_blank"
                                 rel="noreferrer"
                                 className="btn-secondary !min-h-[36px] !px-3 !text-small"
-                                title="WhatsApp xatırlatma"
+                                title={t('WhatsApp xatırlatma')}
                               >
                                 <MessageCircle size={16} strokeWidth={1.75} />
-                                <span className="hidden xl:inline">WhatsApp xatırlatma</span>
+                                <span className="hidden xl:inline">{t('WhatsApp xatırlatma')}</span>
                               </a>
                             )}
                             {g.remaining > 0 && (
-                              <Button size="sm" onClick={() => setSelectedKey(key)}>Ödə</Button>
+                              <Button size="sm" onClick={() => setSelectedKey(key)}>{t('Ödə')}</Button>
                             )}
                           </span>
                         </td>
@@ -317,7 +318,7 @@ export default function DebitorlarTab() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={4}>Cəmi · {visible.length} müştəri</td>
+                  <td className="ledger-td font-semibold" colSpan={4}>{t('Cəmi')} · {t('{n} müştəri', { n: visible.length })}</td>
                   <td className="ledger-td text-right"><Money value={visible.reduce((s, g) => s + g.total_charged, 0)} className="font-bold" /></td>
                   <td className="ledger-td text-right"><Money value={visible.reduce((s, g) => s + g.paid_amount, 0)} meaning="income" sign="none" className="font-bold" /></td>
                   <td className="ledger-td text-right"><Money value={visible.reduce((s, g) => s + g.remaining, 0)} meaning="receivable" className="font-bold" /></td>
@@ -332,21 +333,21 @@ export default function DebitorlarTab() {
       {/* Manual debts */}
       <section className="card overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-5 py-4">
-          <h2 className="section-label">Sair borclar</h2>
-          <Button variant="secondary" size="sm" icon={Plus} onClick={() => { setAddOpen(true); setAddError('') }}>Borc yarat</Button>
+          <h2 className="section-label">{t('Sair borclar')}</h2>
+          <Button variant="secondary" size="sm" icon={Plus} onClick={() => { setAddOpen(true); setAddError('') }}>{t('Borc yarat')}</Button>
         </div>
 
         {manualDebts.length === 0 ? (
-          <p className="px-5 pb-5 text-body text-text-3">Əl ilə əlavə edilmiş borc yoxdur.</p>
+          <p className="px-5 pb-5 text-body text-text-3">{t('Əl ilə əlavə edilmiş borc yoxdur.')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="ledger-table min-w-[720px]">
               <thead>
                 <tr>
-                  <th className="ledger-th">Ad</th>
-                  <th className="ledger-th">Tarix</th>
-                  <th className="ledger-th text-right">Qalıq</th>
-                  <th className="ledger-th">Ödəniş</th>
+                  <th className="ledger-th">{t('Ad')}</th>
+                  <th className="ledger-th">{t('Tarix')}</th>
+                  <th className="ledger-th text-right">{t('Qalıq')}</th>
+                  <th className="ledger-th">{t('Ödəniş')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -357,7 +358,7 @@ export default function DebitorlarTab() {
                     <td className="ledger-td text-right">
                       <div className="flex flex-col items-end">
                         <Money value={debt.remaining} meaning="receivable" />
-                        {debt.paid_amount > 0 && <span className="text-small text-text-3">Ödənilib: {formatCurrency(debt.paid_amount)}</span>}
+                        {debt.paid_amount > 0 && <span className="text-small text-text-3">{t('Ödənilib')}: {formatCurrency(debt.paid_amount)}</span>}
                       </div>
                     </td>
                     <td className="ledger-td">
@@ -371,19 +372,19 @@ export default function DebitorlarTab() {
                                 setDebtPayInputs(prev => ({ ...prev, [debt.id]: e.target.value }))
                                 setDebtPayErrors(prev => ({ ...prev, [debt.id]: '' }))
                               }}
-                              aria-label="Ödəniş məbləği"
+                              aria-label={t('Ödəniş məbləği')}
                               className={`input-mono !min-h-[36px] !py-1 !px-2 text-small w-28 pr-6 ${debtPayErrors[debt.id] ? '!border-danger' : ''}`}
                             />
                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-text-3 text-small">₼</span>
                           </div>
-                          <Button variant="secondary" size="sm" onClick={() => setDebtPayInputs(prev => ({ ...prev, [debt.id]: debt.remaining.toFixed(2) }))}>Tam</Button>
-                          <Button size="sm" loading={payingDebtId === debt.id} onClick={() => handleDebtPay(debt)}>Ödəniş qeyd et</Button>
+                          <Button variant="secondary" size="sm" onClick={() => setDebtPayInputs(prev => ({ ...prev, [debt.id]: debt.remaining.toFixed(2) }))}>{t('Tam')}</Button>
+                          <Button size="sm" loading={payingDebtId === debt.id} onClick={() => handleDebtPay(debt)}>{t('Ödəniş qeyd et')}</Button>
                           <button
                             type="button"
                             onClick={() => setConfirmDeleteDebtId(debt.id)}
                             className="w-9 h-9 inline-flex items-center justify-center rounded text-text-3 hover:text-danger hover:bg-danger-subtle transition-colors shrink-0"
-                            aria-label="Borcu sil"
-                            title="Borcu sil"
+                            aria-label={t('Borcu sil')}
+                            title={t('Borcu sil')}
                           >
                             <Trash2 size={18} strokeWidth={1.75} />
                           </button>
@@ -401,23 +402,23 @@ export default function DebitorlarTab() {
 
       <Modal
         open={addOpen}
-        title="Borc yarat"
-        subtitle="Sair borc"
+        title={t('Borc yarat')}
+        subtitle={t('Sair borc')}
         onClose={() => setAddOpen(false)}
         footer={
           <>
-            <Button type="button" variant="secondary" onClick={() => setAddOpen(false)}>Ləğv et</Button>
-            <Button type="submit" form="manual-debt-form" loading={adding}>Yarat</Button>
+            <Button type="button" variant="secondary" onClick={() => setAddOpen(false)}>{t('Ləğv et')}</Button>
+            <Button type="submit" form="manual-debt-form" loading={adding}>{t('Yarat')}</Button>
           </>
         }
       >
         <form id="manual-debt-form" onSubmit={handleAdd} className="flex flex-col gap-4 pb-2">
           <div>
-            <label className="label">Ad</label>
-            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Məs. Əli Həsənov" className="input" autoFocus />
+            <label className="label">{t('Ad')}</label>
+            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('Məs. Əli Həsənov')} className="input" autoFocus />
           </div>
           <div>
-            <label className="label">Məbləğ</label>
+            <label className="label">{t('Məbləğ')}</label>
             <div className="relative">
               <input value={newAmount} onChange={e => setNewAmount(e.target.value)} type="number" min="0.01" step="0.01" placeholder="0.00" className="input-mono pr-8" />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-3">₼</span>
@@ -429,10 +430,10 @@ export default function DebitorlarTab() {
 
       <ConfirmDialog
         open={confirmDeleteDebtId !== null}
-        title="Borc silinsin?"
-        message="Bu borc qeydi silinəcək. Bu əməliyyat geri qaytarıla bilməz."
-        confirmLabel={deletingDebtId !== null ? '...' : 'Bəli, sil'}
-        cancelLabel="Xeyr"
+        title={t('Borc silinsin?')}
+        message={t('Bu borc qeydi silinəcək. Bu əməliyyat geri qaytarıla bilməz.')}
+        confirmLabel={deletingDebtId !== null ? '...' : t('Bəli, sil')}
+        cancelLabel={t('Xeyr')}
         danger
         onConfirm={() => confirmDeleteDebtId !== null && handleDebtDelete(confirmDeleteDebtId)}
         onCancel={() => setConfirmDeleteDebtId(null)}

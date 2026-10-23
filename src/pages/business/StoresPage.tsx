@@ -12,6 +12,7 @@ import Money from '@/components/ui/Money'
 import PageHeader from '@/components/ui/PageHeader'
 import Spinner from '@/components/ui/Spinner'
 import StoreFormModal from '@/components/stores/StoreFormModal'
+import { t } from '@/i18n'
 
 const ICON_BTN = 'w-9 h-9 rounded flex items-center justify-center text-text-2 hover:bg-surface-2 transition-colors duration-[120ms]'
 
@@ -51,9 +52,9 @@ export default function StoresPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Stok · Tədarükçülər"
-        subtitle={`${stores.length} tədarükçü · mal aldığınız mağazalar: nə alınıb, nə qədər borc var`}
-        actions={<Button icon={Plus} onClick={() => setCreating(true)}>Yeni tədarükçü</Button>}
+        title={t('Stok · Tədarükçülər')}
+        subtitle={t('{n} tədarükçü · mal aldığınız mağazalar: nə alınıb, nə qədər borc var', { n: stores.length })}
+        actions={<Button icon={Plus} onClick={() => setCreating(true)}>{t('Yeni tədarükçü')}</Button>}
       />
 
       <div className="relative w-full sm:w-80">
@@ -61,17 +62,17 @@ export default function StoresPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Ad, əlaqəli şəxs və ya telefon..."
-          aria-label="Axtar"
+          placeholder={t('Ad, əlaqəli şəxs və ya telefon...')}
+          aria-label={t('Axtar')}
           className="input !pl-10"
         />
       </div>
 
       {loading && stores.length === 0 ? <Spinner /> : filtered.length === 0 ? (
         <EmptyState
-          title={search ? 'Axtarışa uyğun tədarükçü tapılmadı' : 'Hələ mağaza yoxdur'}
-          subtitle={!search ? 'Yeni mağaza əlavə etmək üçün "Yeni tədarükçü" düyməsini basın.' : undefined}
-          action={!search ? <Button icon={Plus} onClick={() => setCreating(true)}>Yeni tədarükçü</Button> : undefined}
+          title={search ? t('Axtarışa uyğun tədarükçü tapılmadı') : t('Hələ mağaza yoxdur')}
+          subtitle={!search ? t('Yeni mağaza əlavə etmək üçün "Yeni tədarükçü" düyməsini basın.') : undefined}
+          action={!search ? <Button icon={Plus} onClick={() => setCreating(true)}>{t('Yeni tədarükçü')}</Button> : undefined}
         />
       ) : (
         <div className="card overflow-hidden">
@@ -79,12 +80,12 @@ export default function StoresPage() {
             <table className="ledger-table min-w-[820px]">
               <thead>
                 <tr>
-                  <th className="ledger-th">Tədarükçü adı</th>
-                  <th className="ledger-th">Əlaqə şəxsi</th>
-                  <th className="ledger-th">Telefon</th>
-                  <th className="ledger-th text-right">Cəmi alış</th>
-                  <th className="ledger-th text-right">Borc qalığı</th>
-                  <th className="ledger-th w-px"><span className="sr-only">Əlaqə</span></th>
+                  <th className="ledger-th">{t('Tədarükçü adı')}</th>
+                  <th className="ledger-th">{t('Əlaqə şəxsi')}</th>
+                  <th className="ledger-th">{t('Telefon')}</th>
+                  <th className="ledger-th text-right">{t('Cəmi alış')}</th>
+                  <th className="ledger-th text-right">{t('Borc qalığı')}</th>
+                  <th className="ledger-th w-px"><span className="sr-only">{t('Əlaqə')}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -107,7 +108,7 @@ export default function StoresPage() {
                       <td className="ledger-td">
                         <span className="flex items-center justify-end gap-1">
                           {s.phone && (
-                            <a href={`tel:${s.phone}`} onClick={e => e.stopPropagation()} title="Zəng et" aria-label={`Zəng et: ${s.name}`} className={ICON_BTN}>
+                            <a href={`tel:${s.phone}`} onClick={e => e.stopPropagation()} title={t('Zəng et')} aria-label={`${t('Zəng et')}: ${s.name}`} className={ICON_BTN}>
                               <Phone size={18} strokeWidth={1.75} />
                             </a>
                           )}
@@ -124,7 +125,7 @@ export default function StoresPage() {
               </tbody>
               <tfoot>
                 <tr className="bg-surface-2">
-                  <td className="ledger-td font-semibold" colSpan={3}>Cəmi · {filtered.length} tədarükçü</td>
+                  <td className="ledger-td font-semibold" colSpan={3}>{t('Cəmi')} · {t('{n} tədarükçü', { n: filtered.length })}</td>
                   <td className="ledger-td text-right"><Money value={totalPurchased} className="font-bold" /></td>
                   <td className="ledger-td text-right">
                     {totalDebt > 0 ? <Money value={totalDebt} meaning="payable" className="font-bold" /> : <span className="text-text-3">—</span>}
