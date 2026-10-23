@@ -105,15 +105,25 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
             {business?.name ?? user?.business?.name ?? ''}
           </span>
         </Link>
-        {onClose && (
+        {/* Logout sits up here: on short tablet screens the footer can fall below the fold. */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          {onClose && (
+            <button
+              onClick={onClose}
+              aria-label="Bağla"
+              className="lg:hidden w-9 h-9 flex items-center justify-center rounded-md text-text-4 hover:bg-ink-up hover:text-paper transition-colors"
+            >
+              <X className="w-5 h-5" strokeWidth={1.75} />
+            </button>
+          )}
           <button
-            onClick={onClose}
-            aria-label="Bağla"
-            className="lg:hidden w-9 h-9 flex items-center justify-center rounded-md text-text-4 hover:bg-ink-up hover:text-paper transition-colors"
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 h-9 px-2 -mr-2 rounded-md text-small text-text-4 hover:bg-ink-up hover:text-paper transition-colors duration-[120ms]"
           >
-            <X className="w-5 h-5" strokeWidth={1.75} />
+            <LogOut className="w-4 h-4" strokeWidth={1.75} />
+            Çıxış
           </button>
-        )}
+        </div>
       </div>
 
       {/* Nav */}
@@ -189,16 +199,11 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
 
       {/* Footer */}
       <div className="shrink-0 px-5 pt-5 pb-4 border-t border-ink-up flex flex-col gap-2">
-        {/* Servo brand */}
-        <ServoLogo variant="white" className="w-[132px] h-auto mb-2" />
+        {/* Servo brand → the product site */}
+        <a href="https://servo.az" target="_blank" rel="noopener" aria-label="Servo — servo.az" className="w-fit mb-2">
+          <ServoLogo variant="white" className="w-[132px] h-auto" />
+        </a>
         <p className="text-small text-text-4 truncate">{user?.email}</p>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 h-9 px-2 -mx-2 rounded-md text-small text-text-4 hover:bg-ink-up hover:text-paper transition-colors duration-[120ms]"
-        >
-          <LogOut className="w-4 h-4" strokeWidth={1.75} />
-          Çıxış
-        </button>
       </div>
     </aside>
   )
