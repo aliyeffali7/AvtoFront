@@ -13,6 +13,7 @@ export interface Business {
   slogan?: string
   // Bare handle, no "@" — the backend strips URLs and "@".
   instagram?: string
+  document_language?: 'az' | 'ru'
   owner_email?: string | null
   login_code?: string | null
   is_subscription_active?: boolean

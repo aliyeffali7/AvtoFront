@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { logout, getBusinessProfile } from '@/services/auth.service'
 import { Business } from '@/types'
 import { useCurrentUser } from '@/App'
+import LanguageSwitch from '@/components/ui/LanguageSwitch'
 import ServoLogo from '@/components/ui/ServoLogo'
 import {
   LayoutDashboard,
@@ -204,6 +205,7 @@ export default function BusinessSidebar({ onClose }: { onClose?: () => void }) {
           <ServoLogo variant="white" className="w-[132px] h-auto" />
         </a>
         <p className="text-small text-text-4 truncate">{user?.email}</p>
+        <LanguageSwitch tone="dark" className="-mx-1" />
       </div>
     </aside>
   )
