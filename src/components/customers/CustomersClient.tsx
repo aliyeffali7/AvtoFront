@@ -29,6 +29,7 @@ export default function CustomersClient() {
   const [totalCount, setTotalCount] = useState(0)
   const [creating, setCreating] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestRequest = useRef(0)
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -37,14 +38,17 @@ export default function CustomersClient() {
   }, [search])
 
   const loadList = useCallback(async (p = page) => {
+    // Only the newest request may fill the list: a slower older search must not overwrite it.
+    const requestId = ++latestRequest.current
     setLoading(true)
     try {
       const res = await getCustomers({ page: p, search: debouncedSearch || undefined })
+      if (requestId !== latestRequest.current) return
       setCustomers(res.data.results)
       setTotalPages(res.data.total_pages)
       setTotalCount(res.data.count)
     } finally {
-      setLoading(false)
+      if (requestId === latestRequest.current) setLoading(false)
     }
   }, [page, debouncedSearch])
 
