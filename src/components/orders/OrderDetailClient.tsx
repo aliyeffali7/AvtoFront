@@ -27,6 +27,7 @@ import Plate from '@/components/ui/Plate'
 import Money from '@/components/ui/Money'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
+import InlineProductName from '@/components/orders/InlineProductName'
 import BoughtNowRemoveModal, { BoughtNowAction, BoughtNowMode, BoughtNowPart } from '@/components/orders/BoughtNowRemoveModal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ComboboxInput from '@/components/ui/ComboboxInput'
@@ -459,6 +460,19 @@ export default function OrderDetailClient() {
     }
   }
 
+  /** Fix the typed name of a part bought just for this order. Returns the
+   *  readable error (if any) for the inline field to show. */
+  async function handleRenameProduct(orderProductId: number, name: string): Promise<string | null> {
+    if (!order) return null
+    try {
+      await updateOrderProduct(order.id, orderProductId, { product_name: name })
+    } catch (err) {
+      return mapApiError(err)
+    }
+    loadOrder()
+    return null
+  }
+
   async function handleSaveProductEdit(orderProductId: number) {
     if (!order) return
     setEditProductError('')
@@ -828,7 +842,9 @@ export default function OrderDetailClient() {
                     ) : (
                       <div className="flex items-center justify-between py-2.5 gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-body text-text-1">{p.product_name}</p>
+                          {linesEditable && p.renamable
+                            ? <InlineProductName name={p.product_name} onSave={name => handleRenameProduct(p.id, name)} />
+                            : <p className="text-body text-text-1">{p.product_name}</p>}
                           {p.source === 'customer'
                             ? <p className="text-small text-text-3 font-mono">{t('{n} ədəd', { n: p.quantity })}</p>
                             : (

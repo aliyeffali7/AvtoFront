@@ -257,6 +257,8 @@ export interface OrderProduct {
   sell_price: number
   // null for a MECHANIC-role response — cost data isn't theirs to see.
   purchase_price: number | null
+  // A "sifarişlik" part (not a shelf product): its name can be fixed from the order page.
+  renamable?: boolean
   // Units of this line bought just for the order ("Anbarda yoxdur"); asks what to do with the purchase on removal.
   bought_now_quantity?: number
   // Supplier name(s) of that purchase, for the question's list.

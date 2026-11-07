@@ -105,6 +105,7 @@ const ru: Dict = {
   '— kassadan çıxacaq': '— спишется из кассы',
   'Məhsul əlavə edilməyib.': 'Товары не добавлены.',
   'Bu sifarişdə satış qiyməti (₼)': 'Цена продажи в этом заказе (₼)',
+  'Adı dəyişmək üçün klikləyin': 'Нажмите, чтобы изменить название',
   'Qiymət yalnız bu sifarişdə dəyişir. Miqdar artsa, fərq stokdan çıxılır; azalsa, stoka qayıdır. 0 yazsanız, sətir sifarişdən çıxır.':
     'Цена меняется только в этом заказе. Если количество увеличится, разница спишется со склада; если уменьшится, вернётся на склад. Если указать 0, строка уберётся из заказа.',
   'satış': 'продажа',

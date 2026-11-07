@@ -53,7 +53,7 @@ export const purchaseProductForOrder = (orderId: number, data: {
   product_id?: number
 }) => api.post<Order>(`/api/orders/${orderId}/products/purchase`, data)
 
-export const updateOrderProduct = (orderId: number, orderProductId: number, data: { quantity?: number; sell_price?: number; bought_now_action?: 'cancel_purchase' | 'keep' }) =>
+export const updateOrderProduct = (orderId: number, orderProductId: number, data: { quantity?: number; sell_price?: number; product_name?: string; bought_now_action?: 'cancel_purchase' | 'keep' }) =>
   api.patch<Order>(`/api/orders/${orderId}/products/${orderProductId}`, data)
 
 /** Customer brings a part back after the order was completed. `refund`

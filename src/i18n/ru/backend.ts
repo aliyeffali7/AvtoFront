@@ -138,6 +138,10 @@ const ru: Dict = {
   'Bu borc alışdan yaranıb — silmək üçün Alışlar bölməsində alışı ləğv edin.':
     'Этот долг возник из закупки — чтобы удалить его, отмените закупку в разделе «Закупки».',
   'Bu borca ödəniş edilib — silmək olmaz.': 'По этому долгу есть оплата — удалить нельзя.',
+  'Anbar məhsulunun adı Stok bölməsində dəyişdirilir.': 'Название складского товара меняется в разделе «Склад».',
+  'Bu adda məhsul artıq var.': 'Товар с таким названием уже есть.',
+  'Bu sətrin adı dəyişdirilə bilməz.': 'Название этой строки изменить нельзя.',
+  'Ad 255 simvoldan uzun ola bilməz.': 'Название не может быть длиннее 255 символов.',
 }
 
 export default ru
